@@ -4,5 +4,103 @@
     "name": "Youssef Eslam",
     "githubUsername": "Youssefeslamm",
     "service": "user-service"
+  },
+
+  {
+    "studentId": "55-8017",
+    "name": "Mohamed Hesham",
+    "githubUsername": "moheshhamm",
+    "service": "wallet-service"
+  },
+
+  {
+    "studentId": "55-12460",
+    "name": "Youssef Niazy",
+    "githubUsername": "YoussefNiazy",
+    "service": "user-service"
+  },
+
+  {
+    "studentId": "55-3910",
+    "name": "Shahd Hesham",
+    "githubUsername": "shahdhesham3",
+    "service": "wallet-service"
+  },
+
+  {
+    "studentId": "55-11434",
+    "name": "Amr Nour",
+    "githubUsername": "4mr-Nour",
+    "service": "job-service"
+  },
+
+  {
+    "studentId": "55-6888",
+    "name": "Ali Khalid",
+    "githubUsername": "Alikhalid33",
+    "service": "job-service"
+  },
+
+  {
+    "studentId": "58-16088",
+    "name": "Asem Amr",
+    "githubUsername": "AsemAMR19",
+    "service": "contract-service"
+  },
+
+  {
+    "studentId": "55-9713",
+    "name": "Omar Waleed",
+    "githubUsername": "Omarwaleed99",
+    "service": "contract-service"
+  },
+
+  {
+    "studentId": "55-10737",
+    "name": "Arwa Shalabi",
+    "githubUsername": "ArwaShalabi",
+    "service": "proposal-service"
+  },
+
+  {
+    "studentId": "49-14580",
+    "name": "Yousef Hazem",
+    "githubUsername": "YousefHazem34",
+    "service": "proposal-service"
+  },
+
+  {
+    "studentId": "55-1056",
+    "name": "Basil Ayman",
+    "githubUsername": "basil-1c",
+    "service": "user-service"
+  },
+
+  {
+    "studentId": "55-10412",
+    "name": "Omar Ahmed",
+    "githubUsername": "GharibCodeNinja",
+    "service": "wallet-service"
+  },
+
+  {
+    "studentId": "58-1169",
+    "name": "Nadeem Ahmed",
+    "githubUsername": "nadiemismaiel1",
+    "service": "job-service"
+  },
+
+  {
+    "studentId": "55-12509",
+    "name": "Ibrahim Samy",
+    "githubUsername": "Ebrahiem-sami",
+    "service": "contract-service"
+  },
+
+  {
+    "studentId": "55-12419",
+    "name": "Shahd Ayman",
+    "githubUsername": "shahd-moghazy",
+    "service": "proposal-service"
   }
 ]
