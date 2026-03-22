@@ -56,17 +56,21 @@ public class UserService {
     public User updateUser(Long id, User updatedUser) {
         User user = getUserById(id);
 
-        // Partial update (avoid null overwrite)
-        if (updatedUser.getName() != null)
+        if (updatedUser.getName() != null && !updatedUser.getName().isBlank())
             user.setName(updatedUser.getName());
 
-        if (updatedUser.getEmail() != null)
+        if (updatedUser.getEmail() != null && !updatedUser.getEmail().isBlank()) {
+            if (!updatedUser.getEmail().equals(user.getEmail()) &&
+                    userRepository.existsByEmail(updatedUser.getEmail())) {
+                throw new RuntimeException("Email already exists");
+            }
             user.setEmail(updatedUser.getEmail());
+        }
 
-        if (updatedUser.getPassword() != null)
+        if (updatedUser.getPassword() != null && !updatedUser.getPassword().isBlank())
             user.setPassword(updatedUser.getPassword());
 
-        if (updatedUser.getPhone() != null)
+        if (updatedUser.getPhone() != null && !updatedUser.getPhone().isBlank())
             user.setPhone(updatedUser.getPhone());
 
         if (updatedUser.getRole() != null)
@@ -89,6 +93,13 @@ public class UserService {
     // ===================== USER SKILLS =====================
 
     public UserSkill addSkillToUser(Long userId, UserSkill skill) {
+        if (skill.getSkillName() == null || skill.getSkillName().isBlank() ||
+                skill.getCategory() == null || skill.getCategory().isBlank() ||
+                skill.getYearsOfExperience() == null ||
+                skill.getProficiencyLevel() == null) {
+
+            throw new RuntimeException("Invalid skill data");
+        }
         User user = getUserById(userId);
         skill.setUser(user);
         return userSkillRepository.save(skill);
@@ -104,11 +115,10 @@ public class UserService {
         UserSkill skill = userSkillRepository.findById(skillId)
                 .orElseThrow(() -> new RuntimeException("Skill not found"));
 
-        // Partial update
-        if (updatedSkill.getSkillName() != null)
+        if (updatedSkill.getSkillName() != null && !updatedSkill.getSkillName().isBlank())
             skill.setSkillName(updatedSkill.getSkillName());
 
-        if (updatedSkill.getCategory() != null)
+        if (updatedSkill.getCategory() != null && !updatedSkill.getCategory().isBlank())
             skill.setCategory(updatedSkill.getCategory());
 
         if (updatedSkill.getYearsOfExperience() != null)
