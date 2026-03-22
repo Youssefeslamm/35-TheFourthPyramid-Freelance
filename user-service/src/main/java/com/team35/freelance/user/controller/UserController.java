@@ -1,5 +1,6 @@
 package com.team35.freelance.user.controller;
 
+import com.team35.freelance.user.model.Role;
 import com.team35.freelance.user.model.User;
 import com.team35.freelance.user.model.UserSkill;
 import com.team35.freelance.user.service.UserService;
@@ -70,4 +71,18 @@ public class UserController {
     public void deleteSkill(@PathVariable Long skillId) {
         userService.deleteUserSkill(skillId);
     }
+
+    @GetMapping("/search")
+    public List<User> searchUsers(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String role
+    ) {
+        if (role != null) {
+            role = role.toUpperCase();
+        }
+
+        return userService.searchUsers(name, email, role);
+    }
 }
+

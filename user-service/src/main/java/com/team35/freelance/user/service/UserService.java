@@ -1,5 +1,6 @@
 package com.team35.freelance.user.service;
 
+import com.team35.freelance.user.model.Role;
 import com.team35.freelance.user.model.Status;
 import com.team35.freelance.user.model.User;
 import com.team35.freelance.user.model.UserSkill;
@@ -140,5 +141,9 @@ public class UserService {
         UserSkill skill = userSkillRepository.findById(skillId)
                 .orElseThrow(() -> new RuntimeException("Skill not found"));
         userSkillRepository.delete(skill);
+    }
+
+    public List<User> searchUsers(String name, String email, String role) {
+        return userRepository.searchUsers(name, email, role);
     }
 }
