@@ -27,6 +27,7 @@ public class UserSkill {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "proficiency_level_enum")
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     private ProficiencyLevel proficiencyLevel;
 
     private Boolean isPrimary = false;

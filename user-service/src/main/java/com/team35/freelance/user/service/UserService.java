@@ -24,6 +24,15 @@ public class UserService {
 
     public User createUser(User user) {
 
+        if (user.getName() == null || user.getName().isBlank() ||
+                user.getEmail() == null || user.getEmail().isBlank() ||
+                user.getPassword() == null || user.getPassword().isBlank() ||
+                user.getPhone() == null || user.getPhone().isBlank() ||
+                user.getRole() == null) {
+
+            throw new RuntimeException("Missing or invalid required fields");
+        }
+
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
