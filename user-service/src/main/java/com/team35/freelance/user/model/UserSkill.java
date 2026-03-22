@@ -26,7 +26,7 @@ public class UserSkill {
     private Integer yearsOfExperience;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "proficiency_level_enum")
     private ProficiencyLevel proficiencyLevel;
 
     private Boolean isPrimary = false;
