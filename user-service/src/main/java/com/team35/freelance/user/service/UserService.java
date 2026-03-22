@@ -6,9 +6,13 @@ import com.team35.freelance.user.model.User;
 import com.team35.freelance.user.model.UserSkill;
 import com.team35.freelance.user.repository.UserRepository;
 import com.team35.freelance.user.repository.UserSkillRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class UserService {
@@ -35,8 +39,7 @@ public class UserService {
         }
 
         if (userRepository.existsByEmail(user.getEmail())) {
-            throw new RuntimeException("Email already exists");
-        }
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists");        }
 
         if (user.getStatus() == null) {
             user.setStatus(Status.ACTIVE);
@@ -63,8 +66,7 @@ public class UserService {
         if (updatedUser.getEmail() != null && !updatedUser.getEmail().isBlank()) {
             if (!updatedUser.getEmail().equals(user.getEmail()) &&
                     userRepository.existsByEmail(updatedUser.getEmail())) {
-                throw new RuntimeException("Email already exists");
-            }
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists");            }
             user.setEmail(updatedUser.getEmail());
         }
 
@@ -145,5 +147,24 @@ public class UserService {
 
     public List<User> searchUsers(String name, String email, String role) {
         return userRepository.searchUsers(name, email, role);
+    }
+
+    public User updateUserPreferences(Long id, Map<String, Object> newPreferences) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        Map<String, Object> existingPreferences = user.getPreferences();
+
+        if (existingPreferences == null) {
+            existingPreferences = new HashMap<>();
+        }
+
+        if (newPreferences != null) {
+            existingPreferences.putAll(newPreferences); // 🔥 MERGE
+        }
+
+        user.setPreferences(existingPreferences);
+
+        return userRepository.save(user);
     }
 }

@@ -7,6 +7,7 @@ import com.team35.freelance.user.service.UserService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -83,6 +84,14 @@ public class UserController {
         }
 
         return userService.searchUsers(name, email, role);
+    }
+
+    @PutMapping("/{id}/preferences")
+    public User updatePreferences(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> preferences
+    ) {
+        return userService.updateUserPreferences(id, preferences);
     }
 }
 
