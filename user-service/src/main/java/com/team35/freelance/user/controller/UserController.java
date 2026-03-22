@@ -93,5 +93,13 @@ public class UserController {
     ) {
         return userService.updateUserPreferences(id, preferences);
     }
+
+    @GetMapping("/preferences/search")
+    public List<User> searchByPreference(
+            @RequestParam String key,
+            @RequestParam String value
+    ) {
+        return userService.searchUsersByPreference(key, value);
+    }
 }
 

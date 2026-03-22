@@ -167,4 +167,13 @@ public class UserService {
 
         return userRepository.save(user);
     }
+
+    public List<User> searchUsersByPreference(String key, String value) {
+
+        if (key == null || key.isBlank() || value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Key and value must not be blank");
+        }
+
+        return userRepository.findUsersByPreference(key, value);
+    }
 }
