@@ -23,10 +23,15 @@ public class UserService {
     // ===================== USER =====================
 
     public User createUser(User user) {
-        // Ensure default status
+
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new RuntimeException("Email already exists");
+        }
+
         if (user.getStatus() == null) {
             user.setStatus(Status.ACTIVE);
         }
+
         return userRepository.save(user);
     }
 
