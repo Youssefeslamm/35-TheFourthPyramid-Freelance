@@ -31,10 +31,12 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "user_role_enum")
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     private Role role;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "user_status_enum")
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     private Status status = Status.ACTIVE;
 
     @JdbcTypeCode(SqlTypes.JSON)
