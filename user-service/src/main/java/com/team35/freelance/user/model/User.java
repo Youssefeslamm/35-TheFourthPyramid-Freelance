@@ -30,11 +30,11 @@ public class User {
     private String phone;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "user_role_enum")
     private Role role;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "user_status_enum")
     private Status status = Status.ACTIVE;
 
     @JdbcTypeCode(SqlTypes.JSON)
