@@ -1,5 +1,6 @@
 package com.team35.freelance.user.service;
 
+import com.team35.freelance.user.model.Status;
 import com.team35.freelance.user.model.User;
 import com.team35.freelance.user.model.UserSkill;
 import com.team35.freelance.user.repository.UserRepository;
@@ -19,8 +20,13 @@ public class UserService {
         this.userSkillRepository = userSkillRepository;
     }
 
+    // ===================== USER =====================
 
     public User createUser(User user) {
+        // Ensure default status
+        if (user.getStatus() == null) {
+            user.setStatus(Status.ACTIVE);
+        }
         return userRepository.save(user);
     }
 
@@ -36,13 +42,27 @@ public class UserService {
     public User updateUser(Long id, User updatedUser) {
         User user = getUserById(id);
 
-        user.setName(updatedUser.getName());
-        user.setEmail(updatedUser.getEmail());
-        user.setPassword(updatedUser.getPassword());
-        user.setPhone(updatedUser.getPhone());
-        user.setRole(updatedUser.getRole());
-        user.setStatus(updatedUser.getStatus());
-        user.setPreferences(updatedUser.getPreferences());
+        // Partial update (avoid null overwrite)
+        if (updatedUser.getName() != null)
+            user.setName(updatedUser.getName());
+
+        if (updatedUser.getEmail() != null)
+            user.setEmail(updatedUser.getEmail());
+
+        if (updatedUser.getPassword() != null)
+            user.setPassword(updatedUser.getPassword());
+
+        if (updatedUser.getPhone() != null)
+            user.setPhone(updatedUser.getPhone());
+
+        if (updatedUser.getRole() != null)
+            user.setRole(updatedUser.getRole());
+
+        if (updatedUser.getStatus() != null)
+            user.setStatus(updatedUser.getStatus());
+
+        if (updatedUser.getPreferences() != null)
+            user.setPreferences(updatedUser.getPreferences());
 
         return userRepository.save(user);
     }
@@ -52,6 +72,7 @@ public class UserService {
         userRepository.delete(user);
     }
 
+    // ===================== USER SKILLS =====================
 
     public UserSkill addSkillToUser(Long userId, UserSkill skill) {
         User user = getUserById(userId);
@@ -60,6 +81,8 @@ public class UserService {
     }
 
     public List<UserSkill> getUserSkills(Long userId) {
+        // ensure user exists
+        getUserById(userId);
         return userSkillRepository.findByUserId(userId);
     }
 
@@ -67,17 +90,31 @@ public class UserService {
         UserSkill skill = userSkillRepository.findById(skillId)
                 .orElseThrow(() -> new RuntimeException("Skill not found"));
 
-        skill.setSkillName(updatedSkill.getSkillName());
-        skill.setCategory(updatedSkill.getCategory());
-        skill.setYearsOfExperience(updatedSkill.getYearsOfExperience());
-        skill.setProficiencyLevel(updatedSkill.getProficiencyLevel());
-        skill.setIsPrimary(updatedSkill.getIsPrimary());
-        skill.setMetadata(updatedSkill.getMetadata());
+        // Partial update
+        if (updatedSkill.getSkillName() != null)
+            skill.setSkillName(updatedSkill.getSkillName());
+
+        if (updatedSkill.getCategory() != null)
+            skill.setCategory(updatedSkill.getCategory());
+
+        if (updatedSkill.getYearsOfExperience() != null)
+            skill.setYearsOfExperience(updatedSkill.getYearsOfExperience());
+
+        if (updatedSkill.getProficiencyLevel() != null)
+            skill.setProficiencyLevel(updatedSkill.getProficiencyLevel());
+
+        if (updatedSkill.getIsPrimary() != null)
+            skill.setIsPrimary(updatedSkill.getIsPrimary());
+
+        if (updatedSkill.getMetadata() != null)
+            skill.setMetadata(updatedSkill.getMetadata());
 
         return userSkillRepository.save(skill);
     }
 
     public void deleteUserSkill(Long skillId) {
-        userSkillRepository.deleteById(skillId);
+        UserSkill skill = userSkillRepository.findById(skillId)
+                .orElseThrow(() -> new RuntimeException("Skill not found"));
+        userSkillRepository.delete(skill);
     }
 }
