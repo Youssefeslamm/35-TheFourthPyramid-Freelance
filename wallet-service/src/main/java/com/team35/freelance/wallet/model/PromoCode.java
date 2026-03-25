@@ -46,9 +46,9 @@ public class PromoCode {
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> metadata = new HashMap<>();
 
-//    @OneToMany(mappedBy = "promoCode", cascade = CascadeType.ALL, orphanRemoval = true)
-//    @JsonIgnore
-//    private List<PayoutPromo> payoutPromos = new ArrayList<>();
+    @OneToMany(mappedBy = "promoCode", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<PayoutPromo> payoutPromos = new ArrayList<>();
 
     public PromoCode() {
     }
@@ -61,10 +61,8 @@ public class PromoCode {
                      Integer currentUses,
                      LocalDateTime expiryDate,
                      Boolean active,
-                     Map<String, Object> metadata
-
-
-//                     List<PayoutPromo> payoutPromos
+                     Map<String, Object> metadata,
+                     List<PayoutPromo> payoutPromos
     ) {
         this.id = id;
         this.code = code;
@@ -75,7 +73,7 @@ public class PromoCode {
         this.expiryDate = expiryDate;
         this.active = active;
         this.metadata = metadata;
-//        this.payoutPromos = payoutPromos;
+        this.payoutPromos = payoutPromos;
     }
 
     public Long getId() {
@@ -150,11 +148,11 @@ public class PromoCode {
         this.metadata = metadata;
     }
 
-//    public List<PayoutPromo> getPayoutPromos() {
-//        return payoutPromos;
-//    }
-//
-//    public void setPayoutPromos(List<PayoutPromo> payoutPromos) {
-//        this.payoutPromos = payoutPromos;
-//    }
+    public List<PayoutPromo> getPayoutPromos() {
+        return payoutPromos;
+    }
+
+    public void setPayoutPromos(List<PayoutPromo> payoutPromos) {
+        this.payoutPromos = payoutPromos;
+    }
 }
