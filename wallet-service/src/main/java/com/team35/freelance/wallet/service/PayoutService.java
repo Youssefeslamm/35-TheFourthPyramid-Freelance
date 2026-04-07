@@ -1,9 +1,11 @@
 package com.team35.freelance.wallet.service;
 
 import com.team35.freelance.wallet.model.Payout;
+import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.wallet.repository.PayoutRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -54,4 +56,34 @@ public class PayoutService {
         }
         payoutRepository.deleteById(id);
     }
+    public List<Payout> searchPayouts(PayoutStatus status, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = null;
+        LocalDateTime endDateTime = null;
+
+        if (startDate != null) {
+            startDateTime = startDate.atStartOfDay();
+        }
+
+        if (endDate != null) {
+            endDateTime = endDate.atTime(23, 59, 59);
+        }
+        // CASE 1: no filters → return all
+        if (status == null && startDateTime == null && endDateTime == null) {
+            return payoutRepository.findAll();
+        }
+        // CASE 2: only status
+        if (status != null && startDateTime == null && endDateTime == null) {
+            return payoutRepository.findByStatusOrderByCreatedAtDesc(status);
+        }
+        // CASE 3: only date range
+        if (status == null) {
+            return payoutRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(startDateTime, endDateTime);
+        }
+        // CASE 4: both status + date
+        return payoutRepository.findByStatusAndCreatedAtBetweenOrderByCreatedAtDesc(
+                status, startDateTime, endDateTime
+        );
+    }
+
+
 }
