@@ -4,6 +4,12 @@ import com.team35.freelance.wallet.model.Payout;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.wallet.repository.PayoutRepository;
 import org.springframework.stereotype.Service;
+import jakarta.transaction.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -83,6 +89,43 @@ public class PayoutService {
         return payoutRepository.findByStatusAndCreatedAtBetweenOrderByCreatedAtDesc(
                 status, startDateTime, endDateTime
         );
+    }
+
+    @Transactional
+    public Payout retryFailedPayout(Long id) {
+        Payout payout = payoutRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found"));
+
+        if (payout.getStatus() != PayoutStatus.FAILED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only failed payouts can be retried");
+        }
+
+        payout.setStatus(PayoutStatus.COMPLETED);
+
+        Map<String, Object> transactionDetails = payout.getTransactionDetails();
+        if (transactionDetails == null) {
+            transactionDetails = new HashMap<>();
+        }
+
+        Object retryValue = transactionDetails.get("retryAttempt");
+        int retryAttempt = 0;
+
+        if (retryValue instanceof Number) {
+            retryAttempt = ((Number) retryValue).intValue();
+        } else if (retryValue instanceof String) {
+            try {
+                retryAttempt = Integer.parseInt((String) retryValue);
+            } catch (NumberFormatException e) {
+                retryAttempt = 0;
+            }
+        }
+
+        transactionDetails.put("retryAttempt", retryAttempt + 1);
+        transactionDetails.put("gatewayResponse", "approved");
+
+        payout.setTransactionDetails(transactionDetails);
+
+        return payoutRepository.save(payout);
     }
 
 

@@ -59,4 +59,12 @@ public class PayoutController {
                 payoutService.searchPayouts(status, startDate, endDate)
         );
     }
+
+    @PutMapping("/{id}/retry")
+    public ResponseEntity<Payout> retryPayout(@PathVariable Long id) {
+        return ResponseEntity.ok(payoutService.retryFailedPayout(id));
+    }
+
+
+
 }
