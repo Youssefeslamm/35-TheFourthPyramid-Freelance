@@ -13,6 +13,21 @@ import java.util.List;
 @Repository
 public interface PayoutRepository extends JpaRepository<Payout, Long> {
 
+    // ✅ NEW FEATURE METHOD
+    @Query(value = """
+        SELECT 
+            p.freelancer_id,
+            COUNT(*) AS total_payouts,
+            SUM(CASE WHEN p.status = 'COMPLETED' THEN 1 ELSE 0 END),
+            SUM(CASE WHEN p.status = 'FAILED' THEN 1 ELSE 0 END),
+            SUM(CASE WHEN p.status = 'REFUNDED' THEN 1 ELSE 0 END),
+            COALESCE(SUM(CASE WHEN p.status = 'COMPLETED' THEN p.amount ELSE 0 END), 0),
+            COALESCE(AVG(CASE WHEN p.status = 'COMPLETED' THEN p.amount END), 0)
+        FROM payouts p
+        WHERE p.freelancer_id = :freelancerId
+        GROUP BY p.freelancer_id
+    """, nativeQuery = true)
+    Object[] getFreelancerPayoutSummary(@Param("freelancerId") Long freelancerId);
     List<Payout> findByStatusOrderByCreatedAtDesc(PayoutStatus status);
 
     List<Payout> findByCreatedAtBetweenOrderByCreatedAtDesc(
