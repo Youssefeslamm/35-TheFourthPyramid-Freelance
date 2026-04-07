@@ -4,10 +4,15 @@ import com.team35.freelance.wallet.model.Payout;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.wallet.repository.PayoutRepository;
 import org.springframework.stereotype.Service;
+import jakarta.transaction.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class PayoutService {
@@ -83,6 +88,34 @@ public class PayoutService {
         return payoutRepository.findByStatusAndCreatedAtBetweenOrderByCreatedAtDesc(
                 status, startDateTime, endDateTime
         );
+    }
+
+    @Transactional
+    public Payout processRefund(Long id, String reason) {
+        Payout payout = payoutRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found"));
+
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Refund reason must not be blank");
+        }
+
+        if (payout.getStatus() != PayoutStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only completed payouts can be refunded");
+        }
+
+        payout.setStatus(PayoutStatus.REFUNDED);
+
+        Map<String, Object> transactionDetails = payout.getTransactionDetails();
+        if (transactionDetails == null) {
+            transactionDetails = new HashMap<>();
+        }
+
+        transactionDetails.put("refundReason", reason);
+        transactionDetails.put("refundedAt", LocalDateTime.now().toString());
+
+        payout.setTransactionDetails(transactionDetails);
+
+        return payoutRepository.save(payout);
     }
 
 
