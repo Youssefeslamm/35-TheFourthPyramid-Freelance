@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDate;
+import com.team35.freelance.wallet.dto.PromoCodeUsage;
 
 import java.util.List;
 
@@ -58,5 +59,10 @@ public class PayoutController {
         return ResponseEntity.ok(
                 payoutService.searchPayouts(status, startDate, endDate)
         );
+    }
+
+    @GetMapping("/promos/top-used")
+    public ResponseEntity<List<PromoCodeUsage>> getMostUsedPromoCodes(@RequestParam int limit) {
+        return ResponseEntity.ok(payoutService.getMostUsedPromoCodes(limit));
     }
 }
