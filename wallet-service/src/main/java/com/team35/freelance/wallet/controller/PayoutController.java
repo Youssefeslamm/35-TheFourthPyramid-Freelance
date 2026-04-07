@@ -4,6 +4,9 @@ import com.team35.freelance.wallet.model.Payout;
 import com.team35.freelance.wallet.service.PayoutService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.team35.freelance.wallet.model.PayoutStatus;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 
 import java.util.List;
 
@@ -56,6 +59,16 @@ public class PayoutController {
 
         return ResponseEntity.ok(
                 payoutService.getFreelancerSummary(freelancerId)
+    @GetMapping("/search")
+    public ResponseEntity<List<Payout>> searchPayouts(
+            @RequestParam(required = false) PayoutStatus status,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        return ResponseEntity.ok(
+                payoutService.searchPayouts(status, startDate, endDate)
         );
     }
 }
