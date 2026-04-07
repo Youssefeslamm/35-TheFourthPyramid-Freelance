@@ -1,13 +1,14 @@
 package com.team35.freelance.wallet.service;
 
 import com.team35.freelance.wallet.model.Payout;
-import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.wallet.repository.PayoutRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+
+// ✅ ADD THIS
+import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
 
 @Service
 public class PayoutService {
@@ -18,24 +19,22 @@ public class PayoutService {
         this.payoutRepository = payoutRepository;
     }
 
-    // Create
+    // ---------------- EXISTING CODE (UNCHANGED) ----------------
+
     public Payout createPayout(Payout payout) {
         payout.setCreatedAt(LocalDateTime.now());
         return payoutRepository.save(payout);
     }
 
-    // Read all
     public List<Payout> getAllPayouts() {
         return payoutRepository.findAll();
     }
 
-    // Read by ID
     public Payout getPayoutById(Long id) {
         return payoutRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Payout not found"));
     }
 
-    // Update
     public Payout updatePayout(Long id, Payout updatedPayout) {
         Payout existing = getPayoutById(id);
 
@@ -49,41 +48,33 @@ public class PayoutService {
         return payoutRepository.save(existing);
     }
 
-    // Delete
     public void deletePayout(Long id) {
         if (!payoutRepository.existsById(id)) {
             throw new RuntimeException("Payout not found");
         }
         payoutRepository.deleteById(id);
     }
-    public List<Payout> searchPayouts(PayoutStatus status, LocalDate startDate, LocalDate endDate) {
-        LocalDateTime startDateTime = null;
-        LocalDateTime endDateTime = null;
 
-        if (startDate != null) {
-            startDateTime = startDate.atStartOfDay();
+    // ---------------- NEW FEATURE ----------------
+
+    public FreelancerPayoutSummaryDTO getFreelancerSummary(Long freelancerId) {
+
+        Object[] result = payoutRepository.getFreelancerPayoutSummary(freelancerId);
+
+        if (result == null || result.length == 0) {
+            return new FreelancerPayoutSummaryDTO(
+                    freelancerId, 0L, 0L, 0L, 0L, 0.0, 0.0
+            );
         }
 
-        if (endDate != null) {
-            endDateTime = endDate.atTime(23, 59, 59);
-        }
-        // CASE 1: no filters → return all
-        if (status == null && startDateTime == null && endDateTime == null) {
-            return payoutRepository.findAll();
-        }
-        // CASE 2: only status
-        if (status != null && startDateTime == null && endDateTime == null) {
-            return payoutRepository.findByStatusOrderByCreatedAtDesc(status);
-        }
-        // CASE 3: only date range
-        if (status == null) {
-            return payoutRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(startDateTime, endDateTime);
-        }
-        // CASE 4: both status + date
-        return payoutRepository.findByStatusAndCreatedAtBetweenOrderByCreatedAtDesc(
-                status, startDateTime, endDateTime
+        return new FreelancerPayoutSummaryDTO(
+                ((Number) result[0]).longValue(),
+                ((Number) result[1]).longValue(),
+                ((Number) result[2]).longValue(),
+                ((Number) result[3]).longValue(),
+                ((Number) result[4]).longValue(),
+                ((Number) result[5]).doubleValue(),
+                ((Number) result[6]).doubleValue()
         );
     }
-
-
 }

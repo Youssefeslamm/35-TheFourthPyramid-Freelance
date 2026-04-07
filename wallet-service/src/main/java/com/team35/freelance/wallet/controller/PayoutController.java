@@ -4,11 +4,11 @@ import com.team35.freelance.wallet.model.Payout;
 import com.team35.freelance.wallet.service.PayoutService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.team35.freelance.wallet.model.PayoutStatus;
-import org.springframework.format.annotation.DateTimeFormat;
-import java.time.LocalDate;
 
 import java.util.List;
+
+// ✅ ADD THIS
+import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
 
 @RestController
 @RequestMapping("/api/payouts")
@@ -20,7 +20,7 @@ public class PayoutController {
         this.payoutService = payoutService;
     }
 
-
+    // -------- EXISTING CRUD --------
 
     @PostMapping
     public ResponseEntity<Payout> createPayout(@RequestBody Payout payout) {
@@ -47,16 +47,15 @@ public class PayoutController {
         payoutService.deletePayout(id);
         return ResponseEntity.ok("Payout deleted successfully");
     }
-    @GetMapping("/search")
-    public ResponseEntity<List<Payout>> searchPayouts(
-            @RequestParam(required = false) PayoutStatus status,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
-    ) {
+
+    // -------- NEW FEATURE --------
+
+    @GetMapping("/freelancers/{freelancerId}/summary")
+    public ResponseEntity<FreelancerPayoutSummaryDTO> getSummary(
+            @PathVariable Long freelancerId) {
+
         return ResponseEntity.ok(
-                payoutService.searchPayouts(status, startDate, endDate)
+                payoutService.getFreelancerSummary(freelancerId)
         );
     }
 }
