@@ -44,6 +44,12 @@ public class ProposalController {
         return ResponseEntity.ok(proposalService.update(id, proposal));
     }
 
+
+    @PutMapping("/{id}/withdraw")
+    public ResponseEntity<Proposal> withdrawProposal(@PathVariable Long id) {
+        return ResponseEntity.ok(proposalService.withdrawProposal(id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         proposalService.delete(id);
