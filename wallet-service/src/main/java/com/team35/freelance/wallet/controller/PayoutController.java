@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDate;
+import com.team35.freelance.wallet.dto.PromoCodeUsage;
 import com.team35.freelance.wallet.dto.RefundRequest;
 
 import java.util.List;
@@ -73,6 +74,9 @@ public class PayoutController {
         );
     }
 
+    @GetMapping("/promos/top-used")
+    public ResponseEntity<List<PromoCodeUsage>> getMostUsedPromoCodes(@RequestParam int limit) {
+        return ResponseEntity.ok(payoutService.getMostUsedPromoCodes(limit));
     @PutMapping("/{id}/retry")
     public ResponseEntity<Payout> retryPayout(@PathVariable Long id) {
         return ResponseEntity.ok(payoutService.retryFailedPayout(id));

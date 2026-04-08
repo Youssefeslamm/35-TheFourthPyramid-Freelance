@@ -4,6 +4,10 @@ import com.team35.freelance.wallet.model.Payout;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.wallet.repository.PayoutRepository;
 import org.springframework.stereotype.Service;
+import com.team35.freelance.wallet.dto.PromoCodeUsage;
+import com.team35.freelance.wallet.repository.PromoCodeRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -11,9 +15,11 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.HashMap;
 import java.util.Map;
 
-import java.time.LocalDate;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,9 +30,12 @@ import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
 public class PayoutService {
 
     private final PayoutRepository payoutRepository;
+    private final PromoCodeRepository promoCodeRepository;
 
-    public PayoutService(PayoutRepository payoutRepository) {
+    public PayoutService(PayoutRepository payoutRepository, PromoCodeRepository promoCodeRepository) {
         this.payoutRepository = payoutRepository;
+        this.promoCodeRepository = promoCodeRepository;
+
     }
 
     // ---------------- EXISTING CODE (UNCHANGED) ----------------
@@ -116,6 +125,50 @@ public class PayoutService {
         );
     }
 
+    public List<PromoCodeUsage> getMostUsedPromoCodes(int limit) {
+        if (limit <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Limit must be greater than 0");
+        }
+
+        List<Object[]> rows = promoCodeRepository.findTopUsedPromoCodes(limit);
+        List<PromoCodeUsage> result = new ArrayList<>();
+
+        for (Object[] row : rows) {
+            Long promoCodeId = ((Number) row[0]).longValue();
+            String code = (String) row[1];
+            String discountType = row[2].toString();
+            Double discountValue = ((Number) row[3]).doubleValue();
+            Integer timesUsed = ((Number) row[4]).intValue();
+            Double totalDiscountGiven = ((Number) row[5]).doubleValue();
+            Boolean active = (Boolean) row[6];
+
+            LocalDateTime expiryDate;
+            Object expiryObj = row[7];
+            if (expiryObj instanceof Timestamp) {
+                expiryDate = ((Timestamp) expiryObj).toLocalDateTime();
+            } else if (expiryObj instanceof LocalDateTime) {
+                expiryDate = (LocalDateTime) expiryObj;
+            } else {
+                expiryDate = LocalDateTime.parse(expiryObj.toString());
+            }
+
+            Boolean expired = expiryDate.isBefore(LocalDateTime.now());
+
+            PromoCodeUsage dto = new PromoCodeUsage(
+                    promoCodeId,
+                    code,
+                    discountType,
+                    discountValue,
+                    timesUsed,
+                    totalDiscountGiven,
+                    active,
+                    expired
+            );
+
+            result.add(dto);
+        }
+
+        return result;
     @Transactional
     public Payout retryFailedPayout(Long id) {
         Payout payout = payoutRepository.findById(id)
