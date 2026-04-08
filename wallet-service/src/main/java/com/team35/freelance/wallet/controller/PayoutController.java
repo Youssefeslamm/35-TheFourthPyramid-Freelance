@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import org.springframework.format.annotation.DateTimeFormat;
+import com.team35.freelance.wallet.service.PayoutPromoService;
 import java.time.LocalDate;
 
 import java.util.List;
@@ -15,9 +16,11 @@ import java.util.List;
 public class PayoutController {
 
     private final PayoutService payoutService;
+    private final PayoutPromoService payoutPromoService;
 
-    public PayoutController(PayoutService payoutService) {
+    public PayoutController(PayoutService payoutService, PayoutPromoService payoutPromoService) {
         this.payoutService = payoutService;
+        this.payoutPromoService = payoutPromoService;
     }
 
 
@@ -57,6 +60,15 @@ public class PayoutController {
     ) {
         return ResponseEntity.ok(
                 payoutService.searchPayouts(status, startDate, endDate)
+        );
+    }
+    @PostMapping("/{payoutId}/promos/{promoCodeId}")
+    public ResponseEntity<Payout> applyPromoCodeToPayout(
+            @PathVariable("payoutId") Long payoutId,
+            @PathVariable("promoCodeId") Long promoCodeId
+    ) {
+        return ResponseEntity.ok(
+                payoutPromoService.applyPromoCodeToPayout(payoutId, promoCodeId)
         );
     }
 }
