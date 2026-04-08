@@ -1,5 +1,7 @@
 package com.team35.freelance.proposal.service;
 import com.team35.freelance.proposal.dto.FeeEstimateDTO;
+import com.team35.freelance.proposal.dto.ProposalDetailsDTO;
+import com.team35.freelance.proposal.model.MilestoneStatus;
 import com.team35.freelance.proposal.model.Proposal;
 import com.team35.freelance.proposal.model.ProposalStatus;
 import com.team35.freelance.proposal.repository.ProposalRepository;
@@ -8,7 +10,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.team35.freelance.proposal.model.ProposalMilestone;
+
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
+import com.team35.freelance.proposal.dto.MilestoneDTO;
 
 @Service
 public class ProposalService {
@@ -92,5 +99,43 @@ public class ProposalService {
         }
 
         return proposalRepository.save(proposal);
+    }
+
+    public ProposalDetailsDTO getProposalDetails(Long proposalId) {
+        Proposal proposal = proposalRepository.findById(proposalId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Proposal not found"));
+
+        List<MilestoneDTO> milestoneDTOs = proposal.getProposalMilestones()
+                .stream()
+                .sorted(Comparator.comparingInt(ProposalMilestone::getMilestoneOrder))
+                .map(m -> new MilestoneDTO(
+                        m.getId(),
+                        m.getMilestoneOrder(),
+                        m.getTitle(),
+                        m.getDescription(),
+                        m.getAmount(),
+                        m.getStatus(),
+                        m.getMetadata()
+                ))
+                .collect(Collectors.toList());
+
+        long completedCount = proposal.getProposalMilestones()
+                .stream()
+                .filter(m -> m.getStatus() == MilestoneStatus.COMPLETED
+                        || m.getStatus() == MilestoneStatus.APPROVED)
+                .count();
+
+        return new ProposalDetailsDTO(
+                proposal.getId(),
+                proposal.getJobId(),
+                proposal.getFreelancerId(),
+                proposal.getStatus(),
+                proposal.getBidAmount(),
+                proposal.getMetadata(),
+                milestoneDTOs,
+                milestoneDTOs.size(),
+                completedCount
+        );
     }
 }
