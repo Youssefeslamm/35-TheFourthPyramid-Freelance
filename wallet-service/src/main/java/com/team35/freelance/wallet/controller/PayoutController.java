@@ -8,8 +8,12 @@ import com.team35.freelance.wallet.model.PayoutStatus;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDate;
 import com.team35.freelance.wallet.dto.PromoCodeUsage;
+import com.team35.freelance.wallet.dto.RefundRequest;
 
 import java.util.List;
+
+// ✅ ADD THIS
+import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
 
 @RestController
 @RequestMapping("/api/payouts")
@@ -21,7 +25,7 @@ public class PayoutController {
         this.payoutService = payoutService;
     }
 
-
+    // -------- EXISTING CRUD --------
 
     @PostMapping
     public ResponseEntity<Payout> createPayout(@RequestBody Payout payout) {
@@ -48,6 +52,15 @@ public class PayoutController {
         payoutService.deletePayout(id);
         return ResponseEntity.ok("Payout deleted successfully");
     }
+
+    // -------- NEW FEATURE --------
+
+    @GetMapping("/freelancers/{freelancerId}/summary")
+    public ResponseEntity<FreelancerPayoutSummaryDTO> getSummary(
+            @PathVariable Long freelancerId) {
+
+        return ResponseEntity.ok(
+                payoutService.getFreelancerSummary(freelancerId)
     @GetMapping("/search")
     public ResponseEntity<List<Payout>> searchPayouts(
             @RequestParam(required = false) PayoutStatus status,
@@ -64,5 +77,17 @@ public class PayoutController {
     @GetMapping("/promos/top-used")
     public ResponseEntity<List<PromoCodeUsage>> getMostUsedPromoCodes(@RequestParam int limit) {
         return ResponseEntity.ok(payoutService.getMostUsedPromoCodes(limit));
+    @PutMapping("/{id}/retry")
+    public ResponseEntity<Payout> retryPayout(@PathVariable Long id) {
+        return ResponseEntity.ok(payoutService.retryFailedPayout(id));
+    }
+
+
+
+
+    @PutMapping("/{id}/refund")
+    public ResponseEntity<Payout> refundPayout(@PathVariable Long id,
+                                               @RequestBody RefundRequest request) {
+        return ResponseEntity.ok(payoutService.processRefund(id, request.getReason()));
     }
 }
