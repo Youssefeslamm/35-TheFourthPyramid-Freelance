@@ -64,7 +64,8 @@ public class PayoutController {
             @PathVariable Long freelancerId) {
 
         return ResponseEntity.ok(
-                payoutService.getFreelancerSummary(freelancerId)
+                payoutService.getFreelancerSummary(freelancerId));
+    }
     @GetMapping("/search")
     public ResponseEntity<List<Payout>> searchPayouts(
             @RequestParam(required = false) PayoutStatus status,
@@ -85,10 +86,12 @@ public class PayoutController {
         return ResponseEntity.ok(
                 payoutPromoService.applyPromoCodeToPayout(payoutId, promoCodeId)
         );
+    }
 
     @GetMapping("/promos/top-used")
     public ResponseEntity<List<PromoCodeUsage>> getMostUsedPromoCodes(@RequestParam int limit) {
         return ResponseEntity.ok(payoutService.getMostUsedPromoCodes(limit));
+    }
     @PutMapping("/{id}/retry")
     public ResponseEntity<Payout> retryPayout(@PathVariable Long id) {
         return ResponseEntity.ok(payoutService.retryFailedPayout(id));
