@@ -4,6 +4,7 @@ import com.team35.freelance.wallet.model.*;
 import com.team35.freelance.wallet.repository.PayoutPromoRepository;
 import com.team35.freelance.wallet.repository.PayoutRepository;
 import com.team35.freelance.wallet.repository.PromoCodeRepository;
+import com.team35.freelance.wallet.dto.PayoutDetailsDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
 
 @Service
 public class PayoutPromoService {
@@ -141,5 +143,46 @@ public class PayoutPromoService {
 
         // j) Return updated payout
         return payout;
+    }
+    public PayoutDetailsDTO getPayoutDetails(Long payoutId) {
+
+        Payout payout = payoutRepository.findById(payoutId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Payout not found with id: " + payoutId
+                ));
+
+        List<PayoutPromo> payoutPromos = payoutPromoRepository.findByPayoutId(payoutId);
+
+        List<PayoutDetailsDTO.AppliedPromoCodeDTO> appliedPromoCodes = new ArrayList<>();
+        double totalDiscount = 0.0;
+
+        for (PayoutPromo payoutPromo : payoutPromos) {
+            PromoCode promoCode = payoutPromo.getPromoCode();
+
+            appliedPromoCodes.add(new PayoutDetailsDTO.AppliedPromoCodeDTO(
+                    promoCode.getCode(),
+                    promoCode.getDiscountType().name(),
+                    payoutPromo.getDiscountApplied(),
+                    payoutPromo.getAppliedAt()
+            ));
+
+            totalDiscount += payoutPromo.getDiscountApplied();
+        }
+
+        double finalAmount = payout.getAmount() - totalDiscount;
+
+        return new PayoutDetailsDTO(
+                payout.getId(),
+                payout.getContractId(),
+                payout.getFreelancerId(),
+                payout.getAmount(),
+                payout.getMethod(),
+                payout.getStatus(),
+                payout.getTransactionDetails(),
+                appliedPromoCodes,
+                totalDiscount,
+                finalAmount
+        );
     }
 }

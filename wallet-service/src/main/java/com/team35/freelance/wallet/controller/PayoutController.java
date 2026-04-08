@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import org.springframework.format.annotation.DateTimeFormat;
 import com.team35.freelance.wallet.service.PayoutPromoService;
+import com.team35.freelance.wallet.dto.PayoutDetailsDTO;
 import java.time.LocalDate;
 import com.team35.freelance.wallet.dto.PromoCodeUsage;
 import com.team35.freelance.wallet.dto.RefundRequest;
@@ -100,5 +101,13 @@ public class PayoutController {
     public ResponseEntity<Payout> refundPayout(@PathVariable Long id,
                                                @RequestBody RefundRequest request) {
         return ResponseEntity.ok(payoutService.processRefund(id, request.getReason()));
+    }
+    @GetMapping("/{payoutId}/details")
+    public ResponseEntity<PayoutDetailsDTO> getPayoutDetails(
+            @PathVariable("payoutId") Long payoutId
+    ) {
+        return ResponseEntity.ok(
+                payoutPromoService.getPayoutDetails(payoutId)
+        );
     }
 }
