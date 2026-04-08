@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDate;
+import com.team35.freelance.wallet.dto.RefundRequest;
 
 import java.util.List;
 
@@ -70,5 +71,12 @@ public class PayoutController {
         return ResponseEntity.ok(
                 payoutService.searchPayouts(status, startDate, endDate)
         );
+    }
+
+
+    @PutMapping("/{id}/refund")
+    public ResponseEntity<Payout> refundPayout(@PathVariable Long id,
+                                               @RequestBody RefundRequest request) {
+        return ResponseEntity.ok(payoutService.processRefund(id, request.getReason()));
     }
 }
