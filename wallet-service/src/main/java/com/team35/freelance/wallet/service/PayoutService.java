@@ -14,6 +14,11 @@ import java.util.Map;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+
+// ✅ ADD THIS
+import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
 
 @Service
 public class PayoutService {
@@ -24,24 +29,22 @@ public class PayoutService {
         this.payoutRepository = payoutRepository;
     }
 
-    // Create
+    // ---------------- EXISTING CODE (UNCHANGED) ----------------
+
     public Payout createPayout(Payout payout) {
         payout.setCreatedAt(LocalDateTime.now());
         return payoutRepository.save(payout);
     }
 
-    // Read all
     public List<Payout> getAllPayouts() {
         return payoutRepository.findAll();
     }
 
-    // Read by ID
     public Payout getPayoutById(Long id) {
         return payoutRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Payout not found"));
     }
 
-    // Update
     public Payout updatePayout(Long id, Payout updatedPayout) {
         Payout existing = getPayoutById(id);
 
@@ -55,12 +58,34 @@ public class PayoutService {
         return payoutRepository.save(existing);
     }
 
-    // Delete
     public void deletePayout(Long id) {
         if (!payoutRepository.existsById(id)) {
             throw new RuntimeException("Payout not found");
         }
         payoutRepository.deleteById(id);
+    }
+
+    // ---------------- NEW FEATURE ----------------
+
+    public FreelancerPayoutSummaryDTO getFreelancerSummary(Long freelancerId) {
+
+        Object[] result = payoutRepository.getFreelancerPayoutSummary(freelancerId);
+
+        if (result == null || result.length == 0) {
+            return new FreelancerPayoutSummaryDTO(
+                    freelancerId, 0L, 0L, 0L, 0L, 0.0, 0.0
+            );
+        }
+
+        return new FreelancerPayoutSummaryDTO(
+                ((Number) result[0]).longValue(),
+                ((Number) result[1]).longValue(),
+                ((Number) result[2]).longValue(),
+                ((Number) result[3]).longValue(),
+                ((Number) result[4]).longValue(),
+                ((Number) result[5]).doubleValue(),
+                ((Number) result[6]).doubleValue()
+        );
     }
     public List<Payout> searchPayouts(PayoutStatus status, LocalDate startDate, LocalDate endDate) {
         LocalDateTime startDateTime = null;
@@ -101,6 +126,19 @@ public class PayoutService {
         }
 
         payout.setStatus(PayoutStatus.COMPLETED);
+    public Payout processRefund(Long id, String reason) {
+        Payout payout = payoutRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found"));
+
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Refund reason must not be blank");
+        }
+
+        if (payout.getStatus() != PayoutStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only completed payouts can be refunded");
+        }
+
+        payout.setStatus(PayoutStatus.REFUNDED);
 
         Map<String, Object> transactionDetails = payout.getTransactionDetails();
         if (transactionDetails == null) {
@@ -122,6 +160,8 @@ public class PayoutService {
 
         transactionDetails.put("retryAttempt", retryAttempt + 1);
         transactionDetails.put("gatewayResponse", "approved");
+        transactionDetails.put("refundReason", reason);
+        transactionDetails.put("refundedAt", LocalDateTime.now().toString());
 
         payout.setTransactionDetails(transactionDetails);
 
