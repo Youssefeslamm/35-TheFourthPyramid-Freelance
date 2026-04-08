@@ -8,6 +8,9 @@ import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -114,6 +117,15 @@ public class PayoutService {
     }
 
     @Transactional
+    public Payout retryFailedPayout(Long id) {
+        Payout payout = payoutRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found"));
+
+        if (payout.getStatus() != PayoutStatus.FAILED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only failed payouts can be retried");
+        }
+
+        payout.setStatus(PayoutStatus.COMPLETED);
     public Payout processRefund(Long id, String reason) {
         Payout payout = payoutRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found"));
@@ -133,6 +145,21 @@ public class PayoutService {
             transactionDetails = new HashMap<>();
         }
 
+        Object retryValue = transactionDetails.get("retryAttempt");
+        int retryAttempt = 0;
+
+        if (retryValue instanceof Number) {
+            retryAttempt = ((Number) retryValue).intValue();
+        } else if (retryValue instanceof String) {
+            try {
+                retryAttempt = Integer.parseInt((String) retryValue);
+            } catch (NumberFormatException e) {
+                retryAttempt = 0;
+            }
+        }
+
+        transactionDetails.put("retryAttempt", retryAttempt + 1);
+        transactionDetails.put("gatewayResponse", "approved");
         transactionDetails.put("refundReason", reason);
         transactionDetails.put("refundedAt", LocalDateTime.now().toString());
 

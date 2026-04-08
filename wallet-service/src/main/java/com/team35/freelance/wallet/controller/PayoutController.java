@@ -73,6 +73,13 @@ public class PayoutController {
         );
     }
 
+    @PutMapping("/{id}/retry")
+    public ResponseEntity<Payout> retryPayout(@PathVariable Long id) {
+        return ResponseEntity.ok(payoutService.retryFailedPayout(id));
+    }
+
+
+
 
     @PutMapping("/{id}/refund")
     public ResponseEntity<Payout> refundPayout(@PathVariable Long id,
