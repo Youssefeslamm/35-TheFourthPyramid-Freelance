@@ -1,13 +1,11 @@
 package com.team35.freelance.contract.service;
 
-import com.team35.freelance.contract.dto.ContractSummaryDTO;
 import com.team35.freelance.contract.repository.ContractRepository;
 import com.team35.freelance.contract.model.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class ContractService {
