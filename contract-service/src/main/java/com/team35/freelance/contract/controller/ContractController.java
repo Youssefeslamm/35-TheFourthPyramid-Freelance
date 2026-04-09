@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/contracts")
@@ -51,6 +52,15 @@ public class ContractController {
     public ResponseEntity<Contract> getActiveContractForUser(@PathVariable Long userId) {
         try {
             return ResponseEntity.ok(contractService.getActiveContractForUser(userId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/{contractId}/progress")
+    public ResponseEntity<Contract> updateProgress(@PathVariable Long contractId, @RequestBody Map<String, Object> updates) {
+        try {
+            return ResponseEntity.ok(contractService.updateProgress(contractId, updates));
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
