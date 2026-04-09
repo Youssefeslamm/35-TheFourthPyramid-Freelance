@@ -101,5 +101,12 @@ public class UserController {
     ) {
         return userService.searchUsersByPreference(key, value);
     }
+    @PutMapping("/{userId}/skills/{skillId}/primary")
+    public User setPrimarySkill(
+            @PathVariable Long userId,
+            @PathVariable Long skillId
+    ) {
+        return userService.setPrimarySkill(userId, skillId);
+    }
 }
 
