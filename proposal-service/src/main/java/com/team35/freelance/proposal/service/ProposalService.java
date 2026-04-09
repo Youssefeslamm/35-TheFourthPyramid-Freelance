@@ -2,10 +2,12 @@ package com.team35.freelance.proposal.service;
 import com.team35.freelance.proposal.dto.FeeEstimateDTO;
 
 import com.team35.freelance.proposal.model.Proposal;
+import com.team35.freelance.proposal.model.ProposalStatus;
 import com.team35.freelance.proposal.repository.ProposalRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -72,6 +74,29 @@ public class ProposalService {
         return new FeeEstimateDTO(bidAmount, platformFee,
                 freelancerPayout, feePercentage,
                 estimatedDailyRate);
+    }
+    @Transactional
+    public Proposal withdrawProposal(Long id) {
+        Proposal proposal = proposalRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Proposal not found"));
+
+        if (proposal.getStatus() != ProposalStatus.SUBMITTED &&
+                proposal.getStatus() != ProposalStatus.SHORTLISTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Only SUBMITTED or SHORTLISTED proposals can be withdrawn");
+        }
+
+        proposal.setStatus(ProposalStatus.WITHDRAWN);
+
+        // If this was the only active proposal and job is IN_PROGRESS, revert to OPEN
+        long otherActive = proposalRepository
+                .countOtherActiveProposalsForJob(proposal.getJobId(), id);
+        if (otherActive == 0) {
+            proposalRepository.revertJobToOpen(proposal.getJobId());
+        }
+
+        return proposalRepository.save(proposal);
     }
 }
 }
