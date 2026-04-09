@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -16,4 +18,10 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
 
     @Query(value = "SELECT COUNT(*) FROM users WHERE id = :userId", nativeQuery = true)
     int checkUserExists(@Param("userId") Long userId);
+
+    @Query(value = "SELECT * FROM contracts WHERE created_at BETWEEN :startDate AND :endDate " +
+           "AND (:status IS NULL OR status = :status) ORDER BY created_at ASC", nativeQuery = true)
+    List<Contract> findContractsInDateRange(@Param("startDate") LocalDateTime startDate,
+                                            @Param("endDate") LocalDateTime endDate,
+                                            @Param("status") String status);
 }
