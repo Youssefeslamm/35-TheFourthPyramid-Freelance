@@ -67,4 +67,3 @@ public class ProposalMilestone {
     public Proposal getProposal() { return proposal; }
     public void setProposal(Proposal proposal) { this.proposal = proposal; }
 }
-}

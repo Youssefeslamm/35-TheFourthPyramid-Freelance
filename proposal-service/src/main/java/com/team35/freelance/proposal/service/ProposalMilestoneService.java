@@ -23,8 +23,7 @@ public class ProposalMilestoneService {
     public ProposalMilestone create(Long proposalId, ProposalMilestone milestone) {
         Proposal proposal = proposalRepository.findById(proposalId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Proposal not found"));
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Proposal not found with id: " + proposalId));
+
         milestone.setProposal(proposal);
         return milestoneRepository.save(milestone);
     }
@@ -32,9 +31,7 @@ public class ProposalMilestoneService {
     public ProposalMilestone getById(Long id) {
         return milestoneRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Milestone not found"));
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Milestone not found with id: " + id));
-    }
+                   }
 
     public List<ProposalMilestone> getAll() {
         return milestoneRepository.findAll();
@@ -55,5 +52,4 @@ public class ProposalMilestoneService {
         getById(id);
         milestoneRepository.deleteById(id);
     }
-}
 }

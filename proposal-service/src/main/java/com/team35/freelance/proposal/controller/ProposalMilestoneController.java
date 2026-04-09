@@ -20,9 +20,7 @@ public class ProposalMilestoneController {
     public ResponseEntity<ProposalMilestone> create(@PathVariable Long proposalId,
                                                     @RequestBody ProposalMilestone milestone) {
         return ResponseEntity.status(HttpStatus.CREATED).body(milestoneService.create(proposalId, milestone));
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(milestoneService.create(proposalId, milestone));
-    }
+        }
 
     @GetMapping("/{id}")
     public ResponseEntity<ProposalMilestone> getById(@PathVariable Long id) {
@@ -46,4 +44,4 @@ public class ProposalMilestoneController {
         return ResponseEntity.noContent().build();
     }
 }
-}
+

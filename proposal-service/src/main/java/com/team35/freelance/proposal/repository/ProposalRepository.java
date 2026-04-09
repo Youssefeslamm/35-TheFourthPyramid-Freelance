@@ -1,4 +1,5 @@
 package com.team35.freelance.proposal.repository;
+
 import com.team35.freelance.proposal.model.Proposal;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -9,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface ProposalRepository extends JpaRepository<Proposal, Long> {
+
     @Query(value = """
     SELECT COUNT(*) FROM proposals
     WHERE status IN ('SUBMITTED', 'SHORTLISTED')
@@ -26,20 +28,8 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     long countOtherActiveProposalsForJob(@Param("jobId") long jobId,
                                          @Param("excludeId") long excludeId);
 
-
     @Modifying
     @Transactional
-    @Query(value = "UPDATE jobs SET status = 'OPEN' WHERE id = :jobId",
-            nativeQuery = true)
+    @Query(value = "UPDATE jobs SET status = 'OPEN' WHERE id = :jobId", nativeQuery = true)
     void revertJobToOpen(@Param("jobId") long jobId);
-
-}
-
-
-import com.team35.freelance.proposal.model.Proposal;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
-@Repository
-public interface ProposalRepository extends JpaRepository<Proposal, Long> {
 }
