@@ -15,3 +15,11 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
                                      @Param("maxBid") double maxBid);
 }
 
+
+import com.team35.freelance.proposal.model.Proposal;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface ProposalRepository extends JpaRepository<Proposal, Long> {
+}

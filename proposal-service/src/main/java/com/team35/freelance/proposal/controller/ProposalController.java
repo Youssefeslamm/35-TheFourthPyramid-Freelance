@@ -1,17 +1,20 @@
 package com.team35.freelance.proposal.controller;
 import com.team35.freelance.proposal.dto.FeeEstimateDTO;
 import com.team35.freelance.proposal.dto.FeeEstimateRequest;
+
 import com.team35.freelance.proposal.model.Proposal;
 import com.team35.freelance.proposal.service.ProposalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/proposals")
 public class ProposalController {
+
     @Autowired
     private ProposalService proposalService;
 
@@ -29,6 +32,10 @@ public class ProposalController {
     }
 
 
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(proposalService.create(proposal));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Proposal> getById(@PathVariable Long id) {
         return ResponseEntity.ok(proposalService.getById(id));
@@ -41,6 +48,8 @@ public class ProposalController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Proposal> update(@PathVariable Long id, @RequestBody Proposal proposal) {
+    public ResponseEntity<Proposal> update(@PathVariable Long id,
+                                           @RequestBody Proposal proposal) {
         return ResponseEntity.ok(proposalService.update(id, proposal));
     }
 
@@ -51,4 +60,9 @@ public class ProposalController {
     }
 
 
+}
+//    @GetMapping("/health")
+//    public ResponseEntity<String> health() {
+//        return ResponseEntity.ok("OK");
+//    }
 }
