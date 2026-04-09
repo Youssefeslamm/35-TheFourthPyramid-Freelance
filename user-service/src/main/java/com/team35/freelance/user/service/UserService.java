@@ -9,11 +9,14 @@ import com.team35.freelance.user.repository.UserSkillRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import com.team35.freelance.user.dto.UserProfileDTO;
+import com.team35.freelance.user.dto.UserSkillProfileDTO;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import jakarta.transaction.Transactional;
 @Service
 public class UserService {
 
@@ -175,5 +178,80 @@ public class UserService {
         }
 
         return userRepository.findUsersByPreference(key, value);
+    }
+
+    @Transactional
+    public User setPrimarySkill(Long userId, Long skillId) {
+
+        // 1. Find user (404)
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"
+                ));
+
+        // 2. Find skill (404)
+        UserSkill skill = userSkillRepository.findById(skillId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Skill not found"
+                ));
+
+        // 3. Verify ownership (400)
+        if (skill.getUser() == null || !skill.getUser().getId().equals(userId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Skill does not belong to this user"
+            );
+        }
+
+        // 4. Reset all user skills
+        List<UserSkill> userSkills = userSkillRepository.findByUserId(userId);
+
+        for (UserSkill s : userSkills) {
+            s.setIsPrimary(false);
+        }
+
+        // 5. Set target skill as primary
+        skill.setIsPrimary(true);
+
+        // 6. Save changes
+        userSkillRepository.saveAll(userSkills);
+
+        // 7. Return updated user
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"
+                ));
+    }
+
+    public UserProfileDTO getUserProfile(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"
+                ));
+
+        List<UserSkill> userSkills = userSkillRepository.findByUserId(id);
+        List<UserSkillProfileDTO> skillDTOs = new ArrayList<>();
+
+        for (UserSkill skill : userSkills) {
+            UserSkillProfileDTO skillDTO = new UserSkillProfileDTO(
+                    skill.getSkillName(),
+                    skill.getCategory(),
+                    skill.getYearsOfExperience(),
+                    skill.getProficiencyLevel(),
+                    skill.getIsPrimary(),
+                    skill.getMetadata()
+            );
+            skillDTOs.add(skillDTO);
+        }
+
+        return new UserProfileDTO(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getPreferences(),
+                skillDTOs,
+                skillDTOs.size()
+        );
     }
 }

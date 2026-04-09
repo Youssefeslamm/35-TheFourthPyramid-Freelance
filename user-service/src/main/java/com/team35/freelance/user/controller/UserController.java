@@ -5,7 +5,7 @@ import com.team35.freelance.user.model.User;
 import com.team35.freelance.user.model.UserSkill;
 import com.team35.freelance.user.service.UserService;
 import org.springframework.web.bind.annotation.*;
-
+import com.team35.freelance.user.dto.UserProfileDTO;
 import java.util.List;
 import java.util.Map;
 
@@ -100,6 +100,18 @@ public class UserController {
             @RequestParam String value
     ) {
         return userService.searchUsersByPreference(key, value);
+    }
+    @PutMapping("/{userId}/skills/{skillId}/primary")
+    public User setPrimarySkill(
+            @PathVariable Long userId,
+            @PathVariable Long skillId
+    ) {
+        return userService.setPrimarySkill(userId, skillId);
+    }
+
+    @GetMapping("/{id}/profile")
+    public UserProfileDTO getUserProfile(@PathVariable Long id) {
+        return userService.getUserProfile(id);
     }
 }
 
