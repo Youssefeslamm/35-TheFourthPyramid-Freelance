@@ -1,20 +1,23 @@
 package com.team35.freelance.wallet.controller;
 
 import com.team35.freelance.wallet.model.Payout;
+import com.team35.freelance.wallet.model.PayoutStatus;
+
 import com.team35.freelance.wallet.service.PayoutService;
+import com.team35.freelance.wallet.service.PayoutPromoService;
+
 import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
 import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
+import com.team35.freelance.wallet.dto.PayoutDetailsDTO;
+import com.team35.freelance.wallet.dto.PromoCodeUsage;
+import com.team35.freelance.wallet.dto.RefundRequest;
+import com.team35.freelance.wallet.dto.RevenueReportDTO;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.team35.freelance.wallet.model.PayoutStatus;
 import org.springframework.format.annotation.DateTimeFormat;
-import com.team35.freelance.wallet.service.PayoutPromoService;
-import com.team35.freelance.wallet.dto.PayoutDetailsDTO;
-import java.time.LocalDate;
-import com.team35.freelance.wallet.dto.PromoCodeUsage;
-import com.team35.freelance.wallet.dto.RefundRequest;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -24,7 +27,8 @@ public class PayoutController {
     private final PayoutService payoutService;
     private final PayoutPromoService payoutPromoService;
 
-    public PayoutController(PayoutService payoutService, PayoutPromoService payoutPromoService) {
+    public PayoutController(PayoutService payoutService,
+                            PayoutPromoService payoutPromoService) {
         this.payoutService = payoutService;
         this.payoutPromoService = payoutPromoService;
     }
@@ -47,7 +51,8 @@ public class PayoutController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Payout> updatePayout(@PathVariable Long id, @RequestBody Payout payout) {
+    public ResponseEntity<Payout> updatePayout(@PathVariable Long id,
+                                               @RequestBody Payout payout) {
         return ResponseEntity.ok(payoutService.updatePayout(id, payout));
     }
 
@@ -64,8 +69,12 @@ public class PayoutController {
             @PathVariable Long freelancerId) {
 
         return ResponseEntity.ok(
-                payoutService.getFreelancerSummary(freelancerId));
+                payoutService.getFreelancerSummary(freelancerId)
+        );
     }
+
+    // -------- SEARCH --------
+
     @GetMapping("/search")
     public ResponseEntity<List<Payout>> searchPayouts(
             @RequestParam(required = false) PayoutStatus status,
@@ -78,10 +87,13 @@ public class PayoutController {
                 payoutService.searchPayouts(status, startDate, endDate)
         );
     }
+
+    // -------- PROMO --------
+
     @PostMapping("/{payoutId}/promos/{promoCodeId}")
     public ResponseEntity<Payout> applyPromoCodeToPayout(
-            @PathVariable("payoutId") Long payoutId,
-            @PathVariable("promoCodeId") Long promoCodeId
+            @PathVariable Long payoutId,
+            @PathVariable Long promoCodeId
     ) {
         return ResponseEntity.ok(
                 payoutPromoService.applyPromoCodeToPayout(payoutId, promoCodeId)
@@ -89,32 +101,46 @@ public class PayoutController {
     }
 
     @GetMapping("/promos/top-used")
-    public ResponseEntity<List<PromoCodeUsage>> getMostUsedPromoCodes(@RequestParam int limit) {
-        return ResponseEntity.ok(payoutService.getMostUsedPromoCodes(limit));
+    public ResponseEntity<List<PromoCodeUsage>> getMostUsedPromoCodes(
+            @RequestParam int limit) {
+
+        return ResponseEntity.ok(
+                payoutService.getMostUsedPromoCodes(limit)
+        );
     }
+
+    // -------- RETRY --------
+
     @PutMapping("/{id}/retry")
     public ResponseEntity<Payout> retryPayout(@PathVariable Long id) {
-        return ResponseEntity.ok(payoutService.retryFailedPayout(id));
+        return ResponseEntity.ok(
+                payoutService.retryFailedPayout(id)
+        );
     }
 
-
-
+    // -------- REFUND --------
 
     @PutMapping("/{id}/refund")
     public ResponseEntity<Payout> refundPayout(@PathVariable Long id,
                                                @RequestBody RefundRequest request) {
-        return ResponseEntity.ok(payoutService.processRefund(id, request.getReason()));
+
+        return ResponseEntity.ok(
+                payoutService.processRefund(id, request.getReason())
+        );
     }
+
+    // -------- DETAILS --------
+
     @GetMapping("/{payoutId}/details")
     public ResponseEntity<PayoutDetailsDTO> getPayoutDetails(
-            @PathVariable("payoutId") Long payoutId
+            @PathVariable Long payoutId
     ) {
         return ResponseEntity.ok(
                 payoutPromoService.getPayoutDetails(payoutId)
         );
     }
 
-    // -------- NEW FEATURE --------
+    // -------- PROCESS PAYOUT (S5-F4) --------
 
     @PostMapping("/contract/{contractId}")
     public ResponseEntity<Payout> processPayout(
@@ -124,5 +150,22 @@ public class PayoutController {
         Payout payout = payoutService.processContractPayout(contractId, request);
 
         return ResponseEntity.status(201).body(payout);
+    }
+
+    // -------- S5-F6: REVENUE REPORT --------
+
+    @GetMapping("/reports/revenue")
+    public ResponseEntity<RevenueReportDTO> getRevenueReport(
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate startDate,
+
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate endDate) {
+
+        return ResponseEntity.ok(
+                payoutService.getRevenueReport(startDate, endDate)
+        );
     }
 }
