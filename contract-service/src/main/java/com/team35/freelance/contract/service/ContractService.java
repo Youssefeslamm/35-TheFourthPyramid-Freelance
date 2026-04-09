@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class ContractService {
@@ -74,39 +73,21 @@ public class ContractService {
         return contractRepository.save(contract);
     }
 
-    public List<Contract> getContractsInDateRange(LocalDateTime startDate, LocalDateTime endDate, String status) {
-        return contractRepository.findContractsInDateRange(startDate, endDate, status);
-    }
-
     @Transactional
-    public int batchUpdateStatus(List<BatchStatusUpdateDTO> updates) {
-        List<Long> ids = updates.stream().map(BatchStatusUpdateDTO::getContractId).collect(Collectors.toList());
-        List<Contract> contracts = contractRepository.findAllById(ids);
-        
-        if (contracts.size() != ids.size()) {
-            throw new RuntimeException("One or more contracts not found");
-        }
-        
-        for (BatchStatusUpdateDTO update : updates) {
-            Contract contract = contracts.stream()
-                    .filter(c -> c.getId().equals(update.getContractId()))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Contract not found: " + update.getContractId()));
-            
-            ContractStatus newStatus = ContractStatus.valueOf(update.getStatus());
-            ContractStatus currentStatus = contract.getStatus();
-            
-            if (currentStatus != ContractStatus.ACTIVE) {
-                throw new RuntimeException("Contract " + contract.getId() + " is not ACTIVE, cannot change status");
+    public int batchStatusUpdate(List<BatchStatusUpdateDTO> updates) {
+        for (BatchStatusUpdateDTO dto : updates) {
+            Contract contract = contractRepository.findById(dto.getContractId())
+                    .orElseThrow(() -> new RuntimeException("Contract not found: " + dto.getContractId()));
+            ContractStatus newStatus = ContractStatus.valueOf(dto.getStatus());
+            if (contract.getStatus() == ContractStatus.COMPLETED) {
+                throw new RuntimeException("Cannot update a COMPLETED contract");
             }
-            if (newStatus == ContractStatus.COMPLETED && contract.getEndDate() == null) {
+            contract.setStatus(newStatus);
+            if (newStatus == ContractStatus.COMPLETED) {
                 contract.setEndDate(LocalDateTime.now());
             }
-            
-            contract.setStatus(newStatus);
+            contractRepository.save(contract);
         }
-        
-        contractRepository.saveAll(contracts);
-        return contracts.size();
+        return updates.size();
     }
 }
