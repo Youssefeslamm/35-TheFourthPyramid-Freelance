@@ -2,6 +2,9 @@ package com.team35.freelance.wallet.controller;
 
 import com.team35.freelance.wallet.model.Payout;
 import com.team35.freelance.wallet.service.PayoutService;
+import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
+import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.team35.freelance.wallet.model.PayoutStatus;
@@ -13,9 +16,6 @@ import com.team35.freelance.wallet.dto.PromoCodeUsage;
 import com.team35.freelance.wallet.dto.RefundRequest;
 
 import java.util.List;
-
-// ✅ ADD THIS
-import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
 
 @RestController
 @RequestMapping("/api/payouts")
@@ -29,7 +29,7 @@ public class PayoutController {
         this.payoutPromoService = payoutPromoService;
     }
 
-    // -------- EXISTING CRUD --------
+    // -------- CRUD --------
 
     @PostMapping
     public ResponseEntity<Payout> createPayout(@RequestBody Payout payout) {
@@ -57,7 +57,7 @@ public class PayoutController {
         return ResponseEntity.ok("Payout deleted successfully");
     }
 
-    // -------- NEW FEATURE --------
+    // -------- SUMMARY --------
 
     @GetMapping("/freelancers/{freelancerId}/summary")
     public ResponseEntity<FreelancerPayoutSummaryDTO> getSummary(
@@ -112,5 +112,17 @@ public class PayoutController {
         return ResponseEntity.ok(
                 payoutPromoService.getPayoutDetails(payoutId)
         );
+    }
+
+    // -------- NEW FEATURE --------
+
+    @PostMapping("/contract/{contractId}")
+    public ResponseEntity<Payout> processPayout(
+            @PathVariable Long contractId,
+            @RequestBody ProcessPayoutRequest request) {
+
+        Payout payout = payoutService.processContractPayout(contractId, request);
+
+        return ResponseEntity.status(201).body(payout);
     }
 }

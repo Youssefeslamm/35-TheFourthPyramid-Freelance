@@ -3,12 +3,11 @@ package com.team35.freelance.wallet.service;
 import com.team35.freelance.wallet.model.Payout;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.wallet.repository.PayoutRepository;
+import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
+import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
+
 import org.springframework.stereotype.Service;
-import com.team35.freelance.wallet.dto.PromoCodeUsage;
-import com.team35.freelance.wallet.repository.PromoCodeRepository;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 
 import java.util.HashMap;
@@ -18,6 +17,8 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.time.LocalDate;
 
 
@@ -36,7 +37,7 @@ public class PayoutService {
 
     }
 
-    // ---------------- EXISTING CODE (UNCHANGED) ----------------
+    // ---------------- EXISTING ----------------
 
     public Payout createPayout(Payout payout) {
         payout.setCreatedAt(LocalDateTime.now());
@@ -72,7 +73,7 @@ public class PayoutService {
         payoutRepository.deleteById(id);
     }
 
-    // ---------------- NEW FEATURE ----------------
+    // ---------------- SUMMARY ----------------
 
     public FreelancerPayoutSummaryDTO getFreelancerSummary(Long freelancerId) {
 
@@ -94,6 +95,45 @@ public class PayoutService {
                 ((Number) result[6]).doubleValue()
         );
     }
+
+    // ---------------- NEW FEATURE ----------------
+
+    @Transactional
+    public Payout processContractPayout(Long contractId, ProcessPayoutRequest request) {
+
+        // 1. Check contract exists
+        String contractStatus = payoutRepository.getContractStatus(contractId);
+
+        if (contractStatus == null) {
+            throw new RuntimeException("Contract not found");
+        }
+
+        // 2. Validate contract status
+        if (!contractStatus.equals("COMPLETED")) {
+            throw new RuntimeException("Contract is not completed");
+        }
+
+        // 3. Get payout
+        Payout payout = payoutRepository.findByContractId(contractId);
+
+        if (payout == null) {
+            throw new RuntimeException("Payout not found");
+        }
+
+        // 4. Check already paid
+        if (payout.getStatus() == PayoutStatus.COMPLETED) {
+            throw new RuntimeException("already paid");
+        }
+
+        // 5. Update payout
+        payout.setStatus(PayoutStatus.COMPLETED);
+        payout.setMethod(request.getMethod());
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("accountLastFour", request.getAccountLastFour());
+        details.put("processedAt", LocalDateTime.now().toString());
+
+        payout.setTransactionDetails(details);
     public List<Payout> searchPayouts(PayoutStatus status, LocalDate startDate, LocalDate endDate) {
         LocalDateTime startDateTime = null;
         LocalDateTime endDateTime = null;

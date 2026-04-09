@@ -13,7 +13,7 @@ import java.util.List;
 @Repository
 public interface PayoutRepository extends JpaRepository<Payout, Long> {
 
-    // ✅ NEW FEATURE METHOD
+    // ---------- EXISTING SUMMARY ----------
     @Query(value = """
         SELECT 
             p.freelancer_id,
@@ -28,6 +28,12 @@ public interface PayoutRepository extends JpaRepository<Payout, Long> {
         GROUP BY p.freelancer_id
     """, nativeQuery = true)
     Object[] getFreelancerPayoutSummary(@Param("freelancerId") Long freelancerId);
+
+    // ---------- NEW METHODS ----------
+    Payout findByContractId(Long contractId);
+
+    @Query(value = "SELECT status FROM contracts WHERE id = :contractId", nativeQuery = true)
+    String getContractStatus(@Param("contractId") Long contractId);
     List<Payout> findByStatusOrderByCreatedAtDesc(PayoutStatus status);
 
     List<Payout> findByCreatedAtBetweenOrderByCreatedAtDesc(
