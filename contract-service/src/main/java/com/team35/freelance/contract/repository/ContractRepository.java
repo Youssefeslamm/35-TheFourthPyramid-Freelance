@@ -2,9 +2,11 @@ package com.team35.freelance.contract.repository;
 
 import com.team35.freelance.contract.model.Contract;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,4 +26,9 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     List<Contract> findContractsInDateRange(@Param("startDate") LocalDateTime startDate,
                                             @Param("endDate") LocalDateTime endDate,
                                             @Param("status") String status);
+
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM contracts WHERE status IN ('COMPLETED', 'TERMINATED') AND created_at < :cutoffDate", nativeQuery = true)
+    int purgeOldContracts(@Param("cutoffDate") LocalDateTime cutoffDate);
 }

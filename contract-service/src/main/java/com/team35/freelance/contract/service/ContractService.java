@@ -72,6 +72,13 @@ public class ContractService {
         contract.setMetadata(metadata);
         return contractRepository.save(contract);
     }
+<<<<<<< HEAD
+=======
+
+    public List<Contract> getContractsInDateRange(LocalDateTime startDate, LocalDateTime endDate, String status) {
+        return contractRepository.findContractsInDateRange(startDate, endDate, status);
+    }
+>>>>>>> b0fcf6a83bb9ba9b0f251c35a3d3d051a575ac50
 
     @Transactional
     public int batchStatusUpdate(List<BatchStatusUpdateDTO> updates) {
@@ -90,4 +97,13 @@ public class ContractService {
         }
         return updates.size();
     }
+<<<<<<< HEAD
+=======
+
+    @Transactional
+    public int purgeOldContracts(int olderThanDays) {
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(olderThanDays);
+        return contractRepository.purgeOldContracts(cutoffDate);
+    }
+>>>>>>> b0fcf6a83bb9ba9b0f251c35a3d3d051a575ac50
 }
