@@ -1,7 +1,7 @@
 package com.team35.freelance.contract.service;
 
+import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.repository.ContractRepository;
-import com.team35.freelance.contract.model.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -31,14 +31,12 @@ public class ContractService {
     public Contract update(Long id, Contract updatedContract) {
         Contract existing = contractRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Contract not found"));
-
         existing.setFreelancerId(updatedContract.getFreelancerId());
         existing.setClientId(updatedContract.getClientId());
         existing.setAgreedAmount(updatedContract.getAgreedAmount());
         existing.setStatus(updatedContract.getStatus());
         existing.setStartDate(updatedContract.getStartDate());
         existing.setEndDate(updatedContract.getEndDate());
-
         return contractRepository.save(existing);
     }
 
@@ -49,4 +47,12 @@ public class ContractService {
         contractRepository.deleteById(id);
     }
 
+    public Contract getActiveContractForUser(Long userId) {
+        int exists = contractRepository.checkUserExists(userId);
+        if (exists == 0) {
+            throw new RuntimeException("User not found");
+        }
+        return contractRepository.findMostRecentActiveContractByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("No active contract found for this user"));
+    }
 }
