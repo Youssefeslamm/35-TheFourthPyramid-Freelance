@@ -1,11 +1,17 @@
 package com.team35.freelance.contract.service;
 
+import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
 import com.team35.freelance.contract.model.Contract;
+import com.team35.freelance.contract.model.ContractStatus;
 import com.team35.freelance.contract.repository.ContractRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ContractService {
@@ -54,5 +60,53 @@ public class ContractService {
         }
         return contractRepository.findMostRecentActiveContractByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("No active contract found for this user"));
+    }
+
+    public Contract updateProgress(Long contractId, Map<String, Object> updates) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Contract not found"));
+        Map<String, Object> metadata = contract.getMetadata();
+        if (metadata == null) {
+            metadata = new java.util.HashMap<>();
+        }
+        metadata.putAll(updates);
+        contract.setMetadata(metadata);
+        return contractRepository.save(contract);
+    }
+
+    public List<Contract> getContractsInDateRange(LocalDateTime startDate, LocalDateTime endDate, String status) {
+        return contractRepository.findContractsInDateRange(startDate, endDate, status);
+    }
+
+    @Transactional
+    public int batchUpdateStatus(List<BatchStatusUpdateDTO> updates) {
+        List<Long> ids = updates.stream().map(BatchStatusUpdateDTO::getContractId).collect(Collectors.toList());
+        List<Contract> contracts = contractRepository.findAllById(ids);
+        
+        if (contracts.size() != ids.size()) {
+            throw new RuntimeException("One or more contracts not found");
+        }
+        
+        for (BatchStatusUpdateDTO update : updates) {
+            Contract contract = contracts.stream()
+                    .filter(c -> c.getId().equals(update.getContractId()))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Contract not found: " + update.getContractId()));
+            
+            ContractStatus newStatus = ContractStatus.valueOf(update.getStatus());
+            ContractStatus currentStatus = contract.getStatus();
+            
+            if (currentStatus != ContractStatus.ACTIVE) {
+                throw new RuntimeException("Contract " + contract.getId() + " is not ACTIVE, cannot change status");
+            }
+            if (newStatus == ContractStatus.COMPLETED && contract.getEndDate() == null) {
+                contract.setEndDate(LocalDateTime.now());
+            }
+            
+            contract.setStatus(newStatus);
+        }
+        
+        contractRepository.saveAll(contracts);
+        return contracts.size();
     }
 }
