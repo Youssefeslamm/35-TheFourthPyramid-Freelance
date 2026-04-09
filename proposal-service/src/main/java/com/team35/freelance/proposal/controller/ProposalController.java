@@ -1,7 +1,7 @@
 package com.team35.freelance.proposal.controller;
 import com.team35.freelance.proposal.dto.FeeEstimateDTO;
 import com.team35.freelance.proposal.dto.FeeEstimateRequest;
-
+import com.team35.freelance.proposal.dto.ProposalDetailsDTO;
 import com.team35.freelance.proposal.model.Proposal;
 import com.team35.freelance.proposal.service.ProposalService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +44,14 @@ public class ProposalController {
     @GetMapping
     public ResponseEntity<List<Proposal>> getAll() {
         return ResponseEntity.ok(proposalService.getAll());
+    }
+
+
+    // S3-F9
+    @GetMapping("/{proposalId}/details")
+    public ResponseEntity<ProposalDetailsDTO> getProposalDetails(
+            @PathVariable Long proposalId) {
+        return ResponseEntity.ok(proposalService.getProposalDetails(proposalId));
     }
 
     @PutMapping("/{id}")
