@@ -9,8 +9,7 @@ import com.team35.freelance.wallet.repository.PromoCodeRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import jakarta.transaction.Transactional;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
+
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,8 +19,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.Map;
+
 
 // ✅ ADD THIS
 import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
@@ -130,6 +128,7 @@ public class PayoutService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Limit must be greater than 0");
         }
 
+
         List<Object[]> rows = promoCodeRepository.findTopUsedPromoCodes(limit);
         List<PromoCodeUsage> result = new ArrayList<>();
 
@@ -169,6 +168,7 @@ public class PayoutService {
         }
 
         return result;
+    }
     @Transactional
     public Payout retryFailedPayout(Long id) {
         Payout payout = payoutRepository.findById(id)
@@ -179,6 +179,8 @@ public class PayoutService {
         }
 
         payout.setStatus(PayoutStatus.COMPLETED);
+        return payoutRepository.save(payout);
+    }
     public Payout processRefund(Long id, String reason) {
         Payout payout = payoutRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found"));
@@ -220,6 +222,4 @@ public class PayoutService {
 
         return payoutRepository.save(payout);
     }
-
-
 }
