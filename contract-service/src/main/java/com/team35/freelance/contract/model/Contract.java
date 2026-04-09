@@ -1,0 +1,79 @@
+package com.team35.freelance.contract.model;
+
+import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import java.time.LocalDateTime;
+import java.util.Map;
+
+@Entity
+@Table(name = "contracts")
+public class Contract {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private Long jobId;
+
+    @Column(nullable = false)
+    private Long freelancerId;
+
+    @Column(nullable = false)
+    private Long clientId;
+
+    @Column(nullable = false)
+    private Long proposalId;
+
+    @Column(nullable = false)
+    private Double agreedAmount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ContractStatus status;
+
+    @Column(nullable = false)
+    private LocalDateTime startDate;
+
+    @Column
+    private LocalDateTime endDate;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private Map<String, Object> metadata;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
+
+    // Getters
+    public Long getId() { return id; }
+    public Long getJobId() { return jobId; }
+    public Long getFreelancerId() { return freelancerId; }
+    public Long getClientId() { return clientId; }
+    public Long getProposalId() { return proposalId; }
+    public Double getAgreedAmount() { return agreedAmount; }
+    public ContractStatus getStatus() { return status; }
+    public LocalDateTime getStartDate() { return startDate; }
+    public LocalDateTime getEndDate() { return endDate; }
+    public Map<String, Object> getMetadata() { return metadata; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+
+    // Setters
+    public void setId(Long id) { this.id = id; }
+    public void setJobId(Long jobId) { this.jobId = jobId; }
+    public void setFreelancerId(Long freelancerId) { this.freelancerId = freelancerId; }
+    public void setClientId(Long clientId) { this.clientId = clientId; }
+    public void setProposalId(Long proposalId) { this.proposalId = proposalId; }
+    public void setAgreedAmount(Double agreedAmount) { this.agreedAmount = agreedAmount; }
+    public void setStatus(ContractStatus status) { this.status = status; }
+    public void setStartDate(LocalDateTime startDate) { this.startDate = startDate; }
+    public void setEndDate(LocalDateTime endDate) { this.endDate = endDate; }
+    public void setMetadata(Map<String, Object> metadata) { this.metadata = metadata; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+}
