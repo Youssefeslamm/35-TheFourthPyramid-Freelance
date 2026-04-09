@@ -1,4 +1,5 @@
 package com.team35.freelance.proposal.controller;
+
 import com.team35.freelance.proposal.model.ProposalMilestone;
 import com.team35.freelance.proposal.service.ProposalMilestoneService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/milestones")
 public class ProposalMilestoneController {
+
     @Autowired
     private ProposalMilestoneService milestoneService;
 
@@ -18,6 +20,8 @@ public class ProposalMilestoneController {
     public ResponseEntity<ProposalMilestone> create(@PathVariable Long proposalId,
                                                     @RequestBody ProposalMilestone milestone) {
         return ResponseEntity.status(HttpStatus.CREATED).body(milestoneService.create(proposalId, milestone));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(milestoneService.create(proposalId, milestone));
     }
 
     @GetMapping("/{id}")
@@ -41,4 +45,5 @@ public class ProposalMilestoneController {
         milestoneService.delete(id);
         return ResponseEntity.noContent().build();
     }
+}
 }

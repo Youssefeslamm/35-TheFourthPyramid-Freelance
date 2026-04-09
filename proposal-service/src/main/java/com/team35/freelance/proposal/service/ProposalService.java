@@ -19,6 +19,7 @@ import com.team35.freelance.proposal.dto.MilestoneDTO;
 
 @Service
 public class ProposalService {
+
     @Autowired
     private ProposalRepository proposalRepository;
 
@@ -29,6 +30,8 @@ public class ProposalService {
     public Proposal getById(Long id) {
         return proposalRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Proposal not found"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Proposal not found with id: " + id));
     }
 
     public List<Proposal> getAll() {
@@ -138,4 +141,5 @@ public class ProposalService {
                 completedCount
         );
     }
+}
 }

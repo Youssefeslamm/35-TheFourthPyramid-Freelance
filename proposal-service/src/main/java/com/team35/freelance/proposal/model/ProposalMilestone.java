@@ -1,4 +1,5 @@
 package com.team35.freelance.proposal.model;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
@@ -10,6 +11,7 @@ import java.util.Map;
 @Entity
 @Table(name = "proposal_milestones")
 public class ProposalMilestone {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -64,4 +66,5 @@ public class ProposalMilestone {
 
     public Proposal getProposal() { return proposal; }
     public void setProposal(Proposal proposal) { this.proposal = proposal; }
+}
 }
