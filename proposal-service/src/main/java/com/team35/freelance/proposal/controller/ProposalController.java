@@ -1,4 +1,5 @@
 package com.team35.freelance.proposal.controller;
+
 import com.team35.freelance.proposal.dto.FeeEstimateDTO;
 import com.team35.freelance.proposal.dto.FeeEstimateRequest;
 import com.team35.freelance.proposal.dto.ProposalDetailsDTO;
@@ -20,18 +21,6 @@ public class ProposalController {
 
     @PostMapping
     public ResponseEntity<Proposal> create(@RequestBody Proposal proposal) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(proposalService.create(proposal));
-    }
-
-    @PostMapping("/estimate")
-    public ResponseEntity<FeeEstimateDTO> estimateFee(
-            @RequestBody FeeEstimateRequest request) {
-        FeeEstimateDTO dto = proposalService.estimateFee(
-                request.getBidAmount(), request.getEstimatedDays());
-        return ResponseEntity.ok(dto);
-    }
-
-
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(proposalService.create(proposal));
     }
@@ -46,25 +35,10 @@ public class ProposalController {
         return ResponseEntity.ok(proposalService.getAll());
     }
 
-
-    // S3-F9
-    @GetMapping("/{proposalId}/details")
-    public ResponseEntity<ProposalDetailsDTO> getProposalDetails(
-            @PathVariable Long proposalId) {
-        return ResponseEntity.ok(proposalService.getProposalDetails(proposalId));
-    }
-
     @PutMapping("/{id}")
-    public ResponseEntity<Proposal> update(@PathVariable Long id, @RequestBody Proposal proposal) {
     public ResponseEntity<Proposal> update(@PathVariable Long id,
                                            @RequestBody Proposal proposal) {
         return ResponseEntity.ok(proposalService.update(id, proposal));
-    }
-
-
-    @PutMapping("/{id}/withdraw")
-    public ResponseEntity<Proposal> withdrawProposal(@PathVariable Long id) {
-        return ResponseEntity.ok(proposalService.withdrawProposal(id));
     }
 
     @DeleteMapping("/{id}")
@@ -73,10 +47,20 @@ public class ProposalController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/estimate")
+    public ResponseEntity<FeeEstimateDTO> estimateFee(@RequestBody FeeEstimateRequest request) {
+        FeeEstimateDTO dto = proposalService.estimateFee(
+                request.getBidAmount(), request.getEstimatedDays());
+        return ResponseEntity.ok(dto);
+    }
 
-}
-//    @GetMapping("/health")
-//    public ResponseEntity<String> health() {
-//        return ResponseEntity.ok("OK");
-//    }
+    @PutMapping("/{id}/withdraw")
+    public ResponseEntity<Proposal> withdrawProposal(@PathVariable Long id) {
+        return ResponseEntity.ok(proposalService.withdrawProposal(id));
+    }
+
+    @GetMapping("/{proposalId}/details")
+    public ResponseEntity<ProposalDetailsDTO> getProposalDetails(@PathVariable Long proposalId) {
+        return ResponseEntity.ok(proposalService.getProposalDetails(proposalId));
+    }
 }

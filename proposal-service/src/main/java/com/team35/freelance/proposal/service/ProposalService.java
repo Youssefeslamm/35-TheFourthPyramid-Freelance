@@ -30,9 +30,7 @@ public class ProposalService {
     public Proposal getById(Long id) {
         return proposalRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Proposal not found"));
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Proposal not found with id: " + id));
-    }
+                  }
 
     public List<Proposal> getAll() {
         return proposalRepository.findAll();
@@ -141,5 +139,4 @@ public class ProposalService {
                 completedCount
         );
     }
-}
 }
