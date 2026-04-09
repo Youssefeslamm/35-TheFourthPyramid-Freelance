@@ -46,4 +46,13 @@ public class ContractController {
         contractService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/user/{userId}/active")
+    public ResponseEntity<Contract> getActiveContractForUser(@PathVariable Long userId) {
+        try {
+            return ResponseEntity.ok(contractService.getActiveContractForUser(userId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }
