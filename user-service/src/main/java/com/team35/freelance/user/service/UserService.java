@@ -9,7 +9,10 @@ import com.team35.freelance.user.repository.UserSkillRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import com.team35.freelance.user.dto.UserProfileDTO;
+import com.team35.freelance.user.dto.UserSkillProfileDTO;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -218,5 +221,37 @@ public class UserService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"
                 ));
+    }
+
+    public UserProfileDTO getUserProfile(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"
+                ));
+
+        List<UserSkill> userSkills = userSkillRepository.findByUserId(id);
+        List<UserSkillProfileDTO> skillDTOs = new ArrayList<>();
+
+        for (UserSkill skill : userSkills) {
+            UserSkillProfileDTO skillDTO = new UserSkillProfileDTO(
+                    skill.getSkillName(),
+                    skill.getCategory(),
+                    skill.getYearsOfExperience(),
+                    skill.getProficiencyLevel(),
+                    skill.getIsPrimary(),
+                    skill.getMetadata()
+            );
+            skillDTOs.add(skillDTO);
+        }
+
+        return new UserProfileDTO(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getPreferences(),
+                skillDTOs,
+                skillDTOs.size()
+        );
     }
 }
