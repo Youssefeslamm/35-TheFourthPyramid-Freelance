@@ -1,11 +1,14 @@
 package com.team35.freelance.contract.controller;
 
+import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.service.ContractService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -65,4 +68,21 @@ public class ContractController {
             return ResponseEntity.notFound().build();
         }
     }
+@GetMapping("/history")
+public ResponseEntity<List<Contract>> getContractsInDateRange(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+        @RequestParam(required = false) String status) {
+    return ResponseEntity.ok(contractService.getContractsInDateRange(startDate, endDate, status));
+}
+
+@PutMapping("/batch-status")
+public ResponseEntity<Map<String, Integer>> batchUpdateStatus(@RequestBody List<BatchStatusUpdateDTO> updates) {
+    try {
+        int count = contractService.batchUpdateStatus(updates);
+        return ResponseEntity.ok(Map.of("updatedCount", count));
+    } catch (RuntimeException e) {
+        return ResponseEntity.badRequest().build();
+    }
+}
 }
