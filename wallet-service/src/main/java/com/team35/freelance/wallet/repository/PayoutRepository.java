@@ -29,20 +29,39 @@ public interface PayoutRepository extends JpaRepository<Payout, Long> {
     """, nativeQuery = true)
     Object[] getFreelancerPayoutSummary(@Param("freelancerId") Long freelancerId);
 
-    // ---------- NEW METHODS ----------
+
+    // ---------- EXISTING METHODS ----------
     Payout findByContractId(Long contractId);
 
     @Query(value = "SELECT status FROM contracts WHERE id = :contractId", nativeQuery = true)
     String getContractStatus(@Param("contractId") Long contractId);
+
     List<Payout> findByStatusOrderByCreatedAtDesc(PayoutStatus status);
 
     List<Payout> findByCreatedAtBetweenOrderByCreatedAtDesc(
-            LocalDateTime start, LocalDateTime end
+            LocalDateTime start,
+            LocalDateTime end
     );
 
     List<Payout> findByStatusAndCreatedAtBetweenOrderByCreatedAtDesc(
             PayoutStatus status,
             LocalDateTime start,
             LocalDateTime end
+    );
+
+
+    // ---------- S5-F6: REVENUE REPORT ----------
+    @Query(value = """
+    SELECT
+        COALESCE(SUM(CASE WHEN p.status = 'COMPLETED' THEN p.amount ELSE 0 END), 0) AS totalRevenue,
+        COUNT(CASE WHEN p.status = 'COMPLETED' THEN 1 END) AS totalTransactions,
+        COALESCE(SUM(CASE WHEN p.status = 'REFUNDED' THEN p.amount ELSE 0 END), 0) AS refundedAmount,
+        COUNT(CASE WHEN p.status = 'REFUNDED' THEN 1 END) AS refundCount
+    FROM payouts p
+    WHERE p.created_at BETWEEN :startDate AND :endDate
+""", nativeQuery = true)
+    List<Object[]> getRevenueReport(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
     );
 }

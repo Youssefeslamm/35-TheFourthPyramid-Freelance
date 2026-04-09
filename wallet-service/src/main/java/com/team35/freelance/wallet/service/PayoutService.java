@@ -3,26 +3,25 @@ package com.team35.freelance.wallet.service;
 import com.team35.freelance.wallet.model.Payout;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.wallet.repository.PayoutRepository;
+import com.team35.freelance.wallet.repository.PromoCodeRepository;
+
 import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
 import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
+import com.team35.freelance.wallet.dto.RevenueReportDTO;
 import com.team35.freelance.wallet.dto.PromoCodeUsage;
 
-import com.team35.freelance.wallet.repository.PromoCodeRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-
-import java.util.HashMap;
-import java.util.Map;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.sql.Timestamp;
+
+import java.time.LocalDate;
+import java.util.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.time.LocalDate;
-
 
 @Service
 public class PayoutService {
@@ -30,13 +29,13 @@ public class PayoutService {
     private final PayoutRepository payoutRepository;
     private final PromoCodeRepository promoCodeRepository;
 
-    public PayoutService(PayoutRepository payoutRepository, PromoCodeRepository promoCodeRepository) {
+    public PayoutService(PayoutRepository payoutRepository,
+                         PromoCodeRepository promoCodeRepository) {
         this.payoutRepository = payoutRepository;
         this.promoCodeRepository = promoCodeRepository;
-
     }
 
-    // ---------------- EXISTING ----------------
+    // ---------------- CRUD ----------------
 
     public Payout createPayout(Payout payout) {
         payout.setCreatedAt(LocalDateTime.now());
@@ -95,36 +94,31 @@ public class PayoutService {
         );
     }
 
-    // ---------------- NEW FEATURE ----------------
+    // ---------------- S5-F4: PROCESS PAYOUT ----------------
 
     @Transactional
     public Payout processContractPayout(Long contractId, ProcessPayoutRequest request) {
 
-        // 1. Check contract exists
         String contractStatus = payoutRepository.getContractStatus(contractId);
 
         if (contractStatus == null) {
             throw new RuntimeException("Contract not found");
         }
 
-        // 2. Validate contract status
         if (!contractStatus.equals("COMPLETED")) {
             throw new RuntimeException("Contract is not completed");
         }
 
-        // 3. Get payout
         Payout payout = payoutRepository.findByContractId(contractId);
 
         if (payout == null) {
             throw new RuntimeException("Payout not found");
         }
 
-        // 4. Check already paid
         if (payout.getStatus() == PayoutStatus.COMPLETED) {
             throw new RuntimeException("already paid");
         }
 
-        // 5. Update payout
         payout.setStatus(PayoutStatus.COMPLETED);
         payout.setMethod(request.getMethod());
 
@@ -136,7 +130,13 @@ public class PayoutService {
 
         return payoutRepository.save(payout);
     }
-    public List<Payout> searchPayouts(PayoutStatus status, LocalDate startDate, LocalDate endDate) {
+
+    // ---------------- S5-F1: SEARCH ----------------
+
+    public List<Payout> searchPayouts(PayoutStatus status,
+                                      LocalDate startDate,
+                                      LocalDate endDate) {
+
         LocalDateTime startDateTime = null;
         LocalDateTime endDateTime = null;
 
@@ -147,34 +147,76 @@ public class PayoutService {
         if (endDate != null) {
             endDateTime = endDate.atTime(23, 59, 59);
         }
-        // CASE 1: no filters → return all
+
         if (status == null && startDateTime == null && endDateTime == null) {
             return payoutRepository.findAll();
         }
-        // CASE 2: only status
+
         if (status != null && startDateTime == null && endDateTime == null) {
             return payoutRepository.findByStatusOrderByCreatedAtDesc(status);
         }
-        // CASE 3: only date range
+
         if (status == null) {
             return payoutRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(startDateTime, endDateTime);
         }
-        // CASE 4: both status + date
+
         return payoutRepository.findByStatusAndCreatedAtBetweenOrderByCreatedAtDesc(
                 status, startDateTime, endDateTime
         );
     }
 
+    // ---------------- S5-F6: REVENUE REPORT ----------------
+
+    public RevenueReportDTO getRevenueReport(LocalDate startDate, LocalDate endDate) {
+
+        // a) Validate dates
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "startDate cannot be after endDate"
+            );
+        }
+
+        // Convert to LocalDateTime
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(23, 59, 59);
+
+        // Execute query
+        List<Object[]> rows = payoutRepository.getRevenueReport(start, end);
+
+        // ALWAYS one row because of SUM/COUNT
+        Object[] result = rows.get(0);
+
+        double totalRevenue = ((Number) result[0]).doubleValue();
+        long totalTransactions = ((Number) result[1]).longValue();
+        double refundedAmount = ((Number) result[2]).doubleValue();
+        long refundCount = ((Number) result[3]).longValue();
+
+        double averagePayout =
+                totalTransactions == 0 ? 0 : totalRevenue / totalTransactions;
+
+        return new RevenueReportDTO(
+                totalRevenue,
+                totalTransactions,
+                averagePayout,
+                refundedAmount,
+                refundCount
+        );
+    }
+
+    // ---------------- S5-F9: PROMO REPORT ----------------
+
     public List<PromoCodeUsage> getMostUsedPromoCodes(int limit) {
+
         if (limit <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Limit must be greater than 0");
         }
-
 
         List<Object[]> rows = promoCodeRepository.findTopUsedPromoCodes(limit);
         List<PromoCodeUsage> result = new ArrayList<>();
 
         for (Object[] row : rows) {
+
             Long promoCodeId = ((Number) row[0]).longValue();
             String code = (String) row[1];
             String discountType = row[2].toString();
@@ -185,6 +227,7 @@ public class PayoutService {
 
             LocalDateTime expiryDate;
             Object expiryObj = row[7];
+
             if (expiryObj instanceof Timestamp) {
                 expiryDate = ((Timestamp) expiryObj).toLocalDateTime();
             } else if (expiryObj instanceof LocalDateTime) {
@@ -211,8 +254,12 @@ public class PayoutService {
 
         return result;
     }
+
+    // ---------------- S5-F7: RETRY ----------------
+
     @Transactional
     public Payout retryFailedPayout(Long id) {
+
         Payout payout = payoutRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found"));
 
@@ -223,7 +270,11 @@ public class PayoutService {
         payout.setStatus(PayoutStatus.COMPLETED);
         return payoutRepository.save(payout);
     }
+
+    // ---------------- S5-F2: REFUND ----------------
+
     public Payout processRefund(Long id, String reason) {
+
         Payout payout = payoutRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found"));
 
@@ -242,17 +293,15 @@ public class PayoutService {
             transactionDetails = new HashMap<>();
         }
 
-        Object retryValue = transactionDetails.get("retryAttempt");
         int retryAttempt = 0;
+        Object retryValue = transactionDetails.get("retryAttempt");
 
         if (retryValue instanceof Number) {
             retryAttempt = ((Number) retryValue).intValue();
         } else if (retryValue instanceof String) {
             try {
                 retryAttempt = Integer.parseInt((String) retryValue);
-            } catch (NumberFormatException e) {
-                retryAttempt = 0;
-            }
+            } catch (Exception ignored) {}
         }
 
         transactionDetails.put("retryAttempt", retryAttempt + 1);
