@@ -5,6 +5,7 @@ import com.team35.freelance.contract.repository.ContractRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -54,5 +55,17 @@ public class ContractService {
         }
         return contractRepository.findMostRecentActiveContractByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("No active contract found for this user"));
+    }
+
+    public Contract updateProgress(Long contractId, Map<String, Object> updates) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Contract not found"));
+        Map<String, Object> metadata = contract.getMetadata();
+        if (metadata == null) {
+            metadata = new java.util.HashMap<>();
+        }
+        metadata.putAll(updates);
+        contract.setMetadata(metadata);
+        return contractRepository.save(contract);
     }
 }
