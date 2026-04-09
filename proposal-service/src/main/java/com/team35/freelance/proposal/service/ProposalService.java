@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import com.team35.freelance.proposal.model.ProposalMilestone;
-
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -138,5 +138,43 @@ public class ProposalService {
                 milestoneDTOs.size(),
                 completedCount
         );
+    }
+    // S3-F2: Accept Proposal and Create Contract
+    @Transactional
+    public Proposal acceptProposal(Long proposalId) {
+        Proposal proposal = getById(proposalId);
+
+        if (proposal.getStatus() != ProposalStatus.SUBMITTED &&
+                proposal.getStatus() != ProposalStatus.SHORTLISTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Proposal must be SUBMITTED or SHORTLISTED to be accepted");
+        }
+
+        String role = proposalRepository.findFreelancerRole(proposal.getFreelancerId());
+        if (role == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Freelancer not found with id: " + proposal.getFreelancerId());
+        }
+        if (!role.equals("FREELANCER")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "User is not a freelancer");
+        }
+
+        proposal.setStatus(ProposalStatus.ACCEPTED);
+        proposal.setAcceptedAt(LocalDateTime.now());
+
+        proposalRepository.updateJobStatusToInProgress(proposal.getJobId());
+
+        Long clientId = proposalRepository.findClientIdByJobId(proposal.getJobId());
+
+        proposalRepository.insertContract(
+                proposal.getJobId(),
+                proposal.getFreelancerId(),
+                clientId,
+                proposal.getId(),
+                proposal.getBidAmount()
+        );
+
+        return proposalRepository.save(proposal);
     }
 }

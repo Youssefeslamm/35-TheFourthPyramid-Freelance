@@ -63,4 +63,9 @@ public class ProposalController {
     public ResponseEntity<ProposalDetailsDTO> getProposalDetails(@PathVariable Long proposalId) {
         return ResponseEntity.ok(proposalService.getProposalDetails(proposalId));
     }
+    // S3-F2: Accept Proposal
+    @PutMapping("/{proposalId}/accept")
+    public ResponseEntity<Proposal> acceptProposal(@PathVariable Long proposalId) {
+        return ResponseEntity.ok(proposalService.acceptProposal(proposalId));
+    }
 }
