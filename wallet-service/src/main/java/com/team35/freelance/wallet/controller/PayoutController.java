@@ -7,6 +7,13 @@ import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.team35.freelance.wallet.model.PayoutStatus;
+import org.springframework.format.annotation.DateTimeFormat;
+import com.team35.freelance.wallet.service.PayoutPromoService;
+import com.team35.freelance.wallet.dto.PayoutDetailsDTO;
+import java.time.LocalDate;
+import com.team35.freelance.wallet.dto.PromoCodeUsage;
+import com.team35.freelance.wallet.dto.RefundRequest;
 
 import java.util.List;
 
@@ -15,9 +22,11 @@ import java.util.List;
 public class PayoutController {
 
     private final PayoutService payoutService;
+    private final PayoutPromoService payoutPromoService;
 
-    public PayoutController(PayoutService payoutService) {
+    public PayoutController(PayoutService payoutService, PayoutPromoService payoutPromoService) {
         this.payoutService = payoutService;
+        this.payoutPromoService = payoutPromoService;
     }
 
     // -------- CRUD --------
@@ -55,7 +64,53 @@ public class PayoutController {
             @PathVariable Long freelancerId) {
 
         return ResponseEntity.ok(
-                payoutService.getFreelancerSummary(freelancerId)
+                payoutService.getFreelancerSummary(freelancerId));
+    }
+    @GetMapping("/search")
+    public ResponseEntity<List<Payout>> searchPayouts(
+            @RequestParam(required = false) PayoutStatus status,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        return ResponseEntity.ok(
+                payoutService.searchPayouts(status, startDate, endDate)
+        );
+    }
+    @PostMapping("/{payoutId}/promos/{promoCodeId}")
+    public ResponseEntity<Payout> applyPromoCodeToPayout(
+            @PathVariable("payoutId") Long payoutId,
+            @PathVariable("promoCodeId") Long promoCodeId
+    ) {
+        return ResponseEntity.ok(
+                payoutPromoService.applyPromoCodeToPayout(payoutId, promoCodeId)
+        );
+    }
+
+    @GetMapping("/promos/top-used")
+    public ResponseEntity<List<PromoCodeUsage>> getMostUsedPromoCodes(@RequestParam int limit) {
+        return ResponseEntity.ok(payoutService.getMostUsedPromoCodes(limit));
+    }
+    @PutMapping("/{id}/retry")
+    public ResponseEntity<Payout> retryPayout(@PathVariable Long id) {
+        return ResponseEntity.ok(payoutService.retryFailedPayout(id));
+    }
+
+
+
+
+    @PutMapping("/{id}/refund")
+    public ResponseEntity<Payout> refundPayout(@PathVariable Long id,
+                                               @RequestBody RefundRequest request) {
+        return ResponseEntity.ok(payoutService.processRefund(id, request.getReason()));
+    }
+    @GetMapping("/{payoutId}/details")
+    public ResponseEntity<PayoutDetailsDTO> getPayoutDetails(
+            @PathVariable("payoutId") Long payoutId
+    ) {
+        return ResponseEntity.ok(
+                payoutPromoService.getPayoutDetails(payoutId)
         );
     }
 
