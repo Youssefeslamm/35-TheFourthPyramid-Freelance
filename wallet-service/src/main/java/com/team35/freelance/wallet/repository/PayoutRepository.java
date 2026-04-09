@@ -4,14 +4,13 @@ import com.team35.freelance.wallet.model.Payout;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-// ✅ ADD THESE
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 @Repository
 public interface PayoutRepository extends JpaRepository<Payout, Long> {
 
-    // ✅ NEW FEATURE METHOD
+    // ---------- EXISTING SUMMARY ----------
     @Query(value = """
         SELECT 
             p.freelancer_id,
@@ -26,4 +25,10 @@ public interface PayoutRepository extends JpaRepository<Payout, Long> {
         GROUP BY p.freelancer_id
     """, nativeQuery = true)
     Object[] getFreelancerPayoutSummary(@Param("freelancerId") Long freelancerId);
+
+    // ---------- NEW METHODS ----------
+    Payout findByContractId(Long contractId);
+
+    @Query(value = "SELECT status FROM contracts WHERE id = :contractId", nativeQuery = true)
+    String getContractStatus(@Param("contractId") Long contractId);
 }
