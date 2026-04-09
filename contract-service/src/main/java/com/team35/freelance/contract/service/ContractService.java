@@ -109,4 +109,10 @@ public class ContractService {
         contractRepository.saveAll(contracts);
         return contracts.size();
     }
+
+    @Transactional
+    public int purgeOldContracts(int olderThanDays) {
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(olderThanDays);
+        return contractRepository.purgeOldContracts(cutoffDate);
+    }
 }
