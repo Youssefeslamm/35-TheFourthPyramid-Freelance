@@ -41,6 +41,8 @@ public class ProposalMilestone {
     @JsonIgnore
     private Proposal proposal;
 
+    // --- Getters and Setters ---
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -64,4 +66,5 @@ public class ProposalMilestone {
 
     public Proposal getProposal() { return proposal; }
     public void setProposal(Proposal proposal) { this.proposal = proposal; }
+}
 }

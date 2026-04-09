@@ -1,4 +1,6 @@
 package com.team35.freelance.proposal.controller;
+import com.team35.freelance.proposal.dto.FeeEstimateDTO;
+import com.team35.freelance.proposal.dto.FeeEstimateRequest;
 
 import com.team35.freelance.proposal.model.Proposal;
 import com.team35.freelance.proposal.service.ProposalService;
@@ -18,6 +20,18 @@ public class ProposalController {
 
     @PostMapping
     public ResponseEntity<Proposal> create(@RequestBody Proposal proposal) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(proposalService.create(proposal));
+    }
+
+    @PostMapping("/estimate")
+    public ResponseEntity<FeeEstimateDTO> estimateFee(
+            @RequestBody FeeEstimateRequest request) {
+        FeeEstimateDTO dto = proposalService.estimateFee(
+                request.getBidAmount(), request.getEstimatedDays());
+        return ResponseEntity.ok(dto);
+    }
+
+
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(proposalService.create(proposal));
     }
@@ -33,6 +47,7 @@ public class ProposalController {
     }
 
     @PutMapping("/{id}")
+    public ResponseEntity<Proposal> update(@PathVariable Long id, @RequestBody Proposal proposal) {
     public ResponseEntity<Proposal> update(@PathVariable Long id,
                                            @RequestBody Proposal proposal) {
         return ResponseEntity.ok(proposalService.update(id, proposal));
@@ -44,6 +59,8 @@ public class ProposalController {
         return ResponseEntity.noContent().build();
     }
 
+
+}
 //    @GetMapping("/health")
 //    public ResponseEntity<String> health() {
 //        return ResponseEntity.ok("OK");

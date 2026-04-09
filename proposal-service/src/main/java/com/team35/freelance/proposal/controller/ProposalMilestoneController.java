@@ -19,6 +19,7 @@ public class ProposalMilestoneController {
     @PostMapping("/proposal/{proposalId}")
     public ResponseEntity<ProposalMilestone> create(@PathVariable Long proposalId,
                                                     @RequestBody ProposalMilestone milestone) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(milestoneService.create(proposalId, milestone));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(milestoneService.create(proposalId, milestone));
     }
@@ -44,4 +45,5 @@ public class ProposalMilestoneController {
         milestoneService.delete(id);
         return ResponseEntity.noContent().build();
     }
+}
 }

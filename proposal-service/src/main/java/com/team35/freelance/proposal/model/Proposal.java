@@ -10,6 +10,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+@Entity
+@Table(name = "proposals")
+public class Proposal {
 
 @Entity
 @Table(name = "proposals")
@@ -90,5 +93,7 @@ public class Proposal {
     public void setAcceptedAt(LocalDateTime acceptedAt) { this.acceptedAt = acceptedAt; }
 
     public List<ProposalMilestone> getProposalMilestones() { return proposalMilestones; }
+    public void setProposalMilestones(List<ProposalMilestone> proposalMilestones) { this.proposalMilestones = proposalMilestones; }
+}
     public void setProposalMilestones(List<ProposalMilestone> milestones) { this.proposalMilestones = milestones; }
 }

@@ -1,4 +1,5 @@
 package com.team35.freelance.proposal.service;
+import com.team35.freelance.proposal.dto.FeeEstimateDTO;
 
 import com.team35.freelance.proposal.model.Proposal;
 import com.team35.freelance.proposal.repository.ProposalRepository;
@@ -21,6 +22,7 @@ public class ProposalService {
 
     public Proposal getById(Long id) {
         return proposalRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Proposal not found"));
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Proposal not found with id: " + id));
     }
@@ -44,4 +46,32 @@ public class ProposalService {
         getById(id);
         proposalRepository.deleteById(id);
     }
+    public FeeEstimateDTO estimateFee(double bidAmount, int estimatedDays) {
+        if (bidAmount <= 0 || estimatedDays <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "bidAmount and estimatedDays must be positive");
+        }
+
+        double minBid = bidAmount * 0.80;
+        double maxBid = bidAmount * 1.20;
+        long similarCount = proposalRepository.countSimilarActiveProposals(minBid, maxBid);
+
+        double feePercentage;
+        if (similarCount <= 5) {
+            feePercentage = 20.0;
+        } else if (similarCount <= 15) {
+            feePercentage = 15.0;
+        } else {
+            feePercentage = 10.0;
+        }
+
+        double platformFee = bidAmount * feePercentage / 100;
+        double freelancerPayout = bidAmount - platformFee;
+        double estimatedDailyRate = freelancerPayout / estimatedDays;
+
+        return new FeeEstimateDTO(bidAmount, platformFee,
+                freelancerPayout, feePercentage,
+                estimatedDailyRate);
+    }
+}
 }
