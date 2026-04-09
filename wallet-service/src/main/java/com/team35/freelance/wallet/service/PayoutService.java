@@ -5,7 +5,11 @@ import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.wallet.repository.PayoutRepository;
 import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
 import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
+import com.team35.freelance.wallet.dto.PromoCodeUsage;
 
+import com.team35.freelance.wallet.repository.PromoCodeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,13 +21,8 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
 import java.time.LocalDate;
 
-
-// ✅ ADD THIS
-import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
 
 @Service
 public class PayoutService {
@@ -134,6 +133,9 @@ public class PayoutService {
         details.put("processedAt", LocalDateTime.now().toString());
 
         payout.setTransactionDetails(details);
+
+        return payoutRepository.save(payout);
+    }
     public List<Payout> searchPayouts(PayoutStatus status, LocalDate startDate, LocalDate endDate) {
         LocalDateTime startDateTime = null;
         LocalDateTime endDateTime = null;
