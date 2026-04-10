@@ -68,21 +68,28 @@ public class ContractController {
             return ResponseEntity.notFound().build();
         }
     }
-@GetMapping("/history")
-public ResponseEntity<List<Contract>> getContractsInDateRange(
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-        @RequestParam(required = false) String status) {
-    return ResponseEntity.ok(contractService.getContractsInDateRange(startDate, endDate, status));
-}
 
-@PutMapping("/batch-status")
-public ResponseEntity<Map<String, Integer>> batchUpdateStatus(@RequestBody List<BatchStatusUpdateDTO> updates) {
-    try {
-        int count = contractService.batchUpdateStatus(updates);
-        return ResponseEntity.ok(Map.of("updatedCount", count));
-    } catch (RuntimeException e) {
-        return ResponseEntity.badRequest().build();
+    @GetMapping("/history")
+    public ResponseEntity<List<Contract>> getContractsInDateRange(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(contractService.getContractsInDateRange(startDate, endDate, status));
     }
-}
+
+    @PutMapping("/batch-status")
+    public ResponseEntity<Map<String, Integer>> batchUpdateStatus(@RequestBody List<BatchStatusUpdateDTO> updates) {
+        try {
+            int count = contractService.batchUpdateStatus(updates);
+            return ResponseEntity.ok(Map.of("updatedCount", count));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @DeleteMapping("/purge")
+    public ResponseEntity<Map<String, Integer>> purgeOldContracts(@RequestParam int olderThanDays) {
+        int deleted = contractService.purgeOldContracts(olderThanDays);
+        return ResponseEntity.ok(Map.of("deletedCount", deleted));
+    }
 }
