@@ -114,6 +114,9 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     """, nativeQuery = true)
 
     List<Object[]> getAnalytics(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 
     // S3-F5
     @Query(value = """
@@ -122,7 +125,8 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     """, nativeQuery = true)
     List<Proposal> findByMetadataField(
             @Param("key") String key,
-            @Param("value") String value
+            @Param("value") String value);
+
     // S3-F1
     @Query(value = """
     SELECT * FROM proposals
