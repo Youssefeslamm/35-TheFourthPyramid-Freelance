@@ -1,29 +1,177 @@
 package com.team35.freelance.job.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 @Entity
 @Table(name = "jobs")
-@Data // If you use Lombok, otherwise generate Getters/Setters
 public class Job {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "client_id", nullable = false)
+    private Long clientId;
+
+    @Column(nullable = false)
     private String title;
 
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 
-    // Required for 9.2.1 search: OPEN, IN_PROGRESS, etc.
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private JobCategory category;
 
-    // Required for 9.2.1 budget filtering
-    @Column(name = "budget_max")
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private JobStatus status = JobStatus.OPEN;
+
+    @Column(name = "budget_min", nullable = false)
+    private Double budgetMin;
+
+    @Column(name = "budget_max", nullable = false)
     private Double budgetMax;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(nullable = false)
+    private Double rating = 0.0;
+
+    @Column(name = "total_ratings", nullable = false)
+    private Integer totalRatings = 0;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private Map<String, Object> requirements;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<JobAttachment> jobAttachments = new ArrayList<>();
+
+    public Job() {
+    }
+
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+        if (this.status == null) {
+            this.status = JobStatus.OPEN;
+        }
+        if (this.rating == null) {
+            this.rating = 0.0;
+        }
+        if (this.totalRatings == null) {
+            this.totalRatings = 0;
+        }
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Long getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(Long clientId) {
+        this.clientId = clientId;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public JobCategory getCategory() {
+        return category;
+    }
+
+    public void setCategory(JobCategory category) {
+        this.category = category;
+    }
+
+    public JobStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(JobStatus status) {
+        this.status = status;
+    }
+
+    public Double getBudgetMin() {
+        return budgetMin;
+    }
+
+    public void setBudgetMin(Double budgetMin) {
+        this.budgetMin = budgetMin;
+    }
+
+    public Double getBudgetMax() {
+        return budgetMax;
+    }
+
+    public void setBudgetMax(Double budgetMax) {
+        this.budgetMax = budgetMax;
+    }
+
+    public Double getRating() {
+        return rating;
+    }
+
+    public void setRating(Double rating) {
+        this.rating = rating;
+    }
+
+    public Integer getTotalRatings() {
+        return totalRatings;
+    }
+
+    public void setTotalRatings(Integer totalRatings) {
+        this.totalRatings = totalRatings;
+    }
+
+    public Map<String, Object> getRequirements() {
+        return requirements;
+    }
+
+    public void setRequirements(Map<String, Object> requirements) {
+        this.requirements = requirements;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public List<JobAttachment> getJobAttachments() {
+        return jobAttachments;
+    }
+
+    public void setJobAttachments(List<JobAttachment> jobAttachments) {
+        this.jobAttachments = jobAttachments;
+    }
 }
