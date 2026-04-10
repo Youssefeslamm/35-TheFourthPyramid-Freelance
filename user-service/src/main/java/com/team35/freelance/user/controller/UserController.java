@@ -4,8 +4,10 @@ import com.team35.freelance.user.model.Role;
 import com.team35.freelance.user.model.User;
 import com.team35.freelance.user.model.UserSkill;
 import com.team35.freelance.user.service.UserService;
+import com.team35.freelance.user.dto.TopFreelancerDTO;
 import org.springframework.web.bind.annotation.*;
 import com.team35.freelance.user.dto.UserProfileDTO;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -113,5 +115,31 @@ public class UserController {
     public UserProfileDTO getUserProfile(@PathVariable Long id) {
         return userService.getUserProfile(id);
     }
-}
 
+    // ===================== S1-F4: Deactivate User Account =====================
+
+    @PutMapping("/{id}/deactivate")
+    public User deactivateUser(@PathVariable Long id) {
+        return userService.deactivateUser(id);
+    }
+
+    // ===================== S1-F6: Top Freelancers by Earnings =====================
+
+    @GetMapping("/reports/top-freelancers")
+    public List<TopFreelancerDTO> getTopFreelancers(
+            @RequestParam String startDate,
+            @RequestParam String endDate,
+            @RequestParam int limit) {
+        return userService.getTopFreelancersByEarnings(
+                LocalDate.parse(startDate), LocalDate.parse(endDate), limit);
+    }
+
+    // ===================== S1-F9: Users by Language + Min Completed Contracts =====================
+
+    @GetMapping("/preferences/language")
+    public List<User> getUsersByLanguageAndContracts(
+            @RequestParam String lang,
+            @RequestParam(defaultValue = "0") int minContracts) {
+        return userService.findUsersByLanguageAndMinContracts(lang, minContracts);
+    }
+}

@@ -2,6 +2,7 @@ package com.team35.freelance.contract.service;
 
 import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
 import com.team35.freelance.contract.dto.FreelancerPerformanceDTO;
+import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.model.ContractStatus;
 import com.team35.freelance.contract.repository.ContractRepository;
@@ -99,5 +100,30 @@ public class ContractService {
         Double completionRate = totalContracts > 0 ? ((double) completedContracts / totalContracts) * 100 : 0.0;
 
         return new FreelancerPerformanceDTO(freelancerId, totalContracts, averageContractValue, completionRate, avgDuration, totalEarnings);
+    }
+}
+    // --- S4-F9: Find Stalled Contracts ---
+    public List<StalledContractDTO> getStalledContracts(Double maxProgress, Integer stalledDays) {
+        List<Object[]> results = contractRepository.findStalledContracts(maxProgress, stalledDays);
+        return results.stream().map(row -> new StalledContractDTO(
+                ((Number) row[0]).longValue(),
+                (String) row[1],
+                (String) row[2],
+                ((Number) row[3]).doubleValue(),
+                row[4] != null ? ((Number) row[4]).doubleValue() : 0.0,
+                ((Number) row[5]).intValue()
+        )).collect(Collectors.toList());
+    }
+    // --- S4-F5: Metadata JSONB Filter ---
+    public List<Contract> searchContractsByMetadata(String key, String operator, String value) {
+        if ("eq".equalsIgnoreCase(operator)) {
+            return contractRepository.findByMetadataEq(key, value);
+        } else if ("gt".equalsIgnoreCase(operator)) {
+            return contractRepository.findByMetadataGt(key, Double.parseDouble(value));
+        } else if ("lt".equalsIgnoreCase(operator)) {
+            return contractRepository.findByMetadataLt(key, Double.parseDouble(value));
+        } else {
+            throw new IllegalArgumentException("Invalid operator: " + operator);
+        }
     }
 }

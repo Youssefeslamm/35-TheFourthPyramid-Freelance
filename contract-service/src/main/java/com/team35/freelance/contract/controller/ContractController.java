@@ -2,6 +2,7 @@ package com.team35.freelance.contract.controller;
 
 import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
 import com.team35.freelance.contract.dto.FreelancerPerformanceDTO;
+import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.service.ContractService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -93,4 +94,49 @@ public class ContractController {
             return ResponseEntity.notFound().build();
         }
     }
+}
+
+    @GetMapping("/history")
+    public ResponseEntity<List<Contract>> getContractsInDateRange(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(contractService.getContractsInDateRange(startDate, endDate, status));
+    }
+
+    @PutMapping("/batch-status")
+    public ResponseEntity<Map<String, Integer>> batchUpdateStatus(@RequestBody List<BatchStatusUpdateDTO> updates) {
+        try {
+            int count = contractService.batchUpdateStatus(updates);
+            return ResponseEntity.ok(Map.of("updatedCount", count));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @DeleteMapping("/purge")
+    public ResponseEntity<Map<String, Integer>> purgeOldContracts(@RequestParam int olderThanDays) {
+        int deleted = contractService.purgeOldContracts(olderThanDays);
+        return ResponseEntity.ok(Map.of("deletedCount", deleted));
+    }
+    // --- S4-F9: Find Stalled Contracts ---
+    @GetMapping("/stalled")
+    public ResponseEntity<List<StalledContractDTO>> getStalledContracts(
+            @RequestParam Double maxProgress,
+            @RequestParam Integer stalledDays) {
+        return ResponseEntity.ok(contractService.getStalledContracts(maxProgress, stalledDays));
+    }
+    // --- S4-F5: Metadata JSONB Filter ---
+    @GetMapping("/metadata/search")
+    public ResponseEntity<List<Contract>> searchContractsByMetadata(
+            @RequestParam String key,
+            @RequestParam String operator,
+            @RequestParam String value) throws NumberFormatException {
+        try {
+            return ResponseEntity.ok(contractService.searchContractsByMetadata(key, operator, value));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build(); // Throws 400 if operator or number cast is invalid
+        }
+    }
+
 }

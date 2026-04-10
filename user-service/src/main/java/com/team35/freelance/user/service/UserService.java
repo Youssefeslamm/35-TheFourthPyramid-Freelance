@@ -12,6 +12,9 @@ import org.springframework.web.server.ResponseStatusException;
 import com.team35.freelance.user.dto.UserProfileDTO;
 import com.team35.freelance.user.dto.UserSkillProfileDTO;
 
+import com.team35.freelance.user.dto.TopFreelancerDTO;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -254,4 +257,50 @@ public class UserService {
                 skillDTOs.size()
         );
     }
+
+    // ===================== S1-F4: Deactivate User Account =====================
+
+    @Transactional
+    public User deactivateUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        Long activeContracts = userRepository.countActiveContractsForUser(id);
+        if (activeContracts != null && activeContracts > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cannot deactivate: user has active contracts");
+        }
+
+        user.setStatus(Status.DEACTIVATED);
+        userRepository.withdrawSubmittedProposalsForUser(id);
+        return userRepository.save(user);
+    }
+
+    // ===================== S1-F6: Top Freelancers by Earnings =====================
+
+    public List<TopFreelancerDTO> getTopFreelancersByEarnings(LocalDate startDate, LocalDate endDate, int limit) {
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must not be after endDate");
+        }
+        List<Object[]> rows = userRepository.findTopFreelancersByEarnings(
+                startDate.atStartOfDay(), endDate.atTime(23, 59, 59), limit);
+        List<TopFreelancerDTO> result = new ArrayList<>();
+        for (Object[] row : rows) {
+            result.add(new TopFreelancerDTO(
+                    ((Number) row[0]).longValue(), (String) row[1],
+                    ((Number) row[2]).doubleValue(), ((Number) row[3]).longValue()));
+        }
+        return result;
+    }
+
+
+    // ===================== S1-F9: Users by Language + Min Completed Contracts =====================
+
+    public List<User> findUsersByLanguageAndMinContracts(String lang, int minContracts) {
+        if (lang == null || lang.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "lang must not be blank");
+        }
+        return userRepository.findUsersByLanguageAndMinContracts(lang, minContracts);
+    }
+
 }

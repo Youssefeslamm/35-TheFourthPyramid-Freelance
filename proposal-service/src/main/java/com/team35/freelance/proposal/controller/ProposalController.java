@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.team35.freelance.proposal.dto.MilestoneRequest;
 
 import java.util.List;
 
@@ -62,5 +63,22 @@ public class ProposalController {
     @GetMapping("/{proposalId}/details")
     public ResponseEntity<ProposalDetailsDTO> getProposalDetails(@PathVariable Long proposalId) {
         return ResponseEntity.ok(proposalService.getProposalDetails(proposalId));
+    }
+    // S3-F2: Accept Proposal
+    @PutMapping("/{proposalId}/accept")
+    public ResponseEntity<Proposal> acceptProposal(@PathVariable Long proposalId) {
+        return ResponseEntity.ok(proposalService.acceptProposal(proposalId));
+    }
+    // S3-F4: Complete Proposal's Contract
+    @PutMapping("/{id}/complete")
+    public ResponseEntity<Proposal> completeProposal(@PathVariable Long id) {
+        return ResponseEntity.ok(proposalService.completeProposal(id));
+    }
+    // S3-F8: Add Milestones to Proposal
+    @PostMapping("/{proposalId}/milestones")
+    public ResponseEntity<Proposal> addMilestones(@PathVariable Long proposalId,
+                                                  @RequestBody List<MilestoneRequest> milestones) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(proposalService.addMilestones(proposalId, milestones));
     }
 }
