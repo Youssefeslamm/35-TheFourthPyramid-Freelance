@@ -83,12 +83,6 @@ public class ProposalController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(proposalService.addMilestones(proposalId, milestones));
     }
-    // S3-F5
-    @GetMapping("/metadata/search")
-    public ResponseEntity<List<Proposal>> searchByMetadata(
-            @RequestParam String key,
-            @RequestParam String value) {
-        return ResponseEntity.ok(proposalService.filterByMetadata(key, value));
     // S3-F1
     @GetMapping("/search")
     public ResponseEntity<List<Proposal>> search(
