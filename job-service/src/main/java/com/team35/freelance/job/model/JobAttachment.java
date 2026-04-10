@@ -1,44 +1,115 @@
 package com.team35.freelance.job.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
-import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "job_attachments")
-@Getter @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 public class JobAttachment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // A reference to the Job this attachment belongs to (Cross-service style)
-    @Column(nullable = false)
-    private Long jobId;
-
     @Enumerated(EnumType.STRING)
-    private AttachmentType type;
-
     @Column(nullable = false)
+    private JobAttachmentType type;
+
+    @Column(name = "file_url", nullable = false)
     private String fileUrl;
 
-    private LocalDateTime expiryDate;
+    @Column(name = "expiry_date", nullable = false)
+    private LocalDate expiryDate;
 
-    private boolean verified;
+    @Column(nullable = false)
+    private Boolean verified = false;
 
-    /* This is the JSONB field for 7.2.2.
-       It stores: file size, format, version, and notes.
-    */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> metadata;
 
-    @CreationTimestamp
+    @Column(name = "uploaded_at", nullable = false, updatable = false)
     private LocalDateTime uploadedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "job_id", nullable = false)
+    @JsonIgnore
+    private Job job;
+
+    public JobAttachment() {
+    }
+
+    @PrePersist
+    public void prePersist() {
+        this.uploadedAt = LocalDateTime.now();
+        if (this.verified == null) {
+            this.verified = false;
+        }
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public JobAttachmentType getType() {
+        return type;
+    }
+
+    public void setType(JobAttachmentType type) {
+        this.type = type;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getFileUrl() {
+        return fileUrl;
+    }
+
+    public void setFileUrl(String fileUrl) {
+        this.fileUrl = fileUrl;
+    }
+
+    public LocalDate getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(LocalDate expiryDate) {
+        this.expiryDate = expiryDate;
+    }
+
+    public Boolean getVerified() {
+        return verified;
+    }
+
+    public void setVerified(Boolean verified) {
+        this.verified = verified;
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(Map<String, Object> metadata) {
+        this.metadata = metadata;
+    }
+
+    public LocalDateTime getUploadedAt() {
+        return uploadedAt;
+    }
+
+    public Job getJob() {
+        return job;
+    }
+
+    public void setJob(Job job) {
+        this.job = job;
+    }
 }
