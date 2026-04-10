@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.team35.freelance.job.dto.ContractLookupProjection;
 import com.team35.freelance.job.model.Job;
 
 @Repository
@@ -56,4 +57,14 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     @EntityGraph(attributePaths = "jobAttachments")
     @Query("SELECT j FROM Job j WHERE j.id = :id")
     Optional<Job> findByIdWithAttachments(@Param("id") Long id);
+
+    @Query(value = """
+            SELECT
+                c.id AS id,
+                c.job_id AS jobId,
+                c.status AS status
+            FROM contracts c
+            WHERE c.id = :contractId
+            """, nativeQuery = true)
+    Optional<ContractLookupProjection> findContractById(@Param("contractId") Long contractId);
 }

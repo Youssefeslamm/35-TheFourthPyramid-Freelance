@@ -1,19 +1,33 @@
 package com.team35.freelance.job.service;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import com.team35.freelance.job.dto.ContractLookupProjection;
 import com.team35.freelance.job.dto.JobProposalSummaryDTO;
+import com.team35.freelance.job.dto.RateJobRequestDTO;
+import com.team35.freelance.job.exception.BadRequestException;
+import com.team35.freelance.job.exception.ResourceNotFoundException;
 import com.team35.freelance.job.model.Job;
 import com.team35.freelance.job.model.JobStatus;
 import com.team35.freelance.job.repository.JobRepository;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Arrays;
-import java.util.List;
 
 @Service
 public class JobService {
+
+    private final JobRepository jobRepository;
+
+    public JobService(JobRepository jobRepository) {
+        this.jobRepository = jobRepository;
+    }
+    
 
     public JobProposalSummaryDTO getProposalSummary(Long id, String startDate, String endDate) {
         // 1. Check if job exists first for the 404 requirement
@@ -51,12 +65,6 @@ public class JobService {
 
         // 4. Save and return
         return jobRepository.save(job);
-    }
-
-    private final JobRepository jobRepository;
-
-    public JobService(JobRepository jobRepository) {
-        this.jobRepository = jobRepository;
     }
 
     public Job createJob(Job job) {
@@ -187,5 +195,47 @@ public class JobService {
                     "budgetMin cannot be greater than budgetMax"
             );
         }
+    }
+
+    @Transactional
+    public Job rateJob(Long jobId, RateJobRequestDTO request) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
+
+        if (request == null) {
+            throw new BadRequestException("Request body is required");
+        }
+        if (request.getContractId() == null) {
+            throw new BadRequestException("contractId is required");
+        }
+        if (request.getRating() == null) {
+            throw new BadRequestException("rating is required");
+        }
+        if (request.getRating() < 1 || request.getRating() > 5) {
+            throw new BadRequestException("rating must be between 1 and 5 inclusive");
+        }
+
+        ContractLookupProjection contract = jobRepository.findContractById(request.getContractId())
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+
+        if (!jobId.equals(contract.getJobId())) {
+            throw new BadRequestException("Contract does not belong to this job");
+        }
+
+        if (!"COMPLETED".equalsIgnoreCase(contract.getStatus())) {
+            throw new BadRequestException("Contract must be COMPLETED before rating");
+        }
+
+        double currentRating = job.getRating() == null ? 0.0 : job.getRating();
+        int totalRatings = job.getTotalRatings() == null ? 0 : job.getTotalRatings();
+
+        double newAverage =
+                ((currentRating * totalRatings) + request.getRating())
+                        / (totalRatings + 1);
+
+        job.setRating(newAverage);
+        job.setTotalRatings(totalRatings + 1);
+
+        return jobRepository.save(job);
     }
 }
