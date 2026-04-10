@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.team35.freelance.proposal.dto.MilestoneRequest;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDateTime;
 
 import java.util.List;
 
@@ -80,5 +82,18 @@ public class ProposalController {
                                                   @RequestBody List<MilestoneRequest> milestones) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(proposalService.addMilestones(proposalId, milestones));
+    }
+    // S3-F1
+    @GetMapping("/search")
+    public ResponseEntity<List<Proposal>> search(
+            @RequestParam(required = false) String status,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime startDate,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime endDate) {
+        return ResponseEntity.ok(
+                proposalService.getProposalsByStatusAndDateRange(status, startDate, endDate));
     }
 }

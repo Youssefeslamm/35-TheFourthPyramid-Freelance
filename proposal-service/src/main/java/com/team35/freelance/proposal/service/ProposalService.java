@@ -19,6 +19,7 @@ import com.team35.freelance.proposal.dto.MilestoneDTO;
 import com.team35.freelance.proposal.dto.MilestoneRequest;
 import com.team35.freelance.proposal.repository.ProposalMilestoneRepository;
 import java.util.HashMap;
+import java.util.List;
 
 @Service
 public class ProposalService {
@@ -261,4 +262,10 @@ public class ProposalService {
 
         return proposalRepository.save(proposal);
     }
+    // S3-F1
+    public List<Proposal> getProposalsByStatusAndDateRange(
+            String status, LocalDateTime startDate, LocalDateTime endDate) {
+        return proposalRepository.findByStatusAndDateRange(status, startDate, endDate);
+    }
 }
+

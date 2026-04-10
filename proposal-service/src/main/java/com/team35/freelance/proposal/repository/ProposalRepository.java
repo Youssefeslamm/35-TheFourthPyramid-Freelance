@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Repository
 public interface ProposalRepository extends JpaRepository<Proposal, Long> {
@@ -97,4 +99,17 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     void insertPendingPayout(@Param("contractId") Long contractId,
                              @Param("freelancerId") Long freelancerId,
                              @Param("amount") Double amount);
+
+    // S3-F1
+    @Query(value = """
+    SELECT * FROM proposals
+    WHERE submitted_at BETWEEN :startDate AND :endDate
+    AND (:status IS NULL OR status = :status)
+    ORDER BY submitted_at DESC
+    """, nativeQuery = true)
+    List<Proposal> findByStatusAndDateRange(
+            @Param("status") String status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 }
