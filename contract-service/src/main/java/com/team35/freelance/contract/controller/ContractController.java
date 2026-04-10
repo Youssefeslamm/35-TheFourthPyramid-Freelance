@@ -39,8 +39,11 @@ public class ContractController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Contract> update(@PathVariable Long id, @RequestBody Contract contract) {
-        try { return ResponseEntity.ok(contractService.update(id, contract)); } 
-        catch (RuntimeException e) { return ResponseEntity.notFound().build(); }
+        try {
+            return ResponseEntity.ok(contractService.update(id, contract));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -51,14 +54,20 @@ public class ContractController {
 
     @GetMapping("/user/{userId}/active")
     public ResponseEntity<Contract> getActiveContractForUser(@PathVariable Long userId) {
-        try { return ResponseEntity.ok(contractService.getActiveContractForUser(userId)); } 
-        catch (RuntimeException e) { return ResponseEntity.notFound().build(); }
+        try {
+            return ResponseEntity.ok(contractService.getActiveContractForUser(userId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PutMapping("/{contractId}/progress")
     public ResponseEntity<Contract> updateProgress(@PathVariable Long contractId, @RequestBody Map<String, Object> updates) {
-        try { return ResponseEntity.ok(contractService.updateProgress(contractId, updates)); } 
-        catch (RuntimeException e) { return ResponseEntity.notFound().build(); }
+        try {
+            return ResponseEntity.ok(contractService.updateProgress(contractId, updates));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping("/history")
@@ -71,8 +80,11 @@ public class ContractController {
 
     @PutMapping("/batch-status")
     public ResponseEntity<Map<String, Integer>> batchUpdateStatus(@RequestBody List<BatchStatusUpdateDTO> updates) {
-        try { return ResponseEntity.ok(Map.of("updatedCount", contractService.batchUpdateStatus(updates))); } 
-        catch (RuntimeException e) { return ResponseEntity.badRequest().build(); }
+        try {
+            return ResponseEntity.ok(Map.of("updatedCount", contractService.batchUpdateStatus(updates)));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @DeleteMapping("/purge")
@@ -93,31 +105,6 @@ public class ContractController {
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-    }
-}
-
-    @GetMapping("/history")
-    public ResponseEntity<List<Contract>> getContractsInDateRange(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-            @RequestParam(required = false) String status) {
-        return ResponseEntity.ok(contractService.getContractsInDateRange(startDate, endDate, status));
-    }
-
-    @PutMapping("/batch-status")
-    public ResponseEntity<Map<String, Integer>> batchUpdateStatus(@RequestBody List<BatchStatusUpdateDTO> updates) {
-        try {
-            int count = contractService.batchUpdateStatus(updates);
-            return ResponseEntity.ok(Map.of("updatedCount", count));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    @DeleteMapping("/purge")
-    public ResponseEntity<Map<String, Integer>> purgeOldContracts(@RequestParam int olderThanDays) {
-        int deleted = contractService.purgeOldContracts(olderThanDays);
-        return ResponseEntity.ok(Map.of("deletedCount", deleted));
     }
     // --- S4-F9: Find Stalled Contracts ---
     @GetMapping("/stalled")

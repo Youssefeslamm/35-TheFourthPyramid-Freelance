@@ -45,7 +45,7 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     List<Object[]> getFreelancerPerformanceAggregates(@Param("freelancerId") Long freelancerId, 
                                                       @Param("startDate") LocalDateTime startDate, 
                                                       @Param("endDate") LocalDateTime endDate);
-}
+
     // --- S4-F9: Find Stalled Contracts ---
     @Query(value = "SELECT " +
            "c.id, " +

@@ -101,7 +101,7 @@ public class ContractService {
 
         return new FreelancerPerformanceDTO(freelancerId, totalContracts, averageContractValue, completionRate, avgDuration, totalEarnings);
     }
-}
+
     // --- S4-F9: Find Stalled Contracts ---
     public List<StalledContractDTO> getStalledContracts(Double maxProgress, Integer stalledDays) {
         List<Object[]> results = contractRepository.findStalledContracts(maxProgress, stalledDays);
