@@ -293,6 +293,7 @@ public class UserService {
         return result;
     }
 
+
     // ===================== S1-F9: Users by Language + Min Completed Contracts =====================
 
     public List<User> findUsersByLanguageAndMinContracts(String lang, int minContracts) {
