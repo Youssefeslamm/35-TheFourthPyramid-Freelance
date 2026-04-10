@@ -19,7 +19,7 @@ import com.team35.freelance.proposal.dto.MilestoneDTO;
 import com.team35.freelance.proposal.dto.MilestoneRequest;
 import com.team35.freelance.proposal.repository.ProposalMilestoneRepository;
 import java.util.HashMap;
-import java.util.List;
+import com.team35.freelance.proposal.dto.ProposalAnalyticsDTO;
 
 @Service
 public class ProposalService {
@@ -262,6 +262,22 @@ public class ProposalService {
 
         return proposalRepository.save(proposal);
     }
+    // S3-F6
+    public ProposalAnalyticsDTO getAnalytics(
+            LocalDateTime startDate, LocalDateTime endDate) {
+        List<Object[]> results = proposalRepository.getAnalytics(startDate, endDate);
+        Object[] row = results.get(0);
+
+        Long total      = ((Number) row[0]).longValue();
+        Long accepted   = ((Number) row[1]).longValue();
+        Long rejected   = ((Number) row[2]).longValue();
+        Double totalBid = row[3] != null ? ((Number) row[3]).doubleValue() : 0.0;
+        Double avgBid   = row[4] != null ? ((Number) row[4]).doubleValue() : 0.0;
+        Double rate     = (total == 0) ? 0.0
+                : row[5] != null ? ((Number) row[5]).doubleValue() : 0.0;
+
+        return new ProposalAnalyticsDTO(
+                total, accepted, rejected, totalBid, avgBid, rate);
     // S3-F5
     public List<Proposal> filterByMetadata(String key, String value) {
         if (key == null || key.isBlank() || value == null || value.isBlank()) {
