@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.team35.freelance.job.dto.ContractLookupProjection;
+import com.team35.freelance.job.dto.ExpiredJobProjection;
 import com.team35.freelance.job.model.Job;
 
 @Repository
@@ -47,6 +48,17 @@ public interface JobRepository extends JpaRepository<Job, Long> {
             @Param("endDate") String endDate
     );
 
+
+    @Query(value = """
+            SELECT
+                c.id AS id,
+                c.job_id AS jobId,
+                c.status AS status
+            FROM contracts c
+            WHERE c.id = :contractId
+            """, nativeQuery = true)
+    Optional<ContractLookupProjection> findContractById(@Param("contractId") Long contractId);
+
     @Query(value = """
             SELECT u.role
             FROM users u
@@ -54,6 +66,18 @@ public interface JobRepository extends JpaRepository<Job, Long> {
             """, nativeQuery = true)
     Optional<String> findUserRoleById(@Param("userId") Long userId);
 
+    @Query(value = """
+            SELECT DISTINCT j.id AS jobId
+            FROM jobs j
+            JOIN job_attachments ja ON ja.job_id = j.id
+            WHERE ja.expiry_date < CURRENT_DATE
+            ORDER BY j.id
+            """, nativeQuery = true)
+    List<ExpiredJobProjection> findJobsWithExpiredAttachments();
+
+    @EntityGraph(attributePaths = "jobAttachments")
+    @Query("SELECT j FROM Job j WHERE j.id = :id")
+    Optional<Job> findByIdWithAttachments(@Param("id") Long id);
     @EntityGraph(attributePaths = "jobAttachments")
     @Query("SELECT j FROM Job j WHERE j.id = :id")
     Optional<Job> findByIdWithAttachments(@Param("id") Long id);

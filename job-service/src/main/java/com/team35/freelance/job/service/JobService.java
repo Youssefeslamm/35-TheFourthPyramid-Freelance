@@ -1,5 +1,8 @@
 package com.team35.freelance.job.service;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -7,8 +10,10 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.team35.freelance.job.dto.ContractLookupProjection;
 import com.team35.freelance.job.dto.JobProposalSummaryDTO;
@@ -16,13 +21,22 @@ import com.team35.freelance.job.dto.RateJobRequestDTO;
 import com.team35.freelance.job.exception.BadRequestException;
 import com.team35.freelance.job.exception.ResourceNotFoundException;
 import com.team35.freelance.job.model.Job;
+import com.team35.freelance.job.model.JobAttachment;
 import com.team35.freelance.job.model.JobStatus;
+import com.team35.freelance.job.repository.JobAttachmentRepository;
 import com.team35.freelance.job.repository.JobRepository;
 
 @Service
 public class JobService {
 
     private final JobRepository jobRepository;
+    private final JobAttachmentRepository jobAttachmentRepository;
+
+
+    public JobService(JobRepository jobRepository, JobAttachmentRepository jobAttachmentRepository) {
+        this.jobRepository = jobRepository;
+        this.jobAttachmentRepository = jobAttachmentRepository;
+    }
 
     public JobService(JobRepository jobRepository) {
         this.jobRepository = jobRepository;
@@ -197,6 +211,30 @@ public class JobService {
         }
     }
 
+    public List<JobAttachmentAlertDTO> getJobsWithExpiredAttachments() {
+        List<JobAttachmentAlertDTO> alerts = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+
+        jobRepository.findJobsWithExpiredAttachments().forEach(row -> {
+            Job job = jobRepository.findByIdWithAttachments(row.getJobId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
+
+            List<JobAttachment> expiredAttachments =
+                    jobAttachmentRepository.findByJobIdAndExpiryDateBefore(job.getId(), today);
+
+            if (!expiredAttachments.isEmpty()) {
+                alerts.add(new JobAttachmentAlertDTO(
+                        job.getId(),
+                        job.getTitle(),
+                        job.getStatus(),
+                        expiredAttachments,
+                        expiredAttachments.size()
+                ));
+            }
+        });
+
+        return alerts;
+    }
     @Transactional
     public Job rateJob(Long jobId, RateJobRequestDTO request) {
         Job job = jobRepository.findById(jobId)
