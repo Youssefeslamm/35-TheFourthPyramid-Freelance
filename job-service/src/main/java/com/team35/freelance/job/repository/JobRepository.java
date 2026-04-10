@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -46,6 +47,16 @@ public interface JobRepository extends JpaRepository<Job, Long> {
             @Param("endDate") String endDate
     );
 
+    @Query(value = """
+            SELECT u.role
+            FROM users u
+            WHERE u.id = :userId
+            """, nativeQuery = true)
+    Optional<String> findUserRoleById(@Param("userId") Long userId);
+
+    @EntityGraph(attributePaths = "jobAttachments")
+    @Query("SELECT j FROM Job j WHERE j.id = :id")
+    Optional<Job> findByIdWithAttachments(@Param("id") Long id);
 
     @Query(value = """
             SELECT
