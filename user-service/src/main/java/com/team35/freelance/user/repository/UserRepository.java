@@ -86,4 +86,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findUsersByLanguageAndMinContracts(
             @Param("lang") String lang,
             @Param("minContracts") int minContracts);
+
 }

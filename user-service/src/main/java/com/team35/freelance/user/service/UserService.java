@@ -301,4 +301,5 @@ public class UserService {
         }
         return userRepository.findUsersByLanguageAndMinContracts(lang, minContracts);
     }
+
 }
