@@ -38,10 +38,6 @@ public class JobService {
         this.jobAttachmentRepository = jobAttachmentRepository;
     }
 
-    public JobService(JobRepository jobRepository) {
-        this.jobRepository = jobRepository;
-    }
-    
 
     public JobProposalSummaryDTO getProposalSummary(Long id, String startDate, String endDate) {
         // 1. Check if job exists first for the 404 requirement
