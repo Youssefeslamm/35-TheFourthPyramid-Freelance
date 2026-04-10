@@ -108,5 +108,16 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     List<Proposal> findByMetadataField(
             @Param("key") String key,
             @Param("value") String value
+    // S3-F1
+    @Query(value = """
+    SELECT * FROM proposals
+    WHERE submitted_at BETWEEN :startDate AND :endDate
+    AND (:status IS NULL OR status = :status)
+    ORDER BY submitted_at DESC
+    """, nativeQuery = true)
+    List<Proposal> findByStatusAndDateRange(
+            @Param("status") String status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
     );
 }
