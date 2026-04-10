@@ -62,10 +62,11 @@ public class PayoutController {
         return ResponseEntity.ok("Payout deleted successfully");
     }
 
-    // -------- SUMMARY --------
+    // -------- S5-F3: FREELANCER PAYOUT SUMMARY --------
+    // Spec: GET /api/payouts/freelancer/{freelancerId}/summary
 
-    @GetMapping("/freelancers/{freelancerId}/summary")
-    public ResponseEntity<FreelancerPayoutSummaryDTO> getSummary(
+    @GetMapping("/freelancer/{freelancerId}/summary")
+    public ResponseEntity<FreelancerPayoutSummaryDTO> getFreelancerSummary(
             @PathVariable Long freelancerId) {
 
         return ResponseEntity.ok(

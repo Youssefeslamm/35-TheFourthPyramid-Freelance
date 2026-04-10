@@ -13,22 +13,28 @@ import java.util.List;
 @Repository
 public interface PayoutRepository extends JpaRepository<Payout, Long> {
 
-    // ---------- EXISTING SUMMARY ----------
+    // ---------- S5-F3: FREELANCER PAYOUT SUMMARY BY METHOD ----------
     @Query(value = """
-        SELECT 
-            p.freelancer_id,
+        SELECT
             COUNT(*) AS total_payouts,
-            SUM(CASE WHEN p.status = 'COMPLETED' THEN 1 ELSE 0 END),
-            SUM(CASE WHEN p.status = 'FAILED' THEN 1 ELSE 0 END),
-            SUM(CASE WHEN p.status = 'REFUNDED' THEN 1 ELSE 0 END),
-            COALESCE(SUM(CASE WHEN p.status = 'COMPLETED' THEN p.amount ELSE 0 END), 0),
-            COALESCE(AVG(CASE WHEN p.status = 'COMPLETED' THEN p.amount END), 0)
+            COALESCE(SUM(p.amount), 0) AS total_amount
         FROM payouts p
         WHERE p.freelancer_id = :freelancerId
-        GROUP BY p.freelancer_id
+          AND p.status = 'COMPLETED'
     """, nativeQuery = true)
-    Object[] getFreelancerPayoutSummary(@Param("freelancerId") Long freelancerId);
+    Object[] getFreelancerBasicSummary(@Param("freelancerId") Long freelancerId);
 
+    @Query(value = """
+    SELECT
+        p.method,
+        COUNT(*) AS method_count,
+        COALESCE(SUM(p.amount), 0) AS method_total
+    FROM payouts p
+    WHERE p.freelancer_id = :freelancerId
+      AND p.status = 'COMPLETED'
+    GROUP BY p.method
+""", nativeQuery = true)
+    List<Object[]> getFreelancerMethodBreakdown(@Param("freelancerId") Long freelancerId);
 
     // ---------- EXISTING METHODS ----------
     Payout findByContractId(Long contractId);
@@ -64,4 +70,5 @@ public interface PayoutRepository extends JpaRepository<Payout, Long> {
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );
+
 }
