@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+import java.time.LocalDateTime;
 
 @Repository
 public interface ProposalRepository extends JpaRepository<Proposal, Long> {
@@ -97,4 +99,14 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     void insertPendingPayout(@Param("contractId") Long contractId,
                              @Param("freelancerId") Long freelancerId,
                              @Param("amount") Double amount);
+
+    // S3-F5
+    @Query(value = """
+    SELECT * FROM proposals
+    WHERE metadata ->> :key = :value
+    """, nativeQuery = true)
+    List<Proposal> findByMetadataField(
+            @Param("key") String key,
+            @Param("value") String value
+    );
 }
