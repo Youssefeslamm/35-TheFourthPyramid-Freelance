@@ -113,5 +113,11 @@ public class UserController {
     public UserProfileDTO getUserProfile(@PathVariable Long id) {
         return userService.getUserProfile(id);
     }
-}
 
+    // ===================== S1-F4: Deactivate User Account =====================
+
+    @PutMapping("/{id}/deactivate")
+    public User deactivateUser(@PathVariable Long id) {
+        return userService.deactivateUser(id);
+    }
+}
