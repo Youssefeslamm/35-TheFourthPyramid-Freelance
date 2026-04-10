@@ -1,5 +1,6 @@
 package com.team35.freelance.job.service;
 
+import com.team35.freelance.job.dto.JobProposalSummaryDTO;
 import com.team35.freelance.job.model.Job;
 import com.team35.freelance.job.model.JobStatus;
 import com.team35.freelance.job.repository.JobRepository;
@@ -14,7 +15,25 @@ import java.util.List;
 @Service
 public class JobService {
 
+    public JobProposalSummaryDTO getProposalSummary(Long id, String startDate, String endDate) {
+        // 1. Check if job exists first for the 404 requirement
+        if (!jobRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found");
+        }
 
+        // 2. Get the aggregated data
+        Map<String, Object> result = jobRepository.getProposalSummaryRaw(id, startDate, endDate);
+
+        // 3. Map the database results to the DTO
+        return new JobProposalSummaryDTO(
+                ((Number) result.get("jobid")).longValue(),
+                (String) result.get("title"),
+                ((Number) result.get("totalproposals")).longValue(),
+                ((Number) result.get("averagebidamount")).doubleValue(),
+                ((Number) result.get("lowestbid")).doubleValue(),
+                ((Number) result.get("highestbid")).doubleValue()
+        );
+    }
 
     public Job updateRequirements(Long id, Map<String, Object> incomingRequirements) {
         // 1. Find the job or throw 404

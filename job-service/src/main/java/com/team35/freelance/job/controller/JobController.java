@@ -1,5 +1,6 @@
 package com.team35.freelance.job.controller;
 
+import com.team35.freelance.job.dto.JobProposalSummaryDTO;
 import com.team35.freelance.job.model.Job;
 import com.team35.freelance.job.service.JobService;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,14 @@ public class JobController {
         this.jobService = jobService;
     }
 
+    @GetMapping("/{id}/proposal-summary")
+    public ResponseEntity<JobProposalSummaryDTO> getProposalSummary(
+            @PathVariable Long id,
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+
+        return ResponseEntity.ok(jobService.getProposalSummary(id, startDate, endDate));
+    }
     @GetMapping("/search")
     public ResponseEntity<List<Job>> searchJobs(
             @RequestParam(required = false) String status,
