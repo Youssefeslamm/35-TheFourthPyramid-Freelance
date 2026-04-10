@@ -100,4 +100,17 @@ public class ContractController {
             @RequestParam Integer stalledDays) {
         return ResponseEntity.ok(contractService.getStalledContracts(maxProgress, stalledDays));
     }
+    // --- S4-F5: Metadata JSONB Filter ---
+    @GetMapping("/metadata/search")
+    public ResponseEntity<List<Contract>> searchContractsByMetadata(
+            @RequestParam String key,
+            @RequestParam String operator,
+            @RequestParam String value) throws NumberFormatException {
+        try {
+            return ResponseEntity.ok(contractService.searchContractsByMetadata(key, operator, value));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build(); // Throws 400 if operator or number cast is invalid
+        }
+    }
+
 }

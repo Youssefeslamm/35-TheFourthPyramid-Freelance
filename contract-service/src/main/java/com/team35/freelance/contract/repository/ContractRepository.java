@@ -46,4 +46,14 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
            "AND CAST(c.metadata->>'progressPercentage' AS numeric) <= :maxProgress " +
            "AND CAST(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(CAST(c.metadata->>'lastActivityDate' AS TIMESTAMP), c.created_at))) / 86400 AS INTEGER) > :stalledDays", nativeQuery = true)
     List<Object[]> findStalledContracts(@Param("maxProgress") Double maxProgress, @Param("stalledDays") Integer stalledDays);
+
+    // --- S4-F5: Metadata JSONB Filter ---
+    @Query(value = "SELECT * FROM contracts WHERE jsonb_extract_path_text(metadata, :key) = :value", nativeQuery = true)
+    List<Contract> findByMetadataEq(@Param("key") String key, @Param("value") String value);
+
+    @Query(value = "SELECT * FROM contracts WHERE CAST(jsonb_extract_path_text(metadata, :key) AS numeric) > :value", nativeQuery = true)
+    List<Contract> findByMetadataGt(@Param("key") String key, @Param("value") Double value);
+
+    @Query(value = "SELECT * FROM contracts WHERE CAST(jsonb_extract_path_text(metadata, :key) AS numeric) < :value", nativeQuery = true)
+    List<Contract> findByMetadataLt(@Param("key") String key, @Param("value") Double value);
 }
