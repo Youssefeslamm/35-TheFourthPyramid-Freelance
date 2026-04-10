@@ -5,7 +5,8 @@ import com.team35.freelance.job.service.JobService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import java.util.Map;
+import java.util.HashMap; // Good to have, though Map is the main one needed here
 import java.util.List;
 
 @RestController
@@ -45,6 +46,16 @@ public class JobController {
     @PutMapping("/{id}")
     public ResponseEntity<Job> updateJob(@PathVariable Long id, @RequestBody Job job) {
         return ResponseEntity.ok(jobService.updateJob(id, job));
+    }
+
+
+    @PutMapping("/{id}/requirements")
+    public ResponseEntity<Job> updateJobRequirements(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> requirements) {
+
+        Job updatedJob = jobService.updateRequirements(id, requirements);
+        return ResponseEntity.ok(updatedJob);
     }
 
     @DeleteMapping("/{id}")

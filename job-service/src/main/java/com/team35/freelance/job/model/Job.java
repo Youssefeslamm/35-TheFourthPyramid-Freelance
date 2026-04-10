@@ -7,6 +7,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,9 +48,10 @@ public class Job {
     @Column(name = "total_ratings", nullable = false)
     private Integer totalRatings = 0;
 
+    // ONLY ONE requirements field allowed! Initialized with HashMap for safety.
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private Map<String, Object> requirements;
+    private Map<String, Object> requirements = new HashMap<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -75,103 +77,42 @@ public class Job {
         }
     }
 
-    public Long getId() {
-        return id;
-    }
+    // GETTERS AND SETTERS
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public Long getClientId() {
-        return clientId;
-    }
+    public Long getClientId() { return clientId; }
+    public void setClientId(Long clientId) { this.clientId = clientId; }
 
-    public void setClientId(Long clientId) {
-        this.clientId = clientId;
-    }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public String getTitle() {
-        return title;
-    }
+    public JobCategory getCategory() { return category; }
+    public void setCategory(JobCategory category) { this.category = category; }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
+    public JobStatus getStatus() { return status; }
+    public void setStatus(JobStatus status) { this.status = status; }
 
-    public String getDescription() {
-        return description;
-    }
+    public Double getBudgetMin() { return budgetMin; }
+    public void setBudgetMin(Double budgetMin) { this.budgetMin = budgetMin; }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    public Double getBudgetMax() { return budgetMax; }
+    public void setBudgetMax(Double budgetMax) { this.budgetMax = budgetMax; }
 
-    public JobCategory getCategory() {
-        return category;
-    }
+    public Double getRating() { return rating; }
+    public void setRating(Double rating) { this.rating = rating; }
 
-    public void setCategory(JobCategory category) {
-        this.category = category;
-    }
+    public Integer getTotalRatings() { return totalRatings; }
+    public void setTotalRatings(Integer totalRatings) { this.totalRatings = totalRatings; }
 
-    public JobStatus getStatus() {
-        return status;
-    }
+    public Map<String, Object> getRequirements() { return requirements; }
+    public void setRequirements(Map<String, Object> requirements) { this.requirements = requirements; }
 
-    public void setStatus(JobStatus status) {
-        this.status = status;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 
-    public Double getBudgetMin() {
-        return budgetMin;
-    }
-
-    public void setBudgetMin(Double budgetMin) {
-        this.budgetMin = budgetMin;
-    }
-
-    public Double getBudgetMax() {
-        return budgetMax;
-    }
-
-    public void setBudgetMax(Double budgetMax) {
-        this.budgetMax = budgetMax;
-    }
-
-    public Double getRating() {
-        return rating;
-    }
-
-    public void setRating(Double rating) {
-        this.rating = rating;
-    }
-
-    public Integer getTotalRatings() {
-        return totalRatings;
-    }
-
-    public void setTotalRatings(Integer totalRatings) {
-        this.totalRatings = totalRatings;
-    }
-
-    public Map<String, Object> getRequirements() {
-        return requirements;
-    }
-
-    public void setRequirements(Map<String, Object> requirements) {
-        this.requirements = requirements;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public List<JobAttachment> getJobAttachments() {
-        return jobAttachments;
-    }
-
-    public void setJobAttachments(List<JobAttachment> jobAttachments) {
-        this.jobAttachments = jobAttachments;
-    }
+    public List<JobAttachment> getJobAttachments() { return jobAttachments; }
+    public void setJobAttachments(List<JobAttachment> jobAttachments) { this.jobAttachments = jobAttachments; }
 }
