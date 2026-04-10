@@ -55,4 +55,36 @@ public interface UserRepository extends JpaRepository<User, Long> {
     WHERE freelancer_id = :userId AND status = 'SUBMITTED'
 """, nativeQuery = true)
     int withdrawSubmittedProposalsForUser(@Param("userId") Long userId);
+
+    // ===================== S1-F6: Top Freelancers by Earnings =====================
+
+    @Query(value = """
+    SELECT u.id, u.name,
+           COALESCE(SUM(c.agreed_amount), 0) AS total_earnings,
+           COUNT(c.id) AS contract_count
+    FROM users u
+    JOIN contracts c ON c.freelancer_id = u.id
+    WHERE c.status = 'COMPLETED'
+      AND c.created_at BETWEEN :startDate AND :endDate
+    GROUP BY u.id, u.name
+    ORDER BY total_earnings DESC
+    LIMIT :limit
+""", nativeQuery = true)
+    List<Object[]> findTopFreelancersByEarnings(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("limit") int limit);
+
+    // ===================== S1-F9: Users by Language + Min Contracts =====================
+
+    @Query(value = """
+    SELECT u.* FROM users u
+    WHERE u.preferences ->> 'language' = :lang
+      AND (SELECT COUNT(*) FROM contracts c
+           WHERE c.freelancer_id = u.id AND c.status = 'COMPLETED') >= :minContracts
+""", nativeQuery = true)
+    List<User> findUsersByLanguageAndMinContracts(
+            @Param("lang") String lang,
+            @Param("minContracts") int minContracts);
+
 }
