@@ -1,13 +1,16 @@
 package com.team35.freelance.contract.service;
 
 import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
+import com.team35.freelance.contract.dto.ContractSummaryDTO;
 import com.team35.freelance.contract.dto.FreelancerPerformanceDTO;
 import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.model.ContractStatus;
 import com.team35.freelance.contract.repository.ContractRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -60,6 +63,29 @@ public class ContractService {
 
     public List<Contract> getContractsInDateRange(LocalDateTime startDate, LocalDateTime endDate, String status) {
         return contractRepository.findContractsInDateRange(startDate, endDate, status);
+    }
+
+    public List<ContractSummaryDTO> searchByBudgetRange(Double minAmount, Double maxAmount, String status) {
+        if (minAmount == null || maxAmount == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minAmount and maxAmount are required");
+        }
+        if (minAmount > maxAmount) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minAmount must be less than or equal to maxAmount");
+        }
+        String statusFilter = (status == null || status.isBlank()) ? null : status.trim();
+        List<Object[]> rows = contractRepository.searchContractsByBudgetRange(minAmount, maxAmount, statusFilter);
+        return rows.stream().map(this::toContractSummaryDTO).collect(Collectors.toList());
+    }
+
+    private ContractSummaryDTO toContractSummaryDTO(Object[] row) {
+        ContractSummaryDTO dto = new ContractSummaryDTO();
+        dto.setContractId(((Number) row[0]).longValue());
+        dto.setFreelancerName((String) row[1]);
+        dto.setJobTitle((String) row[2]);
+        dto.setAgreedAmount(((Number) row[3]).doubleValue());
+        dto.setStatus((String) row[4]);
+        dto.setDurationDays(row[5] != null ? ((Number) row[5]).doubleValue() : 0.0);
+        return dto;
     }
 
     @Transactional

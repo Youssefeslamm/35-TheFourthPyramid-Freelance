@@ -1,6 +1,7 @@
 package com.team35.freelance.contract.controller;
 
 import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
+import com.team35.freelance.contract.dto.ContractSummaryDTO;
 import com.team35.freelance.contract.dto.FreelancerPerformanceDTO;
 import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
@@ -25,6 +26,14 @@ public class ContractController {
     @PostMapping
     public ResponseEntity<Contract> create(@RequestBody Contract contract) {
         return ResponseEntity.ok(contractService.create(contract));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<ContractSummaryDTO>> searchByBudgetRange(
+            @RequestParam Double minAmount,
+            @RequestParam Double maxAmount,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(contractService.searchByBudgetRange(minAmount, maxAmount, status));
     }
 
     @GetMapping("/{id}")
