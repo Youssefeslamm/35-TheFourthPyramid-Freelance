@@ -1,6 +1,7 @@
 package com.team35.freelance.contract.service;
 
 import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
+import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.model.ContractStatus;
 import com.team35.freelance.contract.repository.ContractRepository;
@@ -114,5 +115,17 @@ public class ContractService {
     public int purgeOldContracts(int olderThanDays) {
         LocalDateTime cutoffDate = LocalDateTime.now().minusDays(olderThanDays);
         return contractRepository.purgeOldContracts(cutoffDate);
+    }
+    // --- S4-F9: Find Stalled Contracts ---
+    public List<StalledContractDTO> getStalledContracts(Double maxProgress, Integer stalledDays) {
+        List<Object[]> results = contractRepository.findStalledContracts(maxProgress, stalledDays);
+        return results.stream().map(row -> new StalledContractDTO(
+                ((Number) row[0]).longValue(),
+                (String) row[1],
+                (String) row[2],
+                ((Number) row[3]).doubleValue(),
+                row[4] != null ? ((Number) row[4]).doubleValue() : 0.0,
+                ((Number) row[5]).intValue()
+        )).collect(Collectors.toList());
     }
 }

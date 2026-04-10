@@ -1,6 +1,7 @@
 package com.team35.freelance.contract.controller;
 
 import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
+import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.service.ContractService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -91,5 +92,12 @@ public class ContractController {
     public ResponseEntity<Map<String, Integer>> purgeOldContracts(@RequestParam int olderThanDays) {
         int deleted = contractService.purgeOldContracts(olderThanDays);
         return ResponseEntity.ok(Map.of("deletedCount", deleted));
+    }
+    // --- S4-F9: Find Stalled Contracts ---
+    @GetMapping("/stalled")
+    public ResponseEntity<List<StalledContractDTO>> getStalledContracts(
+            @RequestParam Double maxProgress,
+            @RequestParam Integer stalledDays) {
+        return ResponseEntity.ok(contractService.getStalledContracts(maxProgress, stalledDays));
     }
 }
