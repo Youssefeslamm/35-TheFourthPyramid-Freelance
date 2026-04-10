@@ -115,4 +115,16 @@ public class ContractService {
         LocalDateTime cutoffDate = LocalDateTime.now().minusDays(olderThanDays);
         return contractRepository.purgeOldContracts(cutoffDate);
     }
+    // --- S4-F5: Metadata JSONB Filter ---
+    public List<Contract> searchContractsByMetadata(String key, String operator, String value) {
+        if ("eq".equalsIgnoreCase(operator)) {
+            return contractRepository.findByMetadataEq(key, value);
+        } else if ("gt".equalsIgnoreCase(operator)) {
+            return contractRepository.findByMetadataGt(key, Double.parseDouble(value));
+        } else if ("lt".equalsIgnoreCase(operator)) {
+            return contractRepository.findByMetadataLt(key, Double.parseDouble(value));
+        } else {
+            throw new IllegalArgumentException("Invalid operator: " + operator);
+        }
+    }
 }

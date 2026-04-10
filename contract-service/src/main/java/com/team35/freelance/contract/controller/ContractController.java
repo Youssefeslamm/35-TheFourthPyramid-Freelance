@@ -92,4 +92,17 @@ public class ContractController {
         int deleted = contractService.purgeOldContracts(olderThanDays);
         return ResponseEntity.ok(Map.of("deletedCount", deleted));
     }
+    // --- S4-F5: Metadata JSONB Filter ---
+    @GetMapping("/metadata/search")
+    public ResponseEntity<List<Contract>> searchContractsByMetadata(
+            @RequestParam String key,
+            @RequestParam String operator,
+            @RequestParam String value) throws NumberFormatException {
+        try {
+            return ResponseEntity.ok(contractService.searchContractsByMetadata(key, operator, value));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build(); // Throws 400 if operator or number cast is invalid
+        }
+    }
+    
 }

@@ -31,4 +31,14 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     @Transactional
     @Query(value = "DELETE FROM contracts WHERE status IN ('COMPLETED', 'TERMINATED') AND created_at < :cutoffDate", nativeQuery = true)
     int purgeOldContracts(@Param("cutoffDate") LocalDateTime cutoffDate);
+
+    // --- S4-F5: Metadata JSONB Filter ---
+    @Query(value = "SELECT * FROM contracts WHERE jsonb_extract_path_text(metadata, :key) = :value", nativeQuery = true)
+    List<Contract> findByMetadataEq(@Param("key") String key, @Param("value") String value);
+
+    @Query(value = "SELECT * FROM contracts WHERE CAST(jsonb_extract_path_text(metadata, :key) AS numeric) > :value", nativeQuery = true)
+    List<Contract> findByMetadataGt(@Param("key") String key, @Param("value") Double value);
+
+    @Query(value = "SELECT * FROM contracts WHERE CAST(jsonb_extract_path_text(metadata, :key) AS numeric) < :value", nativeQuery = true)
+    List<Contract> findByMetadataLt(@Param("key") String key, @Param("value") Double value);
 }
