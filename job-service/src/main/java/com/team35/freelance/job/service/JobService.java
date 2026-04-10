@@ -1,19 +1,36 @@
 package com.team35.freelance.job.service;
 
-import com.team35.freelance.job.dto.JobProposalSummaryDTO;
-import com.team35.freelance.job.model.Job;
-import com.team35.freelance.job.model.JobStatus;
-import com.team35.freelance.job.repository.JobRepository;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Arrays;
-import java.util.List;
+
+import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
+import com.team35.freelance.job.dto.JobProposalSummaryDTO;
+import com.team35.freelance.job.model.Job;
+import com.team35.freelance.job.model.JobAttachment;
+import com.team35.freelance.job.model.JobStatus;
+import com.team35.freelance.job.repository.JobAttachmentRepository;
+import com.team35.freelance.job.repository.JobRepository;
 
 @Service
 public class JobService {
+
+    private final JobRepository jobRepository;
+    private final JobAttachmentRepository jobAttachmentRepository;
+
+
+    public JobService(JobRepository jobRepository, JobAttachmentRepository jobAttachmentRepository) {
+        this.jobRepository = jobRepository;
+        this.jobAttachmentRepository = jobAttachmentRepository;
+    }
 
     public JobProposalSummaryDTO getProposalSummary(Long id, String startDate, String endDate) {
         // 1. Check if job exists first for the 404 requirement
@@ -51,12 +68,6 @@ public class JobService {
 
         // 4. Save and return
         return jobRepository.save(job);
-    }
-
-    private final JobRepository jobRepository;
-
-    public JobService(JobRepository jobRepository) {
-        this.jobRepository = jobRepository;
     }
 
     public Job createJob(Job job) {
@@ -187,5 +198,30 @@ public class JobService {
                     "budgetMin cannot be greater than budgetMax"
             );
         }
+    }
+
+    public List<JobAttachmentAlertDTO> getJobsWithExpiredAttachments() {
+        List<JobAttachmentAlertDTO> alerts = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+
+        jobRepository.findJobsWithExpiredAttachments().forEach(row -> {
+            Job job = jobRepository.findByIdWithAttachments(row.getJobId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
+
+            List<JobAttachment> expiredAttachments =
+                    jobAttachmentRepository.findByJobIdAndExpiryDateBefore(job.getId(), today);
+
+            if (!expiredAttachments.isEmpty()) {
+                alerts.add(new JobAttachmentAlertDTO(
+                        job.getId(),
+                        job.getTitle(),
+                        job.getStatus(),
+                        expiredAttachments,
+                        expiredAttachments.size()
+                ));
+            }
+        });
+
+        return alerts;
     }
 }

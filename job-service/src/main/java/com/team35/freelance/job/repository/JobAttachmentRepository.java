@@ -1,7 +1,9 @@
 package com.team35.freelance.job.repository;
 
-import com.team35.freelance.job.model.JobAttachment;
-import com.team35.freelance.job.model.JobAttachmentType;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,8 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
+import com.team35.freelance.job.model.JobAttachment;
+import com.team35.freelance.job.model.JobAttachmentType;
 
 @Repository
 public interface JobAttachmentRepository extends JpaRepository<JobAttachment, Long> {
@@ -21,6 +23,8 @@ public interface JobAttachmentRepository extends JpaRepository<JobAttachment, Lo
 
     Optional<JobAttachment> findByIdAndJobId(Long id, Long jobId);
 
+    List<JobAttachment> findByJobIdAndExpiryDateBefore(Long jobId, LocalDate expiryDate);
+
     @Query("""
             SELECT a
             FROM JobAttachment a
@@ -30,4 +34,5 @@ public interface JobAttachmentRepository extends JpaRepository<JobAttachment, Lo
             """)
     List<JobAttachment> findVerifiedByType(@Param("jobId") Long jobId,
                                            @Param("type") JobAttachmentType type);
+                                           
 }

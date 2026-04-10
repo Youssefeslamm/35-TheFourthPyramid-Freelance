@@ -1,14 +1,24 @@
 package com.team35.freelance.job.controller;
 
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping; // Good to have, though Map is the main one needed here
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
 import com.team35.freelance.job.dto.JobProposalSummaryDTO;
 import com.team35.freelance.job.model.Job;
 import com.team35.freelance.job.service.JobService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import java.util.Map;
-import java.util.HashMap; // Good to have, though Map is the main one needed here
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/jobs")
@@ -71,5 +81,10 @@ public class JobController {
     public ResponseEntity<Void> deleteJob(@PathVariable Long id) {
         jobService.deleteJob(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/attachments/expired")
+    public ResponseEntity<List<JobAttachmentAlertDTO>> getJobsWithExpiredAttachments() {
+        return ResponseEntity.ok(jobService.getJobsWithExpiredAttachments());
     }
 }
