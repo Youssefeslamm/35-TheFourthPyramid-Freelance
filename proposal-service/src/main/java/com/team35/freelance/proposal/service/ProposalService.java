@@ -177,4 +177,30 @@ public class ProposalService {
 
         return proposalRepository.save(proposal);
     }
+    // S3-F4: Complete Proposal's Contract
+    @Transactional
+    public Proposal completeProposal(Long proposalId) {
+        Proposal proposal = getById(proposalId);
+
+        if (proposal.getStatus() != ProposalStatus.ACCEPTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Proposal must be ACCEPTED to be completed");
+        }
+
+        Long contractId = proposalRepository.findActiveContractIdByProposalId(proposalId);
+        if (contractId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "No ACTIVE contract found for this proposal");
+        }
+
+        Double agreedAmount = proposalRepository.findAgreedAmountByContractId(contractId);
+        Long jobId = proposalRepository.findJobIdByContractId(contractId);
+        Long freelancerId = proposalRepository.findFreelancerIdByContractId(contractId);
+
+        proposalRepository.completeContract(contractId);
+        proposalRepository.updateJobStatusToClosed(jobId);
+        proposalRepository.insertPendingPayout(contractId, freelancerId, agreedAmount);
+
+        return proposalRepository.save(proposal);
+    }
 }

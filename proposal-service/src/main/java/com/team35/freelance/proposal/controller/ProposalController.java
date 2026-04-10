@@ -68,4 +68,9 @@ public class ProposalController {
     public ResponseEntity<Proposal> acceptProposal(@PathVariable Long proposalId) {
         return ResponseEntity.ok(proposalService.acceptProposal(proposalId));
     }
+    // S3-F4: Complete Proposal's Contract
+    @PutMapping("/{id}/complete")
+    public ResponseEntity<Proposal> completeProposal(@PathVariable Long id) {
+        return ResponseEntity.ok(proposalService.completeProposal(id));
+    }
 }
