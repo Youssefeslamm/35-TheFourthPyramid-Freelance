@@ -1,14 +1,25 @@
 package com.team35.freelance.job.service;
 
-import com.team35.freelance.job.model.Job;
-import com.team35.freelance.job.model.JobAttachment;
-import com.team35.freelance.job.repository.JobAttachmentRepository;
-import com.team35.freelance.job.repository.JobRepository;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
+import com.team35.freelance.job.dto.VerifyAttachmentRequestDTO;
+import com.team35.freelance.job.exception.BadRequestException;
+import com.team35.freelance.job.exception.ForbiddenException;
+import com.team35.freelance.job.model.Job;
+import com.team35.freelance.job.model.JobAttachment;
+import com.team35.freelance.job.repository.JobAttachmentRepository;
+import com.team35.freelance.job.repository.JobRepository;
+
+import jakarta.transaction.Transactional;
 
 @Service
 public class JobAttachmentService {
@@ -87,5 +98,49 @@ public class JobAttachmentService {
         if (attachment.getExpiryDate() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "expiryDate is required");
         }
+    }
+
+    @Transactional
+    public Job verifyAttachment(Long jobId, Long attachmentId, VerifyAttachmentRequestDTO request) {
+        Job job = jobRepository.findByIdWithAttachments(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
+
+        JobAttachment attachment = jobAttachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attachment not found"));
+
+        if (request == null || request.getVerifiedBy() == null) {
+            throw new BadRequestException("verifiedBy is required");
+        }
+
+        if (attachment.getJob() == null || !jobId.equals(attachment.getJob().getId())) {
+            throw new BadRequestException("Attachment does not belong to this job");
+        }
+
+        if (attachment.getExpiryDate().isBefore(LocalDate.now())) {
+            throw new BadRequestException("Attachment is expired and cannot be verified");
+        }
+
+        String role = jobRepository.findUserRoleById(request.getVerifiedBy())
+                .orElseThrow(() -> new ResourceNotFoundException("Verifier user not found"));
+
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            throw new ForbiddenException("Only ADMIN users can verify job attachments");
+        }
+
+        attachment.setVerified(true);
+
+        Map<String, Object> metadata = attachment.getMetadata() == null
+                ? new HashMap<>()
+                : new HashMap<>(attachment.getMetadata());
+
+        metadata.put("verifiedAt", LocalDateTime.now().toString());
+        metadata.put("verifiedBy", request.getVerifiedBy());
+
+        attachment.setMetadata(metadata);
+
+        jobAttachmentRepository.save(attachment);
+
+        return jobRepository.findByIdWithAttachments(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
     }
 }
