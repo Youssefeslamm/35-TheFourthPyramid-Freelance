@@ -16,12 +16,17 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import com.team35.freelance.proposal.dto.MilestoneDTO;
+import com.team35.freelance.proposal.dto.MilestoneRequest;
+import com.team35.freelance.proposal.repository.ProposalMilestoneRepository;
+import java.util.HashMap;
 
 @Service
 public class ProposalService {
 
     @Autowired
     private ProposalRepository proposalRepository;
+    @Autowired
+    private ProposalMilestoneRepository milestoneRepository;
 
     public Proposal create(Proposal proposal) {
         return proposalRepository.save(proposal);
@@ -200,6 +205,59 @@ public class ProposalService {
         proposalRepository.completeContract(contractId);
         proposalRepository.updateJobStatusToClosed(jobId);
         proposalRepository.insertPendingPayout(contractId, freelancerId, agreedAmount);
+
+        return proposalRepository.save(proposal);
+    }
+    // S3-F8: Add Milestones to Proposal
+    @Transactional
+    public Proposal addMilestones(Long proposalId, List<MilestoneRequest> milestoneRequests) {
+        Proposal proposal = getById(proposalId);
+
+        if (proposal.getStatus() != ProposalStatus.SUBMITTED &&
+                proposal.getStatus() != ProposalStatus.SHORTLISTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cannot add milestones to a proposal that is not SUBMITTED or SHORTLISTED");
+        }
+
+        for (MilestoneRequest req : milestoneRequests) {
+            if (req.getTitle() == null || req.getTitle().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Each milestone must have a title");
+            }
+            if (req.getDescription() == null || req.getDescription().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Each milestone must have a description");
+            }
+            if (req.getAmount() == null || req.getAmount() <= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Each milestone must have a positive amount");
+            }
+        }
+
+        Integer currentMax = milestoneRepository.findMaxMilestoneOrderByProposalId(proposalId);
+        Double existingTotal = milestoneRepository.findTotalMilestoneAmountByProposalId(proposalId);
+
+        double newTotal = milestoneRequests.stream()
+                .mapToDouble(MilestoneRequest::getAmount)
+                .sum();
+
+        if (existingTotal + newTotal > proposal.getBidAmount()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Total milestone amounts exceed the proposal bid amount of " + proposal.getBidAmount());
+        }
+
+        int order = currentMax + 1;
+        for (MilestoneRequest req : milestoneRequests) {
+            ProposalMilestone milestone = new ProposalMilestone();
+            milestone.setTitle(req.getTitle());
+            milestone.setDescription(req.getDescription());
+            milestone.setAmount(req.getAmount());
+            milestone.setStatus(MilestoneStatus.PENDING);
+            milestone.setMilestoneOrder(order++);
+            milestone.setMetadata(req.getMetadata() != null ? req.getMetadata() : new HashMap<>());
+            milestone.setProposal(proposal);
+            proposal.getProposalMilestones().add(milestone);
+        }
 
         return proposalRepository.save(proposal);
     }

@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.team35.freelance.proposal.dto.MilestoneRequest;
 
 import java.util.List;
 
@@ -72,5 +73,12 @@ public class ProposalController {
     @PutMapping("/{id}/complete")
     public ResponseEntity<Proposal> completeProposal(@PathVariable Long id) {
         return ResponseEntity.ok(proposalService.completeProposal(id));
+    }
+    // S3-F8: Add Milestones to Proposal
+    @PostMapping("/{proposalId}/milestones")
+    public ResponseEntity<Proposal> addMilestones(@PathVariable Long proposalId,
+                                                  @RequestBody List<MilestoneRequest> milestones) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(proposalService.addMilestones(proposalId, milestones));
     }
 }
