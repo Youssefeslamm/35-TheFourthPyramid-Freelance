@@ -14,7 +14,8 @@ import java.util.List;
 public interface ProposalRepository extends JpaRepository<Proposal, Long> {
 
     @Query(value = """
-    SELECT COUNT(*) FROM proposals
+
+            SELECT COUNT(*) FROM proposals
     WHERE status IN ('SUBMITTED', 'SHORTLISTED')
     AND bid_amount BETWEEN :minBid AND :maxBid
     """, nativeQuery = true)
@@ -99,6 +100,32 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     void insertPendingPayout(@Param("contractId") Long contractId,
                              @Param("freelancerId") Long freelancerId,
                              @Param("amount") Double amount);
+    // S3-F6
+    @Query(value = """
+    SELECT
+        COUNT(*) AS totalProposals,
+        SUM(CASE WHEN status = 'ACCEPTED' THEN 1 ELSE 0 END) AS acceptedProposals,
+        SUM(CASE WHEN status = 'REJECTED' THEN 1 ELSE 0 END) AS rejectedProposals,
+        SUM(bid_amount) AS totalBidValue,
+        AVG(bid_amount) AS averageBid,
+        ROUND(100.0 * SUM(CASE WHEN status = 'ACCEPTED' THEN 1 ELSE 0 END) / COUNT(*), 2) AS acceptanceRate
+    FROM proposals
+    WHERE submitted_at BETWEEN :startDate AND :endDate
+    """, nativeQuery = true)
+
+    List<Object[]> getAnalytics(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
+    // S3-F5
+    @Query(value = """
+    SELECT * FROM proposals
+    WHERE metadata ->> :key = :value
+    """, nativeQuery = true)
+    List<Proposal> findByMetadataField(
+            @Param("key") String key,
+            @Param("value") String value);
 
     // S3-F1
     @Query(value = """

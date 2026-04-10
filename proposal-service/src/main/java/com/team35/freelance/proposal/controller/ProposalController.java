@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.team35.freelance.proposal.dto.MilestoneRequest;
+import com.team35.freelance.proposal.dto.ProposalAnalyticsDTO;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDateTime;
 
@@ -82,6 +83,24 @@ public class ProposalController {
                                                   @RequestBody List<MilestoneRequest> milestones) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(proposalService.addMilestones(proposalId, milestones));
+    }
+    // S3-F6
+    @GetMapping("/analytics")
+    public ResponseEntity<ProposalAnalyticsDTO> getAnalytics(
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime startDate,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime endDate) {
+        return ResponseEntity.ok(proposalService.getAnalytics(startDate, endDate));
+    }
+    // S3-F5
+    @GetMapping("/metadata/search")
+    public ResponseEntity<List<Proposal>> searchByMetadata(
+            @RequestParam String key,
+            @RequestParam String value) {
+        return ResponseEntity.ok(proposalService.filterByMetadata(key, value));
     }
     // S3-F1
     @GetMapping("/search")
