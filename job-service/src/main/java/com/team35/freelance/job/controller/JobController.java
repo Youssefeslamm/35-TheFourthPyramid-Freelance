@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
 import com.team35.freelance.job.dto.JobProposalSummaryDTO;
+import com.team35.freelance.job.dto.RateJobRequestDTO;
 import com.team35.freelance.job.model.Job;
 import com.team35.freelance.job.service.JobService;
 
@@ -86,5 +87,12 @@ public class JobController {
     @GetMapping("/attachments/expired")
     public ResponseEntity<List<JobAttachmentAlertDTO>> getJobsWithExpiredAttachments() {
         return ResponseEntity.ok(jobService.getJobsWithExpiredAttachments());
+    }
+     @PostMapping("/{id}/rate")
+    public ResponseEntity<Job> rateJob(
+            @PathVariable Long id,
+            @RequestBody RateJobRequestDTO request
+    ) {
+        return ResponseEntity.ok(jobService.rateJob(id, request));
     }
 }

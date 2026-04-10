@@ -1,13 +1,26 @@
 package com.team35.freelance.job.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Map;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "job_attachments")
@@ -50,6 +63,9 @@ public class JobAttachment {
         this.uploadedAt = LocalDateTime.now();
         if (this.verified == null) {
             this.verified = false;
+        }
+        if (this.metadata == null) {
+            this.metadata = new HashMap<>();
         }
     }
 

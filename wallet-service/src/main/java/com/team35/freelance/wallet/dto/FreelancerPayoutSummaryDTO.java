@@ -1,36 +1,56 @@
 package com.team35.freelance.wallet.dto;
 
+import java.util.Map;
+
 public class FreelancerPayoutSummaryDTO {
 
     private Long freelancerId;
     private Long totalPayouts;
-    private Long completedPayouts;
-    private Long failedPayouts;
-    private Long refundedPayouts;
-    private Double totalEarnings;
-    private Double averagePayout;
+    private Double totalAmount;
+    private Map<String, Double> methodBreakdown;
 
+    // Constructor
     public FreelancerPayoutSummaryDTO(Long freelancerId,
                                       Long totalPayouts,
-                                      Long completedPayouts,
-                                      Long failedPayouts,
-                                      Long refundedPayouts,
-                                      Double totalEarnings,
-                                      Double averagePayout) {
+                                      Double totalAmount,
+                                      Map<String, Double> methodBreakdown) {
         this.freelancerId = freelancerId;
         this.totalPayouts = totalPayouts;
-        this.completedPayouts = completedPayouts;
-        this.failedPayouts = failedPayouts;
-        this.refundedPayouts = refundedPayouts;
-        this.totalEarnings = totalEarnings;
-        this.averagePayout = averagePayout;
+        this.totalAmount = totalAmount;
+        this.methodBreakdown = methodBreakdown;
     }
 
-    public Long getFreelancerId() { return freelancerId; }
-    public Long getTotalPayouts() { return totalPayouts; }
-    public Long getCompletedPayouts() { return completedPayouts; }
-    public Long getFailedPayouts() { return failedPayouts; }
-    public Long getRefundedPayouts() { return refundedPayouts; }
-    public Double getTotalEarnings() { return totalEarnings; }
-    public Double getAveragePayout() { return averagePayout; }
+    // Getters
+    public Long getFreelancerId() {
+        return freelancerId;
+    }
+
+    public Long getTotalPayouts() {
+        return totalPayouts;
+    }
+
+    public Double getTotalAmount() {
+        return totalAmount;
+    }
+
+    public Map<String, Double> getMethodBreakdown() {
+        return methodBreakdown;
+    }
+
+    // Setters
+    public void setFreelancerId(Long freelancerId) {
+        this.freelancerId = freelancerId;
+    }
+
+    public void setTotalPayouts(Long totalPayouts) {
+        this.totalPayouts = totalPayouts;
+    }
+
+    public void setTotalAmount(Double totalAmount) {
+        this.totalAmount = totalAmount;
+    }
+
+    public void setMethodBreakdown(Map<String, Double> methodBreakdown) {
+        this.methodBreakdown = methodBreakdown;
+    }
 }

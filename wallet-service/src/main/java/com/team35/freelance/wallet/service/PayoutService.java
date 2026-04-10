@@ -71,26 +71,29 @@ public class PayoutService {
         payoutRepository.deleteById(id);
     }
 
-    // ---------------- SUMMARY ----------------
-
     public FreelancerPayoutSummaryDTO getFreelancerSummary(Long freelancerId) {
 
-        Object[] result = payoutRepository.getFreelancerPayoutSummary(freelancerId);
+        List<Object[]> methodRows = payoutRepository.getFreelancerMethodBreakdown(freelancerId);
 
-        if (result == null || result.length == 0) {
-            return new FreelancerPayoutSummaryDTO(
-                    freelancerId, 0L, 0L, 0L, 0L, 0.0, 0.0
-            );
+        Map<String, Double> methodBreakdown = new HashMap<>();
+        long totalPayouts = 0L;
+        double totalAmount = 0.0;
+
+        for (Object[] row : methodRows) {
+            String method = row[0].toString();
+            Long count = ((Number) row[1]).longValue();
+            Double amount = ((Number) row[2]).doubleValue();
+
+            methodBreakdown.put(method, amount);
+            totalPayouts += count;
+            totalAmount += amount;
         }
 
         return new FreelancerPayoutSummaryDTO(
-                ((Number) result[0]).longValue(),
-                ((Number) result[1]).longValue(),
-                ((Number) result[2]).longValue(),
-                ((Number) result[3]).longValue(),
-                ((Number) result[4]).longValue(),
-                ((Number) result[5]).doubleValue(),
-                ((Number) result[6]).doubleValue()
+                freelancerId,
+                totalPayouts,
+                totalAmount,
+                methodBreakdown
         );
     }
 
