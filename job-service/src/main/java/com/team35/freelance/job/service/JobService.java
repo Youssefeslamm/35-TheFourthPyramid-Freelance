@@ -6,12 +6,33 @@ import com.team35.freelance.job.repository.JobRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Arrays;
 import java.util.List;
 
 @Service
 public class JobService {
+
+
+
+    public Job updateRequirements(Long id, Map<String, Object> incomingRequirements) {
+        // 1. Find the job or throw 404
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found"));
+
+        // 2. Ensure the map isn't null (just in case)
+        if (job.getRequirements() == null) {
+            job.setRequirements(new HashMap<>());
+        }
+
+        // 3. Merge the new requirements into the existing ones
+        // putAll() adds new keys and overwrites existing matching keys
+        job.getRequirements().putAll(incomingRequirements);
+
+        // 4. Save and return
+        return jobRepository.save(job);
+    }
 
     private final JobRepository jobRepository;
 
