@@ -10,7 +10,7 @@ import com.team35.freelance.user.dto.UserProfileDTO;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-
+import com.team35.freelance.user.dto.UserContractSummaryDTO;
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -102,6 +102,12 @@ public class UserController {
             @RequestParam String value
     ) {
         return userService.searchUsersByPreference(key, value);
+    }
+
+
+    @GetMapping("/{id}/contract-summary")
+    public UserContractSummaryDTO getUserContractSummary(@PathVariable Long id) {
+        return userService.getUserContractSummary(id);
     }
     @PutMapping("/{userId}/skills/{skillId}/primary")
     public User setPrimarySkill(
