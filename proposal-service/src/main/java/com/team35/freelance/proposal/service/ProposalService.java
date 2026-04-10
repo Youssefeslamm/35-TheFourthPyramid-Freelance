@@ -278,5 +278,17 @@ public class ProposalService {
 
         return new ProposalAnalyticsDTO(
                 total, accepted, rejected, totalBid, avgBid, rate);
+    // S3-F5
+    public List<Proposal> filterByMetadata(String key, String value) {
+        if (key == null || key.isBlank() || value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Key and value must not be blank");
+        }
+        return proposalRepository.findByMetadataField(key, value);
+    // S3-F1
+    public List<Proposal> getProposalsByStatusAndDateRange(
+            String status, LocalDateTime startDate, LocalDateTime endDate) {
+        return proposalRepository.findByStatusAndDateRange(status, startDate, endDate);
     }
 }
+

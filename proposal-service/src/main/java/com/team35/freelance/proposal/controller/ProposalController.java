@@ -13,6 +13,8 @@ import com.team35.freelance.proposal.dto.MilestoneRequest;
 import com.team35.freelance.proposal.dto.ProposalAnalyticsDTO;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDateTime;
+import org.springframework.format.annotation.DateTimeFormat;
+
 import java.util.List;
 
 @RestController
@@ -86,6 +88,16 @@ public class ProposalController {
     // S3-F6
     @GetMapping("/analytics")
     public ResponseEntity<ProposalAnalyticsDTO> getAnalytics(
+    // S3-F5
+    @GetMapping("/metadata/search")
+    public ResponseEntity<List<Proposal>> searchByMetadata(
+            @RequestParam String key,
+            @RequestParam String value) {
+        return ResponseEntity.ok(proposalService.filterByMetadata(key, value));
+    // S3-F1
+    @GetMapping("/search")
+    public ResponseEntity<List<Proposal>> search(
+            @RequestParam(required = false) String status,
             @RequestParam
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime startDate,
@@ -93,5 +105,7 @@ public class ProposalController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime endDate) {
         return ResponseEntity.ok(proposalService.getAnalytics(startDate, endDate));
+        return ResponseEntity.ok(
+                proposalService.getProposalsByStatusAndDateRange(status, startDate, endDate));
     }
 }
