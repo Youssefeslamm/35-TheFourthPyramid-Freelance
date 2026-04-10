@@ -74,4 +74,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
             @Param("limit") int limit);
+
 }
