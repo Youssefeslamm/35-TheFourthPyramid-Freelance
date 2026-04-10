@@ -1,6 +1,7 @@
 package com.team35.freelance.contract.controller;
 
 import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
+import com.team35.freelance.contract.dto.FreelancerPerformanceDTO;
 import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.service.ContractService;
@@ -9,6 +10,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -27,9 +29,7 @@ public class ContractController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Contract> getById(@PathVariable Long id) {
-        return contractService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return contractService.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping
@@ -39,11 +39,8 @@ public class ContractController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Contract> update(@PathVariable Long id, @RequestBody Contract contract) {
-        try {
-            return ResponseEntity.ok(contractService.update(id, contract));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        try { return ResponseEntity.ok(contractService.update(id, contract)); } 
+        catch (RuntimeException e) { return ResponseEntity.notFound().build(); }
     }
 
     @DeleteMapping("/{id}")
@@ -54,21 +51,50 @@ public class ContractController {
 
     @GetMapping("/user/{userId}/active")
     public ResponseEntity<Contract> getActiveContractForUser(@PathVariable Long userId) {
-        try {
-            return ResponseEntity.ok(contractService.getActiveContractForUser(userId));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        try { return ResponseEntity.ok(contractService.getActiveContractForUser(userId)); } 
+        catch (RuntimeException e) { return ResponseEntity.notFound().build(); }
     }
 
     @PutMapping("/{contractId}/progress")
     public ResponseEntity<Contract> updateProgress(@PathVariable Long contractId, @RequestBody Map<String, Object> updates) {
+        try { return ResponseEntity.ok(contractService.updateProgress(contractId, updates)); } 
+        catch (RuntimeException e) { return ResponseEntity.notFound().build(); }
+    }
+
+    @GetMapping("/history")
+    public ResponseEntity<List<Contract>> getContractsInDateRange(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(contractService.getContractsInDateRange(startDate, endDate, status));
+    }
+
+    @PutMapping("/batch-status")
+    public ResponseEntity<Map<String, Integer>> batchUpdateStatus(@RequestBody List<BatchStatusUpdateDTO> updates) {
+        try { return ResponseEntity.ok(Map.of("updatedCount", contractService.batchUpdateStatus(updates))); } 
+        catch (RuntimeException e) { return ResponseEntity.badRequest().build(); }
+    }
+
+    @DeleteMapping("/purge")
+    public ResponseEntity<Map<String, Integer>> purgeOldContracts(@RequestParam int olderThanDays) {
+        return ResponseEntity.ok(Map.of("deletedCount", contractService.purgeOldContracts(olderThanDays)));
+    }
+
+    // --- S4-F8: Freelancer Performance ---
+    @GetMapping("/freelancer/{freelancerId}/summary")
+    public ResponseEntity<FreelancerPerformanceDTO> getFreelancerSummary(
+            @PathVariable Long freelancerId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         try {
-            return ResponseEntity.ok(contractService.updateProgress(contractId, updates));
+            LocalDateTime start = startDate.atStartOfDay();
+            LocalDateTime end = endDate.atTime(23, 59, 59);
+            return ResponseEntity.ok(contractService.getFreelancerPerformance(freelancerId, start, end));
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
     }
+}
 
     @GetMapping("/history")
     public ResponseEntity<List<Contract>> getContractsInDateRange(

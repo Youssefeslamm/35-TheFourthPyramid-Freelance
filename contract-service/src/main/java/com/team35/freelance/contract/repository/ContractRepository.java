@@ -31,6 +31,21 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     @Transactional
     @Query(value = "DELETE FROM contracts WHERE status IN ('COMPLETED', 'TERMINATED') AND created_at < :cutoffDate", nativeQuery = true)
     int purgeOldContracts(@Param("cutoffDate") LocalDateTime cutoffDate);
+  
+    // --- S4-F8: Freelancer Performance ---
+    @Query(value = "SELECT " +
+           "COUNT(c.id), " +
+           "COALESCE(SUM(CASE WHEN c.status = 'COMPLETED' THEN 1 ELSE 0 END), 0), " +
+           "COALESCE(SUM(c.agreed_amount), 0), " +
+           "COALESCE(SUM(CASE WHEN c.status = 'COMPLETED' THEN c.agreed_amount ELSE 0 END), 0), " +
+           "AVG(CASE WHEN c.status = 'COMPLETED' THEN EXTRACT(EPOCH FROM (c.end_date - c.start_date)) / 86400.0 ELSE NULL END) " +
+           "FROM contracts c " +
+           "WHERE c.freelancer_id = :freelancerId " +
+           "AND c.created_at >= :startDate AND c.created_at <= :endDate", nativeQuery = true)
+    List<Object[]> getFreelancerPerformanceAggregates(@Param("freelancerId") Long freelancerId, 
+                                                      @Param("startDate") LocalDateTime startDate, 
+                                                      @Param("endDate") LocalDateTime endDate);
+}
     // --- S4-F9: Find Stalled Contracts ---
     @Query(value = "SELECT " +
            "c.id, " +
