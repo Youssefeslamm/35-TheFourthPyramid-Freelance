@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import com.team35.freelance.user.dto.UserProfileDTO;
 import com.team35.freelance.user.dto.UserSkillProfileDTO;
-
+import com.team35.freelance.user.dto.UserContractSummaryDTO;
 import com.team35.freelance.user.dto.TopFreelancerDTO;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -183,6 +183,23 @@ public class UserService {
         return userRepository.findUsersByPreference(key, value);
     }
 
+    public UserContractSummaryDTO getUserContractSummary(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"
+                ));
+
+        Object[] row = ((Object[]) userRepository.getUserContractSummary(userId)[0]);
+        return new UserContractSummaryDTO(
+                ((Number) row[0]).longValue(),
+                (String) row[1],
+                ((Number) row[2]).longValue(),
+                ((Number) row[3]).longValue(),
+                ((Number) row[4]).longValue(),
+                ((Number) row[5]).doubleValue(),
+                ((Number) row[6]).doubleValue()
+        );
+    }
     @Transactional
     public User setPrimarySkill(Long userId, Long skillId) {
 

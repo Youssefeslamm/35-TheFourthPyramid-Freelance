@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
@@ -25,7 +26,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     WHERE (:name IS NULL OR u.name ILIKE CONCAT('%', :name, '%'))
       AND (:email IS NULL OR u.email ILIKE CONCAT('%', :email, '%'))
       AND (:role IS NULL OR u.role = CAST(:role AS user_role_enum))
-""", nativeQuery = true)
+    """, nativeQuery = true)
     List<User> searchUsers(
             @Param("name") String name,
             @Param("email") String email,
@@ -35,11 +36,30 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query(value = """
     SELECT * FROM users u
     WHERE u.preferences ->> :key = :value
-""", nativeQuery = true)
+    """, nativeQuery = true)
     List<User> findUsersByPreference(
             @Param("key") String key,
             @Param("value") String value
     );
+
+    // ===================== S1-F3: Get User Contract Summary =====================
+
+    @Query(value = """
+    SELECT
+        u.id AS userId,
+        u.name AS name,
+        COUNT(c.id) AS totalContracts,
+        COALESCE(SUM(CASE WHEN c.status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS completedContracts,
+        COALESCE(SUM(CASE WHEN c.status = 'TERMINATED' THEN 1 ELSE 0 END), 0) AS terminatedContracts,
+        COALESCE(SUM(CASE WHEN c.status = 'COMPLETED' THEN c.agreed_amount ELSE 0 END), 0) AS totalEarnings,
+        COALESCE(AVG(CASE WHEN c.status = 'COMPLETED' THEN c.agreed_amount END), 0) AS averageContractValue
+    FROM users u
+    LEFT JOIN contracts c
+        ON c.freelancer_id = u.id OR c.client_id = u.id
+    WHERE u.id = :userId
+    GROUP BY u.id, u.name
+    """, nativeQuery = true)
+    Object[] getUserContractSummary(@Param("userId") Long userId);
 
     // ===================== S1-F4: Deactivate User =====================
 
@@ -47,7 +67,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     SELECT COUNT(*) FROM contracts
     WHERE (freelancer_id = :userId OR client_id = :userId)
       AND status = 'ACTIVE'
-""", nativeQuery = true)
+    """, nativeQuery = true)
     Long countActiveContractsForUser(@Param("userId") Long userId);
 
     @Modifying
@@ -55,7 +75,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query(value = """
     UPDATE proposals SET status = 'WITHDRAWN'
     WHERE freelancer_id = :userId AND status = 'SUBMITTED'
-""", nativeQuery = true)
+    """, nativeQuery = true)
     int withdrawSubmittedProposalsForUser(@Param("userId") Long userId);
 
     // ===================== S1-F6: Top Freelancers by Earnings =====================
@@ -71,11 +91,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     GROUP BY u.id, u.name
     ORDER BY total_earnings DESC
     LIMIT :limit
-""", nativeQuery = true)
+    """, nativeQuery = true)
     List<Object[]> findTopFreelancersByEarnings(
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
-            @Param("limit") int limit);
+            @Param("limit") int limit
+    );
 
     // ===================== S1-F9: Users by Language + Min Contracts =====================
 
@@ -84,9 +105,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     WHERE u.preferences ->> 'language' = :lang
       AND (SELECT COUNT(*) FROM contracts c
            WHERE c.freelancer_id = u.id AND c.status = 'COMPLETED') >= :minContracts
-""", nativeQuery = true)
+    """, nativeQuery = true)
     List<User> findUsersByLanguageAndMinContracts(
             @Param("lang") String lang,
-            @Param("minContracts") int minContracts);
-
+            @Param("minContracts") int minContracts
+    );
 }
