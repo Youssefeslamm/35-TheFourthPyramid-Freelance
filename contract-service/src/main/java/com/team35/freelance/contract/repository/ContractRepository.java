@@ -27,6 +27,18 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
                                             @Param("endDate") LocalDateTime endDate,
                                             @Param("status") String status);
 
+    @Query(value = "SELECT c.id, u.name, j.title, c.agreed_amount, c.status, " +
+           "EXTRACT(EPOCH FROM (COALESCE(c.end_date, CURRENT_TIMESTAMP) - c.start_date)) / 86400 " +
+           "FROM contracts c " +
+           "INNER JOIN users u ON u.id = c.freelancer_id " +
+           "INNER JOIN jobs j ON j.id = c.job_id " +
+           "WHERE c.agreed_amount BETWEEN :minAmount AND :maxAmount " +
+           "AND (:status IS NULL OR c.status = :status) " +
+           "ORDER BY c.agreed_amount DESC", nativeQuery = true)
+    List<Object[]> searchContractsByBudgetRange(@Param("minAmount") Double minAmount,
+                                                @Param("maxAmount") Double maxAmount,
+                                                @Param("status") String status);
+
     @Modifying
     @Transactional
     @Query(value = "DELETE FROM contracts WHERE status IN ('COMPLETED', 'TERMINATED') AND created_at < :cutoffDate", nativeQuery = true)
