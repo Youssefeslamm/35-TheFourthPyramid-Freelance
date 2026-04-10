@@ -254,4 +254,22 @@ public class UserService {
                 skillDTOs.size()
         );
     }
+
+    // ===================== S1-F4: Deactivate User Account =====================
+
+    @Transactional
+    public User deactivateUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        Long activeContracts = userRepository.countActiveContractsForUser(id);
+        if (activeContracts != null && activeContracts > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cannot deactivate: user has active contracts");
+        }
+
+        user.setStatus(Status.DEACTIVATED);
+        userRepository.withdrawSubmittedProposalsForUser(id);
+        return userRepository.save(user);
+    }
 }
