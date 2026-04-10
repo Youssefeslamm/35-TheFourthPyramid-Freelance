@@ -133,4 +133,13 @@ public class UserController {
         return userService.getTopFreelancersByEarnings(
                 LocalDate.parse(startDate), LocalDate.parse(endDate), limit);
     }
+
+    // ===================== S1-F9: Users by Language + Min Completed Contracts =====================
+
+    @GetMapping("/preferences/language")
+    public List<User> getUsersByLanguageAndContracts(
+            @RequestParam String lang,
+            @RequestParam(defaultValue = "0") int minContracts) {
+        return userService.findUsersByLanguageAndMinContracts(lang, minContracts);
+    }
 }

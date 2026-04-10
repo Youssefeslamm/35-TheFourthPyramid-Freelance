@@ -292,4 +292,15 @@ public class UserService {
         }
         return result;
     }
+
+
+    // ===================== S1-F9: Users by Language + Min Completed Contracts =====================
+
+    public List<User> findUsersByLanguageAndMinContracts(String lang, int minContracts) {
+        if (lang == null || lang.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "lang must not be blank");
+        }
+        return userRepository.findUsersByLanguageAndMinContracts(lang, minContracts);
+    }
+
 }

@@ -75,4 +75,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("endDate") LocalDateTime endDate,
             @Param("limit") int limit);
 
+    // ===================== S1-F9: Users by Language + Min Contracts =====================
+
+    @Query(value = """
+    SELECT u.* FROM users u
+    WHERE u.preferences ->> 'language' = :lang
+      AND (SELECT COUNT(*) FROM contracts c
+           WHERE c.freelancer_id = u.id AND c.status = 'COMPLETED') >= :minContracts
+""", nativeQuery = true)
+    List<User> findUsersByLanguageAndMinContracts(
+            @Param("lang") String lang,
+            @Param("minContracts") int minContracts);
+
 }
