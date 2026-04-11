@@ -1,3 +1,0 @@
-CREATE TYPE contract_status_enum AS ENUM (
-    'ACTIVE', 'COMPLETED', 'TERMINATED', 'DISPUTED'
-);

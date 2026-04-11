@@ -28,11 +28,11 @@ public class Payout {
     private Double amount;
 
     @Column(nullable = false, columnDefinition = "payout_method_enum")
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private PayoutMethod method;
 
     @Column(nullable = false, columnDefinition = "payout_status_enum")
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private PayoutStatus status;
 
 

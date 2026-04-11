@@ -30,11 +30,11 @@ public class User {
     private String phone;
 
     @Column(nullable = false, columnDefinition = "user_role_enum")
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private Role role;
 
     @Column(nullable = false, columnDefinition = "user_status_enum")
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private Status status = Status.ACTIVE;
 
     @JdbcTypeCode(SqlTypes.JSON)

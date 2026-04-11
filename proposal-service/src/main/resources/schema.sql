@@ -1,5 +1,0 @@
-CREATE TYPE proposal_status_enum AS ENUM
-    ('SUBMITTED', 'SHORTLISTED', 'ACCEPTED', 'REJECTED', 'WITHDRAWN');
-
-CREATE TYPE milestone_status_enum AS ENUM
-    ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'APPROVED');

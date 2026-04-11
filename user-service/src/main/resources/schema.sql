@@ -1,5 +1,0 @@
-CREATE TYPE user_role_enum AS ENUM ('ADMIN', 'CLIENT', 'FREELANCER');
-
-CREATE TYPE user_status_enum AS ENUM ('ACTIVE', 'DEACTIVATED');
-
-CREATE TYPE proficiency_level_enum AS ENUM ('BEGINNER', 'INTERMEDIATE', 'EXPERT');

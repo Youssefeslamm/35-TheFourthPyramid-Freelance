@@ -1,5 +1,0 @@
-CREATE TYPE job_status_enum AS ENUM ('OPEN', 'IN_PROGRESS', 'CLOSED');
-
-CREATE TYPE job_category_enum AS ENUM ('WEB_DEV', 'WRITING', 'DESIGN', 'MOBILE', 'DEVELOPMENT');
-
-CREATE TYPE job_attachment_type_enum AS ENUM ('BRIEF', 'MOCKUP', 'REFERENCE', 'CONTRACT_TEMPLATE');
