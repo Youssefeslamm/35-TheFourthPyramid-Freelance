@@ -100,40 +100,47 @@ public class PayoutService {
     // ---------------- S5-F4: PROCESS PAYOUT ----------------
 
     @Transactional
-    public Payout processContractPayout(Long contractId, ProcessPayoutRequest request) {
+    public void processContractPayout(Long contractId, ProcessPayoutRequest request) {
 
+        // 1. Check contract exists
         String contractStatus = payoutRepository.getContractStatus(contractId);
 
         if (contractStatus == null) {
-            throw new RuntimeException("Contract not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Contract not found");
         }
 
-        if (!PayoutStatus.COMPLETED.name().equals(contractStatus)) {
-            throw new RuntimeException("Contract is not completed");
+        // 2. Must be COMPLETED
+        if (!"COMPLETED".equals(contractStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contract is not completed");
         }
 
+        // 3. Get payout
         Payout payout = payoutRepository.findByContractId(contractId);
 
         if (payout == null) {
-            throw new RuntimeException("Payout not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found");
         }
 
+        // 4. Already paid check
         if (payout.getStatus() == PayoutStatus.COMPLETED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "already paid");
         }
 
+        // 5. Update payout
         payout.setStatus(PayoutStatus.COMPLETED);
         payout.setMethod(request.getMethod());
 
+        // JSONB details
         Map<String, Object> details = new HashMap<>();
-        details.put("accountLastFour", request.getAccountLastFour());
-        details.put("processedAt", LocalDateTime.now().toString());
+
+        if (request.getAccountLastFour() != null) {
+            details.put("accountLastFour", request.getAccountLastFour());
+        }
 
         payout.setTransactionDetails(details);
 
-        return payoutRepository.save(payout);
+        payoutRepository.save(payout);
     }
-
     // ---------------- S5-F1: SEARCH ----------------
 
     public List<Payout> searchPayouts(PayoutStatus status,
