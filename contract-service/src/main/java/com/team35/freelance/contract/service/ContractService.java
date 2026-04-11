@@ -61,7 +61,7 @@ public class ContractService {
         return contractRepository.save(contract);
     }
 
-    public List<Contract> getContractsInDateRange(LocalDateTime startDate, LocalDateTime endDate, String status) {
+    public List<Contract> getContractsInDateRange(LocalDateTime startDate, LocalDateTime endDate, ContractStatus status) {
         return contractRepository.findContractsInDateRange(startDate, endDate, status);
     }
 
@@ -93,7 +93,7 @@ public class ContractService {
         List<Long> ids = updates.stream().map(BatchStatusUpdateDTO::getContractId).collect(Collectors.toList());
         List<Contract> contracts = contractRepository.findAllById(ids);
         if (contracts.size() != ids.size()) throw new RuntimeException("One or more contracts not found");
-        
+
         for (BatchStatusUpdateDTO update : updates) {
             Contract contract = contracts.stream().filter(c -> c.getId().equals(update.getContractId())).findFirst().orElseThrow(() -> new RuntimeException("Contract not found"));
             ContractStatus newStatus;
@@ -118,7 +118,7 @@ public class ContractService {
     public FreelancerPerformanceDTO getFreelancerPerformance(Long freelancerId, LocalDateTime startDate, LocalDateTime endDate) {
         if (contractRepository.checkUserExists(freelancerId) == 0) throw new RuntimeException("Freelancer not found");
         List<Object[]> results = contractRepository.getFreelancerPerformanceAggregates(freelancerId, startDate, endDate);
-        Object[] row = results.get(0); 
+        Object[] row = results.get(0);
 
         Integer totalContracts = ((Number) row[0]).intValue();
         Integer completedContracts = ((Number) row[1]).intValue();
