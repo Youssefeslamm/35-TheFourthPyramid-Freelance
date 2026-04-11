@@ -96,8 +96,12 @@ public class ContractService {
         
         for (BatchStatusUpdateDTO update : updates) {
             Contract contract = contracts.stream().filter(c -> c.getId().equals(update.getContractId())).findFirst().orElseThrow(() -> new RuntimeException("Contract not found"));
-            ContractStatus newStatus = ContractStatus.valueOf(update.getStatus());
-            if (contract.getStatus() != ContractStatus.ACTIVE) throw new RuntimeException("Contract is not ACTIVE");
+            ContractStatus newStatus;
+            try {
+                newStatus = ContractStatus.valueOf(update.getStatus().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid status: " + update.getStatus());
+            }            if (contract.getStatus() != ContractStatus.ACTIVE) throw new RuntimeException("Contract is not ACTIVE");
             if (newStatus == ContractStatus.COMPLETED && contract.getEndDate() == null) contract.setEndDate(LocalDateTime.now());
             contract.setStatus(newStatus);
         }
