@@ -31,7 +31,8 @@ public class JobAttachment {
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "job_attachment_type_enum")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private JobAttachmentType type;
 
     @Column(name = "file_url", nullable = false)

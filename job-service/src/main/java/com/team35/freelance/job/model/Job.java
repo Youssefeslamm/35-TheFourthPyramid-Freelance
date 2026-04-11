@@ -41,11 +41,13 @@ public class Job {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "job_category_enum")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private JobCategory category;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "job_status_enum")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private JobStatus status = JobStatus.OPEN;
 
     @Column(name = "budget_min", nullable = false)

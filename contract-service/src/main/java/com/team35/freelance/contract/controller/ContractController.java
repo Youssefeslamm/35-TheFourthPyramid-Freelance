@@ -5,6 +5,7 @@ import com.team35.freelance.contract.dto.ContractSummaryDTO;
 import com.team35.freelance.contract.dto.FreelancerPerformanceDTO;
 import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
+import com.team35.freelance.contract.model.ContractStatus;
 import com.team35.freelance.contract.service.ContractService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -83,7 +84,7 @@ public class ContractController {
     public ResponseEntity<List<Contract>> getContractsInDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) ContractStatus status) {
         return ResponseEntity.ok(contractService.getContractsInDateRange(startDate, endDate, status));
     }
 

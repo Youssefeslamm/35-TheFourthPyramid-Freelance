@@ -30,7 +30,8 @@ public class Contract {
     private Double agreedAmount;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "contract_status_enum")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private ContractStatus status;
 
     @Column(nullable = false)

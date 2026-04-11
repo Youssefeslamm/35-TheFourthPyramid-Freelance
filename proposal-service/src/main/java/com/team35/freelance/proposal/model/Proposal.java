@@ -35,7 +35,8 @@ public class Proposal {
     private Integer estimatedDays;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "proposal_status_enum")
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     private ProposalStatus status;
 
     @Type(JsonType.class)

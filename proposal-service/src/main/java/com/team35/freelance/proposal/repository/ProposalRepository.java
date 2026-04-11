@@ -1,6 +1,7 @@
 package com.team35.freelance.proposal.repository;
 
 import com.team35.freelance.proposal.model.Proposal;
+import com.team35.freelance.proposal.model.ProposalStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -135,7 +136,7 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     ORDER BY submitted_at DESC
     """, nativeQuery = true)
     List<Proposal> findByStatusAndDateRange(
-            @Param("status") String status,
+            @Param("status") ProposalStatus status,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );
