@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.team35.freelance.job.dto.TopBudgetJobDTO;
 import com.team35.freelance.job.dto.CloseJobRequest;
 import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
 import com.team35.freelance.job.dto.JobProposalSummaryDTO;
@@ -112,4 +113,11 @@ public class JobController {
 
         return ResponseEntity.ok(jobService.filterJobsByRequirement(key, value, status));
     }
+
+
+    @GetMapping("/reports/top-budget")
+    public ResponseEntity<List<TopBudgetJobDTO>> getTopBudgetJobs(@RequestParam Integer limit) {
+        return ResponseEntity.ok(jobService.getTopBudgetJobs(limit));
+    }
+
 }
