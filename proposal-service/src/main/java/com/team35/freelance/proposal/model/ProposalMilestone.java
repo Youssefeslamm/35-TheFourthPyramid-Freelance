@@ -3,7 +3,9 @@ package com.team35.freelance.proposal.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,8 +30,8 @@ public class ProposalMilestone {
     @Column(nullable = false)
     private Double amount;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "milestone_status_enum")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private MilestoneStatus status = MilestoneStatus.PENDING;
 
     @Type(JsonType.class)

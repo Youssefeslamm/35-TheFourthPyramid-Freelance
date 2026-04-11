@@ -27,12 +27,12 @@ public class Payout {
     @Column(nullable = false)
     private Double amount;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "payout_method_enum")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private PayoutMethod method;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "payout_status_enum")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private PayoutStatus status;
 
 

@@ -3,6 +3,7 @@ package com.team35.freelance.job.controller;
 import java.util.List;
 import java.util.Map;
 
+import com.team35.freelance.job.model.JobStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -43,7 +44,7 @@ public class JobController {
     }
     @GetMapping("/search")
     public ResponseEntity<List<Job>> searchJobs(
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false) JobStatus status,
             @RequestParam Double minBudget,
             @RequestParam Double maxBudget) {
 
@@ -109,7 +110,7 @@ public class JobController {
     public ResponseEntity<List<Job>> filterJobsByRequirement(
             @RequestParam String key,
             @RequestParam String value,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) JobStatus status) {
 
         return ResponseEntity.ok(jobService.filterJobsByRequirement(key, value, status));
     }

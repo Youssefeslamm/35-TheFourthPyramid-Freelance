@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.team35.freelance.job.model.JobStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -27,7 +28,7 @@ public interface JobRepository extends JpaRepository<Job, Long> {
               AND j.budget_max BETWEEN :minBudget AND :maxBudget
             ORDER BY j.budget_max DESC
             """, nativeQuery = true)
-    List<Job> searchJobs(@Param("status") String status,
+    List<Job> searchJobs(@Param("status") JobStatus status,
                          @Param("minBudget") Double minBudget,
                          @Param("maxBudget") Double maxBudget);
 
@@ -110,7 +111,7 @@ public interface JobRepository extends JpaRepository<Job, Long> {
             """, nativeQuery = true)
     List<Job> findByRequirementAndOptionalStatus(@Param("key") String key,
                                                  @Param("value") String value,
-                                                 @Param("status") String status);
+                                                 @Param("status") JobStatus status);
 
 
 

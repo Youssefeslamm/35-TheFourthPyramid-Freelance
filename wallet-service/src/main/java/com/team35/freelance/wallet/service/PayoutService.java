@@ -110,7 +110,7 @@ public class PayoutService {
         }
 
         // 2. Must be COMPLETED
-        if (!contractStatus.equals("COMPLETED")) {
+        if (!"COMPLETED".equals(contractStatus)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contract is not completed");
         }
 

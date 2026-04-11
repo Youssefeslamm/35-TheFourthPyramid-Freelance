@@ -1,6 +1,7 @@
 package com.team35.freelance.contract.repository;
 
 import com.team35.freelance.contract.model.Contract;
+import com.team35.freelance.contract.model.ContractStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -25,7 +26,7 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
            "AND (:status IS NULL OR status = :status) ORDER BY created_at ASC", nativeQuery = true)
     List<Contract> findContractsInDateRange(@Param("startDate") LocalDateTime startDate,
                                             @Param("endDate") LocalDateTime endDate,
-                                            @Param("status") String status);
+                                            @Param("status") ContractStatus status);
 
     @Query(value = "SELECT c.id, u.name, j.title, c.agreed_amount, c.status, " +
            "EXTRACT(EPOCH FROM (COALESCE(c.end_date, CURRENT_TIMESTAMP) - c.start_date)) / 86400 " +

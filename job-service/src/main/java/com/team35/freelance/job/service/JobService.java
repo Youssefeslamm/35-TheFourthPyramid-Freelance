@@ -136,7 +136,7 @@ public class JobService {
         jobRepository.delete(existing);
     }
 
-    public List<Job> searchJobs(String status, Double minBudget, Double maxBudget) {
+    public List<Job> searchJobs(JobStatus status, Double minBudget, Double maxBudget) {
         if (minBudget == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minBudget is required");
         }
@@ -152,26 +152,9 @@ public class JobService {
             );
         }
 
-        String normalizedStatus = normalizeStatus(status);
-        return jobRepository.searchJobs(normalizedStatus, minBudget, maxBudget);
+        return jobRepository.searchJobs(status, minBudget, maxBudget);
     }
 
-    private String normalizeStatus(String status) {
-        if (status == null || status.isBlank()) {
-            return null;
-        }
-
-        String normalized = status.trim().toUpperCase();
-
-        boolean valid = Arrays.stream(JobStatus.values())
-                .anyMatch(value -> value.name().equals(normalized));
-
-        if (!valid) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid job status");
-        }
-
-        return normalized;
-    }
 
     private void validateJob(Job job) {
         if (job == null) {
@@ -301,7 +284,7 @@ public class JobService {
     }
 
 
-    public List<Job> filterJobsByRequirement(String key, String value, String status) {
+    public List<Job> filterJobsByRequirement(String key, String value, JobStatus status) {
         if (key == null || key.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "key is required");
         }
@@ -310,12 +293,10 @@ public class JobService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "value is required");
         }
 
-        String normalizedStatus = normalizeStatus(status);
-
         return jobRepository.findByRequirementAndOptionalStatus(
                 key.trim(),
                 value.trim(),
-                normalizedStatus
+                status
         );
     }
 
