@@ -105,11 +105,16 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     @Query(value = """
     SELECT
         COUNT(*) AS totalProposals,
-        SUM(CASE WHEN status = 'ACCEPTED' THEN 1 ELSE 0 END) AS acceptedProposals,
-        SUM(CASE WHEN status = 'REJECTED' THEN 1 ELSE 0 END) AS rejectedProposals,
-        SUM(bid_amount) AS totalBidValue,
-        AVG(bid_amount) AS averageBid,
-        ROUND(100.0 * SUM(CASE WHEN status = 'ACCEPTED' THEN 1 ELSE 0 END) / COUNT(*), 2) AS acceptanceRate
+        COALESCE(SUM(CASE WHEN status = 'ACCEPTED' THEN 1 ELSE 0 END), 0),
+        COALESCE(SUM(CASE WHEN status = 'REJECTED' THEN 1 ELSE 0 END), 0),
+        COALESCE(SUM(bid_amount), 0),
+        COALESCE(AVG(bid_amount), 0),
+        COALESCE(
+            ROUND(
+                100.0 * SUM(CASE WHEN status = 'ACCEPTED' THEN 1 ELSE 0 END)
+                / NULLIF(COUNT(*), 0),
+            2),
+        0)
     FROM proposals
     WHERE submitted_at BETWEEN :startDate AND :endDate
     """, nativeQuery = true)
@@ -132,11 +137,11 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     @Query(value = """
     SELECT * FROM proposals
     WHERE submitted_at BETWEEN :startDate AND :endDate
-    AND (:status IS NULL OR status = :status)
+    AND (CAST(:status AS TEXT) IS NULL OR status = CAST(:status AS proposal_status_enum))
     ORDER BY submitted_at DESC
     """, nativeQuery = true)
     List<Proposal> findByStatusAndDateRange(
-            @Param("status") ProposalStatus status,
+            @Param("status") String status,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );

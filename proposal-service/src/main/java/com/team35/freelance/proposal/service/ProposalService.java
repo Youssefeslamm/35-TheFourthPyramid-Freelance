@@ -289,7 +289,10 @@ public class ProposalService {
     }
     // S3-F1
     public List<Proposal> getProposalsByStatusAndDateRange(
-            ProposalStatus status, LocalDateTime startDate, LocalDateTime endDate) {
+            String status, LocalDateTime startDate, LocalDateTime endDate) {
+        if (status != null && status.isBlank()) {
+            status = null;
+        }
         return proposalRepository.findByStatusAndDateRange(status, startDate, endDate);
     }
 }
