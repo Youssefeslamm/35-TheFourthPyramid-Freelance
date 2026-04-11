@@ -25,6 +25,7 @@ import com.team35.freelance.job.model.JobAttachment;
 import com.team35.freelance.job.model.JobStatus;
 import com.team35.freelance.job.repository.JobAttachmentRepository;
 import com.team35.freelance.job.repository.JobRepository;
+import com.team35.freelance.job.dto.CloseJobRequest;
 
 @Service
 public class JobService {
@@ -272,4 +273,49 @@ public class JobService {
 
         return jobRepository.save(job);
     }
+    @Transactional
+    public Job closeJob(Long id, CloseJobRequest request) {
+        Job job = getJobById(id);
+
+        if (request == null || request.getStatus() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        if (request.getStatus() != JobStatus.CLOSED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status must be CLOSED");
+        }
+
+        if (jobRepository.existsActiveContractForJob(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot close job while an active contract exists"
+            );
+        }
+
+        job.setStatus(JobStatus.CLOSED);
+        jobRepository.rejectSubmittedProposalsForJob(id);
+
+        return jobRepository.save(job);
+    }
+
+
+    public List<Job> filterJobsByRequirement(String key, String value, String status) {
+        if (key == null || key.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "key is required");
+        }
+
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "value is required");
+        }
+
+        String normalizedStatus = normalizeStatus(status);
+
+        return jobRepository.findByRequirementAndOptionalStatus(
+                key.trim(),
+                value.trim(),
+                normalizedStatus
+        );
+    }
+
+
 }
