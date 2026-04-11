@@ -15,6 +15,8 @@ import org.springframework.web.server.ResponseStatusException;
 import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.team35.freelance.job.dto.CloseJobRequest;
+import com.team35.freelance.job.dto.TopBudgetJobDTO;
 import com.team35.freelance.job.dto.ContractLookupProjection;
 import com.team35.freelance.job.dto.JobProposalSummaryDTO;
 import com.team35.freelance.job.dto.RateJobRequestDTO;
@@ -25,7 +27,7 @@ import com.team35.freelance.job.model.JobAttachment;
 import com.team35.freelance.job.model.JobStatus;
 import com.team35.freelance.job.repository.JobAttachmentRepository;
 import com.team35.freelance.job.repository.JobRepository;
-import com.team35.freelance.job.dto.CloseJobRequest;
+
 
 @Service
 public class JobService {
@@ -317,5 +319,25 @@ public class JobService {
         );
     }
 
+
+    public List<TopBudgetJobDTO> getTopBudgetJobs(Integer limit) {
+        if (limit == null || limit <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be greater than 0");
+        }
+
+        List<Object[]> rows = jobRepository.findTopBudgetJobs(limit);
+        List<TopBudgetJobDTO> result = new ArrayList<>();
+
+        for (Object[] row : rows) {
+            Long jobId = ((Number) row[0]).longValue();
+            String title = (String) row[1];
+            Double budgetMax = ((Number) row[2]).doubleValue();
+            Long totalProposals = ((Number) row[3]).longValue();
+
+            result.add(new TopBudgetJobDTO(jobId, title, budgetMax, totalProposals));
+        }
+
+        return result;
+    }
 
 }

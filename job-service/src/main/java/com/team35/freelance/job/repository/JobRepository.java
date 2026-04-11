@@ -111,4 +111,20 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     List<Job> findByRequirementAndOptionalStatus(@Param("key") String key,
                                                  @Param("value") String value,
                                                  @Param("status") String status);
+
+
+
+
+    @Query(value = """
+            SELECT j.id,
+                   j.title,
+                   j.budget_max,
+                   COUNT(p.id) AS total_proposals
+            FROM jobs j
+            LEFT JOIN proposals p ON p.job_id = j.id
+            GROUP BY j.id, j.title, j.budget_max
+            ORDER BY j.budget_max DESC
+            LIMIT :limitValue
+            """, nativeQuery = true)
+    List<Object[]> findTopBudgetJobs(@Param("limitValue") int limitValue);
 }
