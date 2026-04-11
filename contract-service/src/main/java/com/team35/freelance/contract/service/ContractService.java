@@ -72,7 +72,9 @@ public class ContractService {
         if (minAmount > maxAmount) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minAmount must be less than or equal to maxAmount");
         }
-        String statusFilter = (status == null || status.isBlank()) ? null : status.trim();
+        String statusFilter = (status == null || status.isBlank())
+                ? null
+                : status.trim().toUpperCase();
         List<Object[]> rows = contractRepository.searchContractsByBudgetRange(minAmount, maxAmount, statusFilter);
         return rows.stream().map(this::toContractSummaryDTO).collect(Collectors.toList());
     }
