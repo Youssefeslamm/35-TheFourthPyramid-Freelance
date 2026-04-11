@@ -34,7 +34,7 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
            "INNER JOIN users u ON u.id = c.freelancer_id " +
            "INNER JOIN jobs j ON j.id = c.job_id " +
            "WHERE c.agreed_amount BETWEEN :minAmount AND :maxAmount " +
-           "AND (:status IS NULL OR c.status = :status) " +
+           "AND (:status IS NULL OR c.status::text = :status) " +
            "ORDER BY c.agreed_amount DESC", nativeQuery = true)
     List<Object[]> searchContractsByBudgetRange(@Param("minAmount") Double minAmount,
                                                 @Param("maxAmount") Double maxAmount,

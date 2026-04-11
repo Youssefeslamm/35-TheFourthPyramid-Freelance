@@ -7,10 +7,13 @@ import com.team35.freelance.user.service.UserService;
 import com.team35.freelance.user.dto.TopFreelancerDTO;
 import org.springframework.web.bind.annotation.*;
 import com.team35.freelance.user.dto.UserProfileDTO;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+
 import com.team35.freelance.user.dto.UserContractSummaryDTO;
+
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -109,6 +112,7 @@ public class UserController {
     public UserContractSummaryDTO getUserContractSummary(@PathVariable Long id) {
         return userService.getUserContractSummary(id);
     }
+
     @PutMapping("/{userId}/skills/{skillId}/primary")
     public User setPrimarySkill(
             @PathVariable Long userId,
