@@ -44,7 +44,7 @@ public class Proposal {
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> metadata = new HashMap<>();
 
-    @Column(nullable = false)
+    @Column(name = "submitted_at", nullable = false)
     private LocalDateTime submittedAt;
 
     private LocalDateTime acceptedAt;

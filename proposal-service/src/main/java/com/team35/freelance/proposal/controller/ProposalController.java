@@ -106,7 +106,7 @@ public class ProposalController {
     // S3-F1
     @GetMapping("/search")
     public ResponseEntity<List<Proposal>> search(
-            @RequestParam(required = false) ProposalStatus status,
+            @RequestParam(required = false) String status,
             @RequestParam
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime startDate,
