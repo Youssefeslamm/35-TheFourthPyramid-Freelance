@@ -40,12 +40,10 @@ public class Job {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "job_category_enum")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private JobCategory category;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "job_status_enum")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private JobStatus status = JobStatus.OPEN;
