@@ -144,13 +144,12 @@ public class PayoutController {
     // -------- PROCESS PAYOUT (S5-F4) --------
 
     @PostMapping("/contract/{contractId}")
-    public ResponseEntity<Payout> processPayout(
+    public ResponseEntity<Void> processContractPayout(
             @PathVariable Long contractId,
-            @RequestBody ProcessPayoutRequest request) {
-
-        Payout payout = payoutService.processContractPayout(contractId, request);
-
-        return ResponseEntity.status(201).body(payout);
+            @RequestBody ProcessPayoutRequest request
+    ) {
+        payoutService.processContractPayout(contractId, request);
+        return ResponseEntity.status(201).build();
     }
 
     // -------- S5-F6: REVENUE REPORT --------
