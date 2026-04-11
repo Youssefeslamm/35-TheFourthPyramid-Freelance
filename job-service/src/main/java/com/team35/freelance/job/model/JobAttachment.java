@@ -30,7 +30,6 @@ public class JobAttachment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "job_attachment_type_enum")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private JobAttachmentType type;

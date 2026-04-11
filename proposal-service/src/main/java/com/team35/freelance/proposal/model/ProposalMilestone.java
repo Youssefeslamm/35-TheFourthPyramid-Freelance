@@ -28,7 +28,6 @@ public class ProposalMilestone {
     @Column(nullable = false)
     private Double amount;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "milestone_status_enum")
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     private MilestoneStatus status = MilestoneStatus.PENDING;
