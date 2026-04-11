@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.team35.freelance.job.dto.CloseJobRequest;
 import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
 import com.team35.freelance.job.dto.JobProposalSummaryDTO;
 import com.team35.freelance.job.dto.RateJobRequestDTO;
@@ -94,5 +95,21 @@ public class JobController {
             @RequestBody RateJobRequestDTO request
     ) {
         return ResponseEntity.ok(jobService.rateJob(id, request));
+    }
+
+    @PutMapping("/{id}/close")
+    public ResponseEntity<Job> closeJob(@PathVariable Long id,
+                                        @RequestBody CloseJobRequest request) {
+        return ResponseEntity.ok(jobService.closeJob(id, request));
+    }
+
+
+    @GetMapping("/requirements/search")
+    public ResponseEntity<List<Job>> filterJobsByRequirement(
+            @RequestParam String key,
+            @RequestParam String value,
+            @RequestParam(required = false) String status) {
+
+        return ResponseEntity.ok(jobService.filterJobsByRequirement(key, value, status));
     }
 }
