@@ -136,7 +136,7 @@ public class JobService {
         jobRepository.delete(existing);
     }
 
-    public List<Job> searchJobs(JobStatus status, Double minBudget, Double maxBudget) {
+    public List<Job> searchJobs(String status, Double minBudget, Double maxBudget) {
         if (minBudget == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minBudget is required");
         }
@@ -284,7 +284,7 @@ public class JobService {
     }
 
 
-    public List<Job> filterJobsByRequirement(String key, String value, JobStatus status) {
+    public List<Job> filterJobsByRequirement(String key, String value, String status) {
         if (key == null || key.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "key is required");
         }
