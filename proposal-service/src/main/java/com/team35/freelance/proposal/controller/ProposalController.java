@@ -4,6 +4,7 @@ import com.team35.freelance.proposal.dto.FeeEstimateDTO;
 import com.team35.freelance.proposal.dto.FeeEstimateRequest;
 import com.team35.freelance.proposal.dto.ProposalDetailsDTO;
 import com.team35.freelance.proposal.model.Proposal;
+import com.team35.freelance.proposal.model.ProposalStatus;
 import com.team35.freelance.proposal.service.ProposalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -105,7 +106,7 @@ public class ProposalController {
     // S3-F1
     @GetMapping("/search")
     public ResponseEntity<List<Proposal>> search(
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false) ProposalStatus status,
             @RequestParam
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime startDate,
