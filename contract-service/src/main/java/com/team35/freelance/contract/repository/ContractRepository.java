@@ -23,10 +23,10 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     int checkUserExists(@Param("userId") Long userId);
 
     @Query(value = "SELECT * FROM contracts WHERE created_at BETWEEN :startDate AND :endDate " +
-           "AND (:status IS NULL OR status = :status) ORDER BY created_at ASC", nativeQuery = true)
+           "AND (:status IS NULL OR status::text = :status) ORDER BY created_at ASC", nativeQuery = true)
     List<Contract> findContractsInDateRange(@Param("startDate") LocalDateTime startDate,
                                             @Param("endDate") LocalDateTime endDate,
-                                            @Param("status") ContractStatus status);
+                                            @Param("status") String status);
 
     @Query(value = "SELECT c.id, u.name, j.title, c.agreed_amount, c.status, " +
            "EXTRACT(EPOCH FROM (COALESCE(c.end_date, CURRENT_TIMESTAMP) - c.start_date)) / 86400 " +

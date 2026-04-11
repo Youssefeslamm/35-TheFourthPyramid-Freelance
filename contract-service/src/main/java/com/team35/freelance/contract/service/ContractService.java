@@ -61,8 +61,11 @@ public class ContractService {
         return contractRepository.save(contract);
     }
 
-    public List<Contract> getContractsInDateRange(LocalDateTime startDate, LocalDateTime endDate, ContractStatus status) {
-        return contractRepository.findContractsInDateRange(startDate, endDate, status);
+    public List<Contract> getContractsInDateRange(LocalDateTime startDate,
+                                                  LocalDateTime endDate,
+                                                  ContractStatus status) {
+        String statusFilter = (status == null) ? null : status.name();
+        return contractRepository.findContractsInDateRange(startDate, endDate, statusFilter);
     }
 
     public List<ContractSummaryDTO> searchByBudgetRange(Double minAmount, Double maxAmount, String status) {
