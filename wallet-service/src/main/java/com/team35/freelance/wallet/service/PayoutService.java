@@ -108,7 +108,7 @@ public class PayoutService {
             throw new RuntimeException("Contract not found");
         }
 
-        if (!contractStatus.equals("COMPLETED")) {
+        if (!PayoutStatus.COMPLETED.name().equals(contractStatus)) {
             throw new RuntimeException("Contract is not completed");
         }
 
@@ -119,7 +119,7 @@ public class PayoutService {
         }
 
         if (payout.getStatus() == PayoutStatus.COMPLETED) {
-            throw new RuntimeException("already paid");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "already paid");
         }
 
         payout.setStatus(PayoutStatus.COMPLETED);
