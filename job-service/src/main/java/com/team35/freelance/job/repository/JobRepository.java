@@ -22,13 +22,13 @@ import com.team35.freelance.job.model.Job;
 public interface JobRepository extends JpaRepository<Job, Long> {
 
     @Query(value = """
-            SELECT *
-            FROM jobs j
-            WHERE (:status IS NULL OR j.status = :status)
-              AND j.budget_max BETWEEN :minBudget AND :maxBudget
-            ORDER BY j.budget_max DESC
-            """, nativeQuery = true)
-    List<Job> searchJobs(@Param("status") JobStatus status,
+        SELECT *
+        FROM jobs j
+        WHERE (:status IS NULL OR j.status = CAST(:status AS job_status_enum))
+          AND j.budget_max BETWEEN :minBudget AND :maxBudget
+        ORDER BY j.budget_max DESC
+        """, nativeQuery = true)
+    List<Job> searchJobs(@Param("status") String status,
                          @Param("minBudget") Double minBudget,
                          @Param("maxBudget") Double maxBudget);
 
@@ -42,7 +42,7 @@ public interface JobRepository extends JpaRepository<Job, Long> {
         COALESCE(MAX(p.bid_amount), 0) as highestBid
     FROM jobs j
     LEFT JOIN proposals p ON j.id = p.job_id 
-    AND p.created_at BETWEEN CAST(:startDate AS TIMESTAMP) AND CAST(:endDate AS TIMESTAMP)
+    AND p.submitted_at BETWEEN CAST(:startDate AS TIMESTAMP) AND CAST(:endDate AS TIMESTAMP) 
     WHERE j.id = :id
     GROUP BY j.id, j.title
     """, nativeQuery = true)
@@ -103,15 +103,15 @@ public interface JobRepository extends JpaRepository<Job, Long> {
 
 
     @Query(value = """
-            SELECT *
-            FROM jobs j
-            WHERE (j.requirements ->> :key) = :value
-              AND (:status IS NULL OR j.status = :status)
-            ORDER BY j.budget_max DESC
-            """, nativeQuery = true)
+        SELECT *
+        FROM jobs j
+        WHERE (j.requirements ->> :key) = :value
+          AND (:status IS NULL OR j.status = CAST(:status AS job_status_enum))
+        ORDER BY j.budget_max DESC
+        """, nativeQuery = true)
     List<Job> findByRequirementAndOptionalStatus(@Param("key") String key,
                                                  @Param("value") String value,
-                                                 @Param("status") JobStatus status);
+                                                 @Param("status") String status);
 
 
 

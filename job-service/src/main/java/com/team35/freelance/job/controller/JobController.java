@@ -44,7 +44,7 @@ public class JobController {
     }
     @GetMapping("/search")
     public ResponseEntity<List<Job>> searchJobs(
-            @RequestParam(required = false) JobStatus status,
+            @RequestParam(required = false) String status,
             @RequestParam Double minBudget,
             @RequestParam Double maxBudget) {
 
@@ -110,7 +110,7 @@ public class JobController {
     public ResponseEntity<List<Job>> filterJobsByRequirement(
             @RequestParam String key,
             @RequestParam String value,
-            @RequestParam(required = false) JobStatus status) {
+            @RequestParam(required = false) String status) {
 
         return ResponseEntity.ok(jobService.filterJobsByRequirement(key, value, status));
     }
