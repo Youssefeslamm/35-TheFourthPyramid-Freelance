@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @Document(collection = "wallet_events")
-public class WalletEvent implements MongoEvent {
+public class PayoutAuditEvent implements MongoEvent {
 
     @Id
     private String id;
@@ -19,11 +19,11 @@ public class WalletEvent implements MongoEvent {
     private LocalDateTime timestamp;
     private Map<String, Object> details;
 
-    public WalletEvent() {
+    public PayoutAuditEvent() {
         this.timestamp = LocalDateTime.now();
     }
 
-    public WalletEvent(Long payoutId, Long contractId, Long freelancerId, String action, Map<String, Object> details) {
+    public PayoutAuditEvent(Long payoutId, Long contractId, Long freelancerId, String action, Map<String, Object> details) {
         this.payoutId = payoutId;
         this.contractId = contractId;
         this.freelancerId = freelancerId;
