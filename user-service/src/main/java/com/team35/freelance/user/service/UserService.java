@@ -320,4 +320,38 @@ public class UserService {
         return userRepository.findUsersByLanguageAndMinContracts(lang, minContracts);
     }
 
+
+
+    public User updateUserRole(Long id, String role) {
+
+        // 1. Find user (404)
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"
+                ));
+
+        // 2. Validate role (400)
+        Role newRole;
+        try {
+            newRole = Role.valueOf(role.toUpperCase());
+        } catch (Exception e) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Invalid role"
+            );
+        }
+
+        // 3. Update role
+        Role oldRole = user.getRole();
+        user.setRole(newRole);
+
+        User savedUser = userRepository.save(user);
+
+        // 🔥 (IMPORTANT FOR CC-2)
+        // Later you will add:
+        // - Mongo event: ROLE_CHANGED
+        // - Redis invalidation
+
+        return savedUser;
+    }
+
 }

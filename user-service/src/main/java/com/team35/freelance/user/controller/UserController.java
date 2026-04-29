@@ -152,4 +152,18 @@ public class UserController {
             @RequestParam(defaultValue = "0") int minContracts) {
         return userService.findUsersByLanguageAndMinContracts(lang, minContracts);
     }
+
+
+
+
+    @PutMapping("/{id}/role")
+    public User updateUserRole(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request
+    ) {
+        String role = request.get("role");
+        return userService.updateUserRole(id, role);
+    }
+
+
 }
