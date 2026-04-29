@@ -23,4 +23,19 @@ public class ContractEventService {
         event.setEndDate(endDate);
         contractEventRepository.save(event);
     }
+
+    public void logMilestoneTracked(Long contractId,
+                                    Integer milestoneOrder,
+                                    String status,
+                                    String recordedBy,
+                                    String notes) {
+        ContractEvent event = new ContractEvent();
+        event.setEventType("MILESTONE_TRACKED");
+        event.setOccurredAt(LocalDateTime.now());
+        event.setContractId(contractId);
+        event.setMilestoneOrder(milestoneOrder);
+        event.setStatus(status);
+        event.setDetails("recordedBy=" + recordedBy + ", notes=" + notes);
+        contractEventRepository.save(event);
+    }
 }

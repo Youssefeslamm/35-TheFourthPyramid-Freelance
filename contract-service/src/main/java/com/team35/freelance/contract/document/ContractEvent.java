@@ -14,6 +14,10 @@ public class ContractEvent {
     private LocalDateTime occurredAt;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    private Long contractId;
+    private Integer milestoneOrder;
+    private String status;
+    private String details;
 
     public String getId() {
         return id;
@@ -53,5 +57,37 @@ public class ContractEvent {
 
     public void setEndDate(LocalDateTime endDate) {
         this.endDate = endDate;
+    }
+
+    public Long getContractId() {
+        return contractId;
+    }
+
+    public void setContractId(Long contractId) {
+        this.contractId = contractId;
+    }
+
+    public Integer getMilestoneOrder() {
+        return milestoneOrder;
+    }
+
+    public void setMilestoneOrder(Integer milestoneOrder) {
+        this.milestoneOrder = milestoneOrder;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getDetails() {
+        return details;
+    }
+
+    public void setDetails(String details) {
+        this.details = details;
     }
 }

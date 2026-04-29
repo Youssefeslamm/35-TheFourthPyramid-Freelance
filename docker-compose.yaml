@@ -178,6 +178,15 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freelancedb
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATA_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
+      SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: redispass
+      SPRING_CASSANDRA_CONTACT_POINTS: cassandra
+      SPRING_CASSANDRA_PORT: 9042
+      SPRING_CASSANDRA_KEYSPACE_NAME: freelanceks
+      SPRING_CASSANDRA_LOCAL_DATACENTER: datacenter1
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000

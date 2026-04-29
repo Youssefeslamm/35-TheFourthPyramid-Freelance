@@ -4,12 +4,14 @@ import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
 import com.team35.freelance.contract.dto.ContractAnalyticsDTO;
 import com.team35.freelance.contract.dto.ContractSummaryDTO;
 import com.team35.freelance.contract.dto.FreelancerPerformanceDTO;
+import com.team35.freelance.contract.dto.MilestoneTrackRequestDTO;
 import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.model.ContractStatus;
 import com.team35.freelance.contract.security.JwtValidator;
 import com.team35.freelance.contract.service.ContractAnalyticsService;
 import com.team35.freelance.contract.service.ContractEventService;
+import com.team35.freelance.contract.service.ContractMilestoneTrackingService;
 import com.team35.freelance.contract.service.ContractService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -33,6 +35,8 @@ public class ContractController {
     private ContractAnalyticsService contractAnalyticsService;
     @Autowired
     private ContractEventService contractEventService;
+    @Autowired
+    private ContractMilestoneTrackingService contractMilestoneTrackingService;
     @Autowired
     private JwtValidator jwtValidator;
 
@@ -166,6 +170,17 @@ public class ContractController {
                 from,
                 to
         ));
+    }
+
+    // --- S4-F11: Track Contract Milestones ---
+    @PostMapping("/{id}/milestones/track")
+    public ResponseEntity<Void> trackMilestone(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long id,
+            @RequestBody MilestoneTrackRequestDTO request) {
+        jwtValidator.validateAuthorizationHeader(authorizationHeader);
+        contractMilestoneTrackingService.trackMilestone(id, request);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
 }
