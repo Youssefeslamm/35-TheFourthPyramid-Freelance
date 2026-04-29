@@ -1,7 +1,6 @@
 package com.team35.freelance.contract.repository;
 
 import com.team35.freelance.contract.model.Contract;
-import com.team35.freelance.contract.model.ContractStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -27,6 +26,26 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     List<Contract> findContractsInDateRange(@Param("startDate") LocalDateTime startDate,
                                             @Param("endDate") LocalDateTime endDate,
                                             @Param("status") String status);
+
+    @Query(value = "SELECT " +
+           "COUNT(c.id), " +
+           "COALESCE(AVG(c.agreed_amount), 0), " +
+           "COALESCE(SUM(CASE WHEN c.status = 'COMPLETED' THEN 1 ELSE 0 END), 0), " +
+           "COALESCE(AVG(CASE " +
+           "WHEN c.status = 'COMPLETED' AND c.end_date IS NOT NULL " +
+           "THEN EXTRACT(EPOCH FROM (c.end_date - c.start_date)) / 86400.0 " +
+           "ELSE NULL END), 0) " +
+           "FROM contracts c " +
+           "WHERE c.start_date BETWEEN :startDate AND :endDate", nativeQuery = true)
+    List<Object[]> getContractAnalytics(@Param("startDate") LocalDateTime startDate,
+                                        @Param("endDate") LocalDateTime endDate);
+
+    @Query(value = "SELECT c.status::text, COUNT(c.id) " +
+           "FROM contracts c " +
+           "WHERE c.start_date BETWEEN :startDate AND :endDate " +
+           "GROUP BY c.status", nativeQuery = true)
+    List<Object[]> countContractsByStatus(@Param("startDate") LocalDateTime startDate,
+                                          @Param("endDate") LocalDateTime endDate);
 
     @Query(value = "SELECT c.id, u.name, j.title, c.agreed_amount, c.status, " +
            "EXTRACT(EPOCH FROM (COALESCE(c.end_date, CURRENT_TIMESTAMP) - c.start_date)) / 86400 " +

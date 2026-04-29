@@ -1,16 +1,22 @@
 package com.team35.freelance.contract.controller;
 
 import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
+import com.team35.freelance.contract.dto.ContractAnalyticsDTO;
 import com.team35.freelance.contract.dto.ContractSummaryDTO;
 import com.team35.freelance.contract.dto.FreelancerPerformanceDTO;
 import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.model.ContractStatus;
+import com.team35.freelance.contract.security.JwtValidator;
+import com.team35.freelance.contract.service.ContractAnalyticsService;
+import com.team35.freelance.contract.service.ContractEventService;
 import com.team35.freelance.contract.service.ContractService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -23,6 +29,12 @@ public class ContractController {
 
     @Autowired
     private ContractService contractService;
+    @Autowired
+    private ContractAnalyticsService contractAnalyticsService;
+    @Autowired
+    private ContractEventService contractEventService;
+    @Autowired
+    private JwtValidator jwtValidator;
 
     @PostMapping
     public ResponseEntity<Contract> create(@RequestBody Contract contract) {
@@ -134,6 +146,26 @@ public class ContractController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build(); // Throws 400 if operator or number cast is invalid
         }
+    }
+
+    // --- S4-F10: Contract Analytics ---
+    @GetMapping("/analytics")
+    public ResponseEntity<ContractAnalyticsDTO> getContractAnalytics(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        jwtValidator.validateAuthorizationHeader(authorizationHeader);
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must be before or equal to endDate");
+        }
+        LocalDateTime from = startDate.atStartOfDay();
+        LocalDateTime to = endDate.atTime(23, 59, 59, 999_000_000);
+        // Keep observability logging outside cache-backed analytics service so it also runs on cache hits.
+        contractEventService.logAnalyticsViewed(from, to);
+        return ResponseEntity.ok(contractAnalyticsService.getContractAnalytics(
+                from,
+                to
+        ));
     }
 
 }
