@@ -2,6 +2,7 @@ package com.team35.freelance.contract.controller;
 
 import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
 import com.team35.freelance.contract.dto.ContractAnalyticsDTO;
+import com.team35.freelance.contract.dto.ContractMilestoneDTO;
 import com.team35.freelance.contract.dto.ContractSummaryDTO;
 import com.team35.freelance.contract.dto.FreelancerPerformanceDTO;
 import com.team35.freelance.contract.dto.MilestoneTrackRequestDTO;
@@ -12,6 +13,7 @@ import com.team35.freelance.contract.security.JwtValidator;
 import com.team35.freelance.contract.service.ContractAnalyticsService;
 import com.team35.freelance.contract.service.ContractEventService;
 import com.team35.freelance.contract.service.ContractMilestoneTrackingService;
+import com.team35.freelance.contract.service.ContractMilestoneTimelineService;
 import com.team35.freelance.contract.service.ContractService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -37,6 +39,8 @@ public class ContractController {
     private ContractEventService contractEventService;
     @Autowired
     private ContractMilestoneTrackingService contractMilestoneTrackingService;
+    @Autowired
+    private ContractMilestoneTimelineService contractMilestoneTimelineService;
     @Autowired
     private JwtValidator jwtValidator;
 
@@ -181,6 +185,20 @@ public class ContractController {
         jwtValidator.validateAuthorizationHeader(authorizationHeader);
         contractMilestoneTrackingService.trackMilestone(id, request);
         return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    // --- S4-F12: Contract Milestone Timeline ---
+    @GetMapping("/{id}/milestones/timeline")
+    public ResponseEntity<List<ContractMilestoneDTO>> getMilestoneTimeline(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime) {
+        jwtValidator.validateAuthorizationHeader(authorizationHeader);
+        if (startTime != null && endTime != null && startTime.isAfter(endTime)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startTime must be before or equal to endTime");
+        }
+        return ResponseEntity.ok(contractMilestoneTimelineService.getTimeline(id, startTime, endTime));
     }
 
 }
