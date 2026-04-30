@@ -27,6 +27,9 @@ import com.team35.freelance.job.model.JobAttachment;
 import com.team35.freelance.job.model.JobStatus;
 import com.team35.freelance.job.repository.JobAttachmentRepository;
 import com.team35.freelance.job.repository.JobRepository;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+
 
 
 @Service
@@ -42,6 +45,7 @@ public class JobService {
     }
 
 
+    @Cacheable(value = "job-service::S2-F3", key = "#id + ':' + #startDate + ':' + #endDate")
     public JobProposalSummaryDTO getProposalSummary(Long id, String startDate, String endDate) {
         // 1. Check if job exists first for the 404 requirement
         if (!jobRepository.existsById(id)) {
@@ -62,6 +66,14 @@ public class JobService {
         );
     }
 
+    @CacheEvict(value = {
+            "job-service::job",
+            "job-service::S2-F1",
+            "job-service::S2-F3",
+            "job-service::S2-F5",
+            "job-service::S2-F6",
+            "job-service::S2-F9"
+    }, allEntries = true)
     public Job updateRequirements(Long id, Map<String, Object> incomingRequirements) {
         // 1. Find the job or throw 404
         Job job = jobRepository.findById(id)
@@ -80,6 +92,15 @@ public class JobService {
         return jobRepository.save(job);
     }
 
+
+    @CacheEvict(value = {
+            "job-service::job",
+            "job-service::S2-F1",
+            "job-service::S2-F3",
+            "job-service::S2-F5",
+            "job-service::S2-F6",
+            "job-service::S2-F9"
+    }, allEntries = true)
     public Job createJob(Job job) {
         validateJob(job);
 
@@ -96,6 +117,7 @@ public class JobService {
         return jobRepository.save(job);
     }
 
+    @Cacheable(value = "job-service::job", key = "#id")
     public Job getJobById(Long id) {
         return jobRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found"));
@@ -105,6 +127,14 @@ public class JobService {
         return jobRepository.findAll();
     }
 
+    @CacheEvict(value = {
+            "job-service::job",
+            "job-service::S2-F1",
+            "job-service::S2-F3",
+            "job-service::S2-F5",
+            "job-service::S2-F6",
+            "job-service::S2-F9"
+    }, allEntries = true)
     public Job updateJob(Long id, Job updatedJob) {
         Job existing = getJobById(id);
 
@@ -131,11 +161,20 @@ public class JobService {
         return jobRepository.save(existing);
     }
 
+    @CacheEvict(value = {
+            "job-service::job",
+            "job-service::S2-F1",
+            "job-service::S2-F3",
+            "job-service::S2-F5",
+            "job-service::S2-F6",
+            "job-service::S2-F9"
+    }, allEntries = true)
     public void deleteJob(Long id) {
         Job existing = getJobById(id);
         jobRepository.delete(existing);
     }
 
+    @Cacheable(value = "job-service::S2-F1", key = "#status + ':' + #minBudget + ':' + #maxBudget")
     public List<Job> searchJobs(String status, Double minBudget, Double maxBudget) {
         if (minBudget == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minBudget is required");
@@ -193,6 +232,7 @@ public class JobService {
         }
     }
 
+    @Cacheable(value = "job-service::S2-F9", key = "'expired'")
     public List<JobAttachmentAlertDTO> getJobsWithExpiredAttachments() {
         List<JobAttachmentAlertDTO> alerts = new ArrayList<>();
         LocalDate today = LocalDate.now();
@@ -218,6 +258,14 @@ public class JobService {
         return alerts;
     }
     @Transactional
+    @CacheEvict(value = {
+            "job-service::job",
+            "job-service::S2-F1",
+            "job-service::S2-F3",
+            "job-service::S2-F5",
+            "job-service::S2-F6",
+            "job-service::S2-F9"
+    }, allEntries = true)
     public Job rateJob(Long jobId, RateJobRequestDTO request) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
@@ -259,6 +307,14 @@ public class JobService {
         return jobRepository.save(job);
     }
     @Transactional
+    @CacheEvict(value = {
+            "job-service::job",
+            "job-service::S2-F1",
+            "job-service::S2-F3",
+            "job-service::S2-F5",
+            "job-service::S2-F6",
+            "job-service::S2-F9"
+    }, allEntries = true)
     public Job closeJob(Long id, CloseJobRequest request) {
         Job job = getJobById(id);
 
@@ -284,6 +340,7 @@ public class JobService {
     }
 
 
+    @Cacheable(value = "job-service::S2-F5", key = "#key + ':' + #value + ':' + #status")
     public List<Job> filterJobsByRequirement(String key, String value, String status) {
         if (key == null || key.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "key is required");
@@ -301,6 +358,7 @@ public class JobService {
     }
 
 
+    @Cacheable(value = "job-service::S2-F6", key = "#limit")
     public List<TopBudgetJobDTO> getTopBudgetJobs(Integer limit) {
         if (limit == null || limit <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be greater than 0");

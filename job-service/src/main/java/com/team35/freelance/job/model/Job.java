@@ -1,5 +1,6 @@
 package com.team35.freelance.job.model;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,7 +24,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "jobs")
-public class Job {
+public class Job implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

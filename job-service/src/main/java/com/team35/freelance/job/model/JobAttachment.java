@@ -1,5 +1,6 @@
 package com.team35.freelance.job.model;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -22,7 +23,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "job_attachments")
-public class JobAttachment {
+public class JobAttachment implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

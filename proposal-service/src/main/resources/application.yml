@@ -31,6 +31,12 @@ spring:
 server:
   port: 8080
 
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000  # 10 minutes in milliseconds
+
+
 jwt:
   secret: ${JWT_SECRET:0123456789abcdef0123456789abcdef01234567}
   expiration: ${JWT_EXPIRATION_MS:86400000}

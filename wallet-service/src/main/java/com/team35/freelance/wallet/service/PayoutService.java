@@ -4,24 +4,22 @@ import com.team35.freelance.wallet.model.Payout;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.wallet.repository.PayoutRepository;
 import com.team35.freelance.wallet.repository.PromoCodeRepository;
-
 import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
 import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
 import com.team35.freelance.wallet.dto.RevenueReportDTO;
 import com.team35.freelance.wallet.dto.PromoCodeUsage;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.sql.Timestamp;
-
 import java.time.LocalDate;
-import java.util.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class PayoutService {
@@ -35,8 +33,16 @@ public class PayoutService {
         this.promoCodeRepository = promoCodeRepository;
     }
 
-    // ---------------- CRUD ----------------
-
+    @CacheEvict(value = {
+            "wallet-service::payout",
+            "wallet-service::promo-code",
+            "wallet-service::payout-promo",
+            "wallet-service::S5-F1",
+            "wallet-service::S5-F3",
+            "wallet-service::S5-F6",
+            "wallet-service::S5-F8",
+            "wallet-service::S5-F9"
+    }, allEntries = true)
     public Payout createPayout(Payout payout) {
         payout.setCreatedAt(LocalDateTime.now());
         return payoutRepository.save(payout);
@@ -46,11 +52,22 @@ public class PayoutService {
         return payoutRepository.findAll();
     }
 
+    @Cacheable(value = "wallet-service::payout", key = "#id")
     public Payout getPayoutById(Long id) {
         return payoutRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Payout not found"));
     }
 
+    @CacheEvict(value = {
+            "wallet-service::payout",
+            "wallet-service::promo-code",
+            "wallet-service::payout-promo",
+            "wallet-service::S5-F1",
+            "wallet-service::S5-F3",
+            "wallet-service::S5-F6",
+            "wallet-service::S5-F8",
+            "wallet-service::S5-F9"
+    }, allEntries = true)
     public Payout updatePayout(Long id, Payout updatedPayout) {
         Payout existing = getPayoutById(id);
 
@@ -64,6 +81,16 @@ public class PayoutService {
         return payoutRepository.save(existing);
     }
 
+    @CacheEvict(value = {
+            "wallet-service::payout",
+            "wallet-service::promo-code",
+            "wallet-service::payout-promo",
+            "wallet-service::S5-F1",
+            "wallet-service::S5-F3",
+            "wallet-service::S5-F6",
+            "wallet-service::S5-F8",
+            "wallet-service::S5-F9"
+    }, allEntries = true)
     public void deletePayout(Long id) {
         if (!payoutRepository.existsById(id)) {
             throw new RuntimeException("Payout not found");
@@ -71,8 +98,8 @@ public class PayoutService {
         payoutRepository.deleteById(id);
     }
 
+    @Cacheable(value = "wallet-service::S5-F3", key = "#freelancerId")
     public FreelancerPayoutSummaryDTO getFreelancerSummary(Long freelancerId) {
-
         List<Object[]> methodRows = payoutRepository.getFreelancerMethodBreakdown(freelancerId);
 
         Map<String, Double> methodBreakdown = new HashMap<>();
@@ -97,40 +124,41 @@ public class PayoutService {
         );
     }
 
-    // ---------------- S5-F4: PROCESS PAYOUT ----------------
-
     @Transactional
+    @CacheEvict(value = {
+            "wallet-service::payout",
+            "wallet-service::promo-code",
+            "wallet-service::payout-promo",
+            "wallet-service::S5-F1",
+            "wallet-service::S5-F3",
+            "wallet-service::S5-F6",
+            "wallet-service::S5-F8",
+            "wallet-service::S5-F9"
+    }, allEntries = true)
     public void processContractPayout(Long contractId, ProcessPayoutRequest request) {
-
-        // 1. Check contract exists
         String contractStatus = payoutRepository.getContractStatus(contractId);
 
         if (contractStatus == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Contract not found");
         }
 
-        // 2. Must be COMPLETED
         if (!"COMPLETED".equals(contractStatus)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contract is not completed");
         }
 
-        // 3. Get payout
         Payout payout = payoutRepository.findByContractId(contractId);
 
         if (payout == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found");
         }
 
-        // 4. Already paid check
         if (payout.getStatus() == PayoutStatus.COMPLETED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "already paid");
         }
 
-        // 5. Update payout
         payout.setStatus(PayoutStatus.COMPLETED);
         payout.setMethod(request.getMethod());
 
-        // JSONB details
         Map<String, Object> details = new HashMap<>();
 
         if (request.getAccountLastFour() != null) {
@@ -141,8 +169,8 @@ public class PayoutService {
 
         payoutRepository.save(payout);
     }
-    // ---------------- S5-F1: SEARCH ----------------
 
+    @Cacheable(value = "wallet-service::S5-F1", key = "#status + ':' + #startDate + ':' + #endDate")
     public List<Payout> searchPayouts(PayoutStatus status,
                                       LocalDate startDate,
                                       LocalDate endDate) {
@@ -175,11 +203,8 @@ public class PayoutService {
         );
     }
 
-    // ---------------- S5-F6: REVENUE REPORT ----------------
-
+    @Cacheable(value = "wallet-service::S5-F6", key = "#startDate + ':' + #endDate")
     public RevenueReportDTO getRevenueReport(LocalDate startDate, LocalDate endDate) {
-
-        // a) Validate dates
         if (startDate.isAfter(endDate)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -187,14 +212,10 @@ public class PayoutService {
             );
         }
 
-        // Convert to LocalDateTime
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(23, 59, 59);
 
-        // Execute query
         List<Object[]> rows = payoutRepository.getRevenueReport(start, end);
-
-        // ALWAYS one row because of SUM/COUNT
         Object[] result = rows.get(0);
 
         double totalRevenue = ((Number) result[0]).doubleValue();
@@ -214,10 +235,8 @@ public class PayoutService {
         );
     }
 
-    // ---------------- S5-F9: PROMO REPORT ----------------
-
+    @Cacheable(value = "wallet-service::S5-F9", key = "#limit")
     public List<PromoCodeUsage> getMostUsedPromoCodes(int limit) {
-
         if (limit <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Limit must be greater than 0");
         }
@@ -226,7 +245,6 @@ public class PayoutService {
         List<PromoCodeUsage> result = new ArrayList<>();
 
         for (Object[] row : rows) {
-
             Long promoCodeId = ((Number) row[0]).longValue();
             String code = (String) row[1];
             String discountType = row[2].toString();
@@ -265,11 +283,18 @@ public class PayoutService {
         return result;
     }
 
-    // ---------------- S5-F7: RETRY ----------------
-
     @Transactional
+    @CacheEvict(value = {
+            "wallet-service::payout",
+            "wallet-service::promo-code",
+            "wallet-service::payout-promo",
+            "wallet-service::S5-F1",
+            "wallet-service::S5-F3",
+            "wallet-service::S5-F6",
+            "wallet-service::S5-F8",
+            "wallet-service::S5-F9"
+    }, allEntries = true)
     public Payout retryFailedPayout(Long id) {
-
         Payout payout = payoutRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found"));
 
@@ -281,10 +306,17 @@ public class PayoutService {
         return payoutRepository.save(payout);
     }
 
-    // ---------------- S5-F2: REFUND ----------------
-
+    @CacheEvict(value = {
+            "wallet-service::payout",
+            "wallet-service::promo-code",
+            "wallet-service::payout-promo",
+            "wallet-service::S5-F1",
+            "wallet-service::S5-F3",
+            "wallet-service::S5-F6",
+            "wallet-service::S5-F8",
+            "wallet-service::S5-F9"
+    }, allEntries = true)
     public Payout processRefund(Long id, String reason) {
-
         Payout payout = payoutRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found"));
 

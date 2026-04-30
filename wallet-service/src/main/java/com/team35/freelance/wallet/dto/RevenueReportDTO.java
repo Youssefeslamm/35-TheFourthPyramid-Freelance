@@ -1,6 +1,8 @@
 package com.team35.freelance.wallet.dto;
 
-public class RevenueReportDTO {
+import java.io.Serializable;
+
+public class RevenueReportDTO implements Serializable {
 
     private double totalRevenue;
     private long totalTransactions;

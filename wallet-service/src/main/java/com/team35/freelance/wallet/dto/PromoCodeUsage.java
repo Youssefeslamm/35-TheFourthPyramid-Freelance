@@ -1,6 +1,8 @@
 package com.team35.freelance.wallet.dto;
 
-public class PromoCodeUsage {
+import java.io.Serializable;
+
+public class PromoCodeUsage implements Serializable {
     private Long promoCodeId;
     private String code;
     private String discountType;
