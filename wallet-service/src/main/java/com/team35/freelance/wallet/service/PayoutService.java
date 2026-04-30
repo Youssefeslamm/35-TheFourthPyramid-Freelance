@@ -355,4 +355,49 @@ public class PayoutService {
 
         return payoutRepository.save(payout);
     }
+
+    @Transactional
+    public double reversePayout(Long payoutId, String reversalScope) {
+
+        Payout payout = payoutRepository.findById(payoutId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Payout not found"));
+
+        // 1. Only completed payouts can be reversed
+        if (payout.getStatus() != PayoutStatus.COMPLETED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only completed payouts can be reversed"
+            );
+        }
+
+        // 2. 30-day window check
+        boolean expired = payout.getCreatedAt()
+                .isBefore(LocalDateTime.now().minusDays(30));
+
+        if (expired) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Reversal window expired"
+            );
+        }
+
+        // 3. Reversal logic (THIS WILL BE REPLACED BY STRATEGY LATER)
+        double refundAmount;
+
+        if ("FULL".equalsIgnoreCase(reversalScope)) {
+            refundAmount = payout.getAmount();
+
+        } else if ("MILESTONE_ONLY".equalsIgnoreCase(reversalScope)) {
+            refundAmount = payout.getAmount() * 0.5; // placeholder
+
+        } else {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid reversal scope"
+            );
+        }
+
+        return refundAmount;
+    }
 }
