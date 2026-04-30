@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -51,6 +53,7 @@ public class JobAttachmentService {
         return jobAttachmentRepository.findByJobId(jobId);
     }
 
+    @Cacheable(value = "job-service::attachment", key = "#attachmentId")
     public JobAttachment getAttachmentById(Long jobId, Long attachmentId) {
         if (!jobRepository.existsById(jobId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found");
@@ -77,6 +80,15 @@ public class JobAttachmentService {
         return jobAttachmentRepository.save(existing);
     }
 
+
+    @CacheEvict(value = {
+            "job-service::attachment",
+            "job-service::S2-F1",
+            "job-service::S2-F3",
+            "job-service::S2-F5",
+            "job-service::S2-F6",
+            "job-service::S2-F9"
+    }, allEntries = true)
     public void deleteAttachment(Long jobId, Long attachmentId) {
         JobAttachment existing = getAttachmentById(jobId, attachmentId);
         jobAttachmentRepository.delete(existing);

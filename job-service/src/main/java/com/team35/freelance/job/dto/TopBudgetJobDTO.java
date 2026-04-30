@@ -1,6 +1,8 @@
 package com.team35.freelance.job.dto;
 
-public class TopBudgetJobDTO {
+import java.io.Serializable;
+
+public class TopBudgetJobDTO implements Serializable {
 
     private Long jobId;
     private String title;

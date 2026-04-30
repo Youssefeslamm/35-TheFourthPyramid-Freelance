@@ -3,11 +3,12 @@ package com.team35.freelance.wallet.dto;
 import com.team35.freelance.wallet.model.PayoutMethod;
 import com.team35.freelance.wallet.model.PayoutStatus;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-public class PayoutDetailsDTO {
+public class PayoutDetailsDTO implements Serializable {
 
     private Long payoutId;
     private Long contractId;

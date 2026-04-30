@@ -1,9 +1,12 @@
 package com.team35.freelance.user.dto;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
-public class UserProfileDTO {
+public class UserProfileDTO implements Serializable {  // ✅ ADD THIS
+
+    private static final long serialVersionUID = 1L;  // ✅ ADD THIS
 
     private Long userId;
     private String name;

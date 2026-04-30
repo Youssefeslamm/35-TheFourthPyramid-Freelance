@@ -20,6 +20,8 @@ import com.team35.freelance.proposal.dto.MilestoneRequest;
 import com.team35.freelance.proposal.repository.ProposalMilestoneRepository;
 import java.util.HashMap;
 import com.team35.freelance.proposal.dto.ProposalAnalyticsDTO;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 @Service
 public class ProposalService {
@@ -29,10 +31,21 @@ public class ProposalService {
     @Autowired
     private ProposalMilestoneRepository milestoneRepository;
 
+
+    @CacheEvict(value = {
+            "proposal-service::proposal",
+            "proposal-service::S3-F1",
+            "proposal-service::S3-F3",
+            "proposal-service::S3-F5",
+            "proposal-service::S3-F6",
+            "proposal-service::S3-F9"
+    }, allEntries = true)
     public Proposal create(Proposal proposal) {
         return proposalRepository.save(proposal);
     }
 
+
+    @Cacheable(value = "proposal-service::proposal", key = "#id")
     public Proposal getById(Long id) {
         return proposalRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Proposal not found"));
@@ -42,8 +55,17 @@ public class ProposalService {
         return proposalRepository.findAll();
     }
 
+
+    @CacheEvict(value = {
+            "proposal-service::proposal",
+            "proposal-service::S3-F1",
+            "proposal-service::S3-F3",
+            "proposal-service::S3-F5",
+            "proposal-service::S3-F6",
+            "proposal-service::S3-F9"
+    }, allEntries = true)
     public Proposal update(Long id, Proposal updated) {
-        Proposal existing = getById(id);
+        Proposal existing = getProposalEntity(id);
         existing.setCoverLetter(updated.getCoverLetter());
         existing.setBidAmount(updated.getBidAmount());
         existing.setEstimatedDays(updated.getEstimatedDays());
@@ -53,10 +75,26 @@ public class ProposalService {
         return proposalRepository.save(existing);
     }
 
+    private Proposal getProposalEntity(Long id) {
+        return proposalRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Proposal not found"));
+    }
+
+
+    @CacheEvict(value = {
+            "proposal-service::proposal",
+            "proposal-service::S3-F1",
+            "proposal-service::S3-F3",
+            "proposal-service::S3-F5",
+            "proposal-service::S3-F6",
+            "proposal-service::S3-F9"
+    }, allEntries = true)
     public void delete(Long id) {
         getById(id);
         proposalRepository.deleteById(id);
     }
+
+    @Cacheable(value = "proposal-service::S3-F3", key = "#bidAmount + ':' + #estimatedDays")
     public FeeEstimateDTO estimateFee(double bidAmount, int estimatedDays) {
         if (bidAmount <= 0 || estimatedDays <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -85,6 +123,14 @@ public class ProposalService {
                 estimatedDailyRate);
     }
     @Transactional
+    @CacheEvict(value = {
+            "proposal-service::proposal",
+            "proposal-service::S3-F1",
+            "proposal-service::S3-F3",
+            "proposal-service::S3-F5",
+            "proposal-service::S3-F6",
+            "proposal-service::S3-F9"
+    }, allEntries = true)
     public Proposal withdrawProposal(Long id) {
         Proposal proposal = proposalRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -108,6 +154,7 @@ public class ProposalService {
         return proposalRepository.save(proposal);
     }
 
+    @Cacheable(value = "proposal-service::S3-F9", key = "#proposalId")
     public ProposalDetailsDTO getProposalDetails(Long proposalId) {
         Proposal proposal = proposalRepository.findById(proposalId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -147,6 +194,14 @@ public class ProposalService {
     }
     // S3-F2: Accept Proposal and Create Contract
     @Transactional
+    @CacheEvict(value = {
+            "proposal-service::proposal",
+            "proposal-service::S3-F1",
+            "proposal-service::S3-F3",
+            "proposal-service::S3-F5",
+            "proposal-service::S3-F6",
+            "proposal-service::S3-F9"
+    }, allEntries = true)
     public Proposal acceptProposal(Long proposalId) {
         Proposal proposal = getById(proposalId);
 
@@ -185,6 +240,14 @@ public class ProposalService {
     }
     // S3-F4: Complete Proposal's Contract
     @Transactional
+    @CacheEvict(value = {
+            "proposal-service::proposal",
+            "proposal-service::S3-F1",
+            "proposal-service::S3-F3",
+            "proposal-service::S3-F5",
+            "proposal-service::S3-F6",
+            "proposal-service::S3-F9"
+    }, allEntries = true)
     public Proposal completeProposal(Long proposalId) {
         Proposal proposal = getById(proposalId);
 
@@ -211,6 +274,14 @@ public class ProposalService {
     }
     // S3-F8: Add Milestones to Proposal
     @Transactional
+    @CacheEvict(value = {
+            "proposal-service::proposal",
+            "proposal-service::S3-F1",
+            "proposal-service::S3-F3",
+            "proposal-service::S3-F5",
+            "proposal-service::S3-F6",
+            "proposal-service::S3-F9"
+    }, allEntries = true)
     public Proposal addMilestones(Long proposalId, List<MilestoneRequest> milestoneRequests) {
         Proposal proposal = getById(proposalId);
 
@@ -263,6 +334,7 @@ public class ProposalService {
         return proposalRepository.save(proposal);
     }
     // S3-F6
+    @Cacheable(value = "proposal-service::S3-F6", key = "#startDate + ':' + #endDate")
     public ProposalAnalyticsDTO getAnalytics(
             LocalDateTime startDate, LocalDateTime endDate) {
         List<Object[]> results = proposalRepository.getAnalytics(startDate, endDate);
@@ -280,6 +352,8 @@ public class ProposalService {
                 total, accepted, rejected, totalBid, avgBid, rate);
     }
     // S3-F5
+
+    @Cacheable(value = "proposal-service::S3-F5", key = "#key + ':' + #value")
     public List<Proposal> filterByMetadata(String key, String value) {
         if (key == null || key.isBlank() || value == null || value.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -288,6 +362,8 @@ public class ProposalService {
         return proposalRepository.findByMetadataField(key, value);
     }
     // S3-F1
+
+    @Cacheable(value = "proposal-service::S3-F1", key = "#status + ':' + #startDate + ':' + #endDate")
     public List<Proposal> getProposalsByStatusAndDateRange(
             String status, LocalDateTime startDate, LocalDateTime endDate) {
         if (status != null && status.isBlank()) {

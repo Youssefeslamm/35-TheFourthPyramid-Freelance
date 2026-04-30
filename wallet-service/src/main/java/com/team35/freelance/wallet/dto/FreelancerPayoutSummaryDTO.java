@@ -1,8 +1,9 @@
 package com.team35.freelance.wallet.dto;
 
+import java.io.Serializable;
 import java.util.Map;
 
-public class FreelancerPayoutSummaryDTO {
+public class FreelancerPayoutSummaryDTO implements Serializable {
 
     private Long freelancerId;
     private Long totalPayouts;
