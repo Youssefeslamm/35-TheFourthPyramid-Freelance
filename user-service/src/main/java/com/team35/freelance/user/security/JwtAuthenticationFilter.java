@@ -10,17 +10,21 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
+import com.team35.freelance.user.common.security.chain.*;
+import com.team35.freelance.user.repository.UserRepository;
 import java.io.IOException;
 import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private final UserRepository userRepository;
     private final JwtService jwtService;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService,
+                                   UserRepository userRepository) {
         this.jwtService = jwtService;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -35,24 +39,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+// ✅ Create context
+        AuthContext ctx = new AuthContext(request);
 
-        String authHeader = request.getHeader("Authorization");
+// ✅ Build chain
+        AuthHandler chain = new TokenExtractionHandler();
+        chain.setNext(new SignatureValidationHandler(jwtService))
+                .setNext(new UserLoaderHandler(jwtService, userRepository))
+                .setNext(new RoleAuthorizationHandler());
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+// ✅ Execute chain
+        boolean success = chain.handle(ctx, response);
+
+// ❌ Stop if failed
+        if (!success) {
             return;
         }
 
-        String token = authHeader.substring(7);
-
-        if (!jwtService.isTokenValid(token)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
-        }
-
-        Claims claims = jwtService.extractClaims(token);
-        String email = claims.getSubject();
-        String role = claims.get("role", String.class);
+        String email = ctx.getUser().getEmail();
+        String role = ctx.getUser().getRole().name();
 
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
@@ -62,6 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
+
         filterChain.doFilter(request, response);
     }
 }

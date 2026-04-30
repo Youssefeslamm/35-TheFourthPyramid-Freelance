@@ -1,6 +1,7 @@
 package com.team35.freelance.user.security;
 
 import com.team35.freelance.user.model.User;
+import com.team35.freelance.user.common.config.JwtConfigurationManager;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -14,20 +15,15 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
-
-    @Value("${jwt.expiration}")
-    private long jwtExpirationMs;
+    private final JwtConfigurationManager config = JwtConfigurationManager.getInstance();
 
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        return Keys.hmacShaKeyFor(config.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
     public String generateToken(User user) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
-
+        Date expiryDate = new Date(now.getTime() + config.getExpiration());
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim("userId", user.getId())

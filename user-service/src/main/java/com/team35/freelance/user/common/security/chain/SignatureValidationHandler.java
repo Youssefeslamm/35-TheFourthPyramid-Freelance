@@ -1,0 +1,30 @@
+package com.team35.freelance.user.common.security.chain;
+
+import com.team35.freelance.user.security.JwtService;
+import jakarta.servlet.http.HttpServletResponse;
+
+public class SignatureValidationHandler extends AuthHandler {
+
+    private final JwtService jwtService;
+
+    public SignatureValidationHandler(JwtService jwtService) {
+        this.jwtService = jwtService;
+    }
+
+    @Override
+    public boolean handle(AuthContext ctx, HttpServletResponse response) {
+
+        // ❌ Invalid or expired token
+        if (!jwtService.isTokenValid(ctx.getToken())) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return false;
+        }
+
+        // ✅ Valid → continue chain
+        if (next != null) {
+            return next.handle(ctx, response);
+        }
+
+        return true;
+    }
+}
