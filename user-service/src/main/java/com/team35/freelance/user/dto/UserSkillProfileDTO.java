@@ -2,9 +2,12 @@ package com.team35.freelance.user.dto;
 
 import com.team35.freelance.user.model.ProficiencyLevel;
 
+import java.io.Serializable;
 import java.util.Map;
 
-public class UserSkillProfileDTO {
+public class UserSkillProfileDTO implements Serializable {  // ✅ ADD THIS
+
+    private static final long serialVersionUID = 1L;  // ✅ ADD THIS
 
     private String skillName;
     private String category;
@@ -30,7 +33,9 @@ public class UserSkillProfileDTO {
         this.metadata = metadata;
     }
 
-    public String getSkillName() {
+
+
+public String getSkillName() {
         return skillName;
     }
 

@@ -1,6 +1,8 @@
 package com.team35.freelance.proposal.dto;
 
-public class FeeEstimateDTO {
+import java.io.Serializable;
+
+public class FeeEstimateDTO implements Serializable {
     private double bidAmount;
     private double platformFee;
     private double freelancerPayout;

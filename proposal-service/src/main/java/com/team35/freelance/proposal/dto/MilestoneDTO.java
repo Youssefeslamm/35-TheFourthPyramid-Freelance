@@ -1,7 +1,9 @@
 package com.team35.freelance.proposal.dto;
 import com.team35.freelance.proposal.model.MilestoneStatus;
+
+import java.io.Serializable;
 import java.util.Map;
-public class MilestoneDTO {
+public class MilestoneDTO implements Serializable {
     private Long id;
     private Integer milestoneOrder;
     private String title;

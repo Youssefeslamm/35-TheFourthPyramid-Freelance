@@ -1,6 +1,5 @@
 package com.team35.freelance.user.security;
 
-import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,6 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
+        // ✅ Skip authentication for public endpoints
         if (path.startsWith("/api/auth/") || path.contains("/health")) {
             filterChain.doFilter(request, response);
             return;
@@ -52,22 +52,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         boolean success = chain.handle(ctx, response);
 
 // ❌ Stop if failed
-        if (!success) {
-            return;
-        }
+      if (!success) {
+    return;
+}
 
-        String email = ctx.getUser().getEmail();
-        String role = ctx.getUser().getRole().name();
+String email = ctx.getUser().getEmail();
+String role = ctx.getUser().getRole().name();
 
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(
-                        email,
-                        null,
-                        List.of(new SimpleGrantedAuthority(role))
-                );
+// ✅ create authentication object
+UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(
+                email,
+                null,
+                List.of(new SimpleGrantedAuthority(role))
+        );
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        filterChain.doFilter(request, response);
-    }
+
+SecurityContextHolder.getContext().setAuthentication(authentication);
+
+filterChain.doFilter(request, response);
 }

@@ -40,3 +40,9 @@ logging:
   level:
     root: INFO
     org.hibernate: INFO
+
+
+cache:
+  type: redis
+  redis:
+  time-to-live: 600000  # 10 minutes in milliseconds
