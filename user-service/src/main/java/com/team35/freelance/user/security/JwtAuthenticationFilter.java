@@ -1,6 +1,5 @@
 package com.team35.freelance.user.security;
 
-import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,17 +9,21 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
+import com.team35.freelance.user.common.security.chain.*;
+import com.team35.freelance.user.repository.UserRepository;
 import java.io.IOException;
 import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private final UserRepository userRepository;
     private final JwtService jwtService;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService,
+                                   UserRepository userRepository) {
         this.jwtService = jwtService;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -36,59 +39,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+// ✅ Create context
+        AuthContext ctx = new AuthContext(request);
 
-        String authHeader = request.getHeader("Authorization");
+// ✅ Build chain
+        AuthHandler chain = new TokenExtractionHandler();
+        chain.setNext(new SignatureValidationHandler(jwtService))
+                .setNext(new UserLoaderHandler(jwtService, userRepository))
+                .setNext(new RoleAuthorizationHandler());
 
-        // ❌ No Authorization header
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Missing or invalid Authorization header\"}");
-            return;
-        }
+// ✅ Execute chain
+        boolean success = chain.handle(ctx, response);
 
-        String token = authHeader.substring(7);
+// ❌ Stop if failed
+      if (!success) {
+    return;
+}
 
-        // ❌ Token is invalid or expired
-        if (!jwtService.isTokenValid(token)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Invalid or expired token\"}");
-            return;
-        }
+String email = ctx.getUser().getEmail();
+String role = ctx.getUser().getRole().name();
 
-        try {
-            Claims claims = jwtService.extractClaims(token);
-            String email = claims.getSubject();
-            String role = claims.get("role", String.class);
+// ✅ create authentication object
+UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(
+                email,
+                null,
+                List.of(new SimpleGrantedAuthority(role))
+        );
 
-            // ✅ Verify role is not null
-            if (role == null) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json");
-                response.getWriter().write("{\"error\": \"Token missing role claim\"}");
-                return;
-            }
 
-            System.out.println("User: " + email);
-            System.out.println("Role from token: " + role);
 
-            List<SimpleGrantedAuthority> authorities =
-                    List.of(new SimpleGrantedAuthority("ROLE_" + role));
+SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            System.out.println("Authorities set: " + authorities);
-
-            UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(email, null, authorities);
-
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            filterChain.doFilter(request, response);
-
-        } catch (Exception e) {
-            System.err.println("JWT Processing error: " + e.getMessage());
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Token validation failed: " + e.getMessage() + "\"}");
-        }
-    }
+filterChain.doFilter(request, response);
 }

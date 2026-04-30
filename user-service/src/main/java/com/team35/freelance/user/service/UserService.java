@@ -1,5 +1,6 @@
 package com.team35.freelance.user.service;
 
+import com.team35.freelance.user.common.adapter.UserContractSummaryAdapter;
 import com.team35.freelance.user.model.Role;
 import com.team35.freelance.user.model.Status;
 import com.team35.freelance.user.model.User;
@@ -13,6 +14,8 @@ import com.team35.freelance.user.dto.UserProfileDTO;
 import com.team35.freelance.user.dto.UserSkillProfileDTO;
 import com.team35.freelance.user.dto.UserContractSummaryDTO;
 import com.team35.freelance.user.dto.TopFreelancerDTO;
+import com.team35.freelance.user.common.observer.EntityObserver;
+import com.team35.freelance.user.common.observer.MongoEventLogger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -28,10 +31,26 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserSkillRepository userSkillRepository;
+    private final List<EntityObserver> observers = new ArrayList<>();
+    private final MongoEventLogger mongoEventLogger;
 
-    public UserService(UserRepository userRepository, UserSkillRepository userSkillRepository) {
+
+    public UserService(UserRepository userRepository,
+                       UserSkillRepository userSkillRepository,
+                       MongoEventLogger mongoEventLogger) {
+
         this.userRepository = userRepository;
         this.userSkillRepository = userSkillRepository;
+        this.mongoEventLogger = mongoEventLogger;
+
+        // register observer
+        this.observers.add(mongoEventLogger);
+    }
+
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
     }
 
     // ===================== USER =====================
@@ -54,8 +73,12 @@ public class UserService {
             user.setStatus(Status.ACTIVE);
         }
 
-        return userRepository.save(user);
-    }
+        User savedUser = userRepository.save(user);
+
+        // 🔥 REQUIRED FOR CC-4 (Observer trigger)
+        notifyObservers("REGISTERED", savedUser);
+
+        return savedUser;    }
 
     // ✅ CACHE DTO INSTEAD OF ENTITY
     @Cacheable(value = "user-service::user", key = "#id")
@@ -257,15 +280,8 @@ public class UserService {
                 ));
 
         Object[] row = ((Object[]) userRepository.getUserContractSummary(userId)[0]);
-        return new UserContractSummaryDTO(
-                ((Number) row[0]).longValue(),
-                (String) row[1],
-                ((Number) row[2]).longValue(),
-                ((Number) row[3]).longValue(),
-                ((Number) row[4]).longValue(),
-                ((Number) row[5]).doubleValue(),
-                ((Number) row[6]).doubleValue()
-        );
+        UserContractSummaryAdapter adapter = new UserContractSummaryAdapter();
+        return adapter.adapt(row);
     }
 
     @Transactional
@@ -337,15 +353,15 @@ public class UserService {
             skillDTOs.add(skillDTO);
         }
 
-        return new UserProfileDTO(
-                user.getId(),
-                user.getName(),
-                user.getEmail(),
-                user.getPhone(),
-                user.getPreferences(),
-                skillDTOs,
-                skillDTOs.size()
-        );
+        return UserProfileDTO.builder()
+                .userId(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .preferences(user.getPreferences())
+                .skills(skillDTOs)
+                .totalSkills(skillDTOs.size())
+                .build();
     }
 
     // ===================== DEACTIVATE USER ACCOUNT =====================
@@ -385,9 +401,14 @@ public class UserService {
                 startDate.atStartOfDay(), endDate.atTime(23, 59, 59), limit);
         List<TopFreelancerDTO> result = new ArrayList<>();
         for (Object[] row : rows) {
-            result.add(new TopFreelancerDTO(
-                    ((Number) row[0]).longValue(), (String) row[1],
-                    ((Number) row[2]).doubleValue(), ((Number) row[3]).longValue()));
+            result.add(
+                    TopFreelancerDTO.builder()
+                            .userId(((Number) row[0]).longValue())
+                            .name((String) row[1])
+                            .totalEarnings(((Number) row[2]).doubleValue())
+                            .contractCount(((Number) row[3]).longValue())
+                            .build()
+            );
         }
         return result;
     }
