@@ -142,7 +142,15 @@ public class UserService {
         if (updatedUser.getPreferences() != null)
             user.setPreferences(updatedUser.getPreferences());
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "USER_UPDATED");
+        payload.put("userId", saved.getId());
+
+        notifyObservers("USER_UPDATED", payload);
+
+        return saved;
     }
 
     @CacheEvict(value = {
@@ -157,6 +165,12 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         userRepository.delete(user);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "USER_DELETED");
+        payload.put("userId", id);
+
+        notifyObservers("USER_DELETED", payload);
     }
 
     // ===================== USER SKILLS =====================
@@ -182,7 +196,16 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         skill.setUser(user);
 
-        return userSkillRepository.save(skill);
+        UserSkill saved = userSkillRepository.save(skill);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "SKILL_ADDED");
+        payload.put("userId", userId);
+        payload.put("skillId", saved.getId());
+
+        notifyObservers("SKILL_ADDED", payload);
+
+        return saved;
     }
 
     public List<UserSkill> getUserSkills(Long userId) {
@@ -221,7 +244,15 @@ public class UserService {
         if (updatedSkill.getMetadata() != null)
             skill.setMetadata(updatedSkill.getMetadata());
 
-        return userSkillRepository.save(skill);
+        UserSkill saved = userSkillRepository.save(skill);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "SKILL_UPDATED");
+        payload.put("skillId", saved.getId());
+
+        notifyObservers("SKILL_UPDATED", payload);
+
+        return saved;
     }
 
     @CacheEvict(value = {
@@ -236,6 +267,12 @@ public class UserService {
         UserSkill skill = userSkillRepository.findById(skillId)
                 .orElseThrow(() -> new RuntimeException("Skill not found"));
         userSkillRepository.delete(skill);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "SKILL_DELETED");
+        payload.put("skillId", skillId);
+
+        notifyObservers("SKILL_DELETED", payload);
     }
 
 
@@ -338,6 +375,13 @@ public class UserService {
         skill.setIsPrimary(true);
         userSkillRepository.saveAll(userSkills);
 
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "PRIMARY_SKILL_SET");
+        payload.put("userId", userId);
+        payload.put("skillId", skillId);
+
+        notifyObservers("PRIMARY_SKILL_SET", payload);
+
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"
@@ -360,14 +404,14 @@ public class UserService {
         List<UserSkillProfileDTO> skillDTOs = new ArrayList<>();
 
         for (UserSkill skill : userSkills) {
-            UserSkillProfileDTO skillDTO = new UserSkillProfileDTO(
-                    skill.getSkillName(),
-                    skill.getCategory(),
-                    skill.getYearsOfExperience(),
-                    skill.getProficiencyLevel(),
-                    skill.getIsPrimary(),
-                    skill.getMetadata()
-            );
+            UserSkillProfileDTO skillDTO = UserSkillProfileDTO.builder()
+                    .skillName(skill.getSkillName())
+                    .category(skill.getCategory())
+                    .yearsOfExperience(skill.getYearsOfExperience())
+                    .proficiencyLevel(skill.getProficiencyLevel())
+                    .isPrimary(skill.getIsPrimary())
+                    .metadata(skill.getMetadata())
+                    .build();
             skillDTOs.add(skillDTO);
         }
 
@@ -405,7 +449,15 @@ public class UserService {
 
         user.setStatus(Status.DEACTIVATED);
         userRepository.withdrawSubmittedProposalsForUser(id);
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "USER_DEACTIVATED");
+        payload.put("userId", saved.getId());
+
+        notifyObservers("USER_DEACTIVATED", payload);
+
+        return saved;
     }
 
     // ===================== TOP FREELANCERS BY EARNINGS =====================
