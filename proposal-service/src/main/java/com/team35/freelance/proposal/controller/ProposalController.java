@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/proposals")
@@ -121,6 +122,13 @@ public class ProposalController {
             @RequestParam LocalDate endDate) {
         return ResponseEntity.ok(
                 proposalService.getAnalyticsDashboard(startDate, endDate));
+    }
+    // S3-F11: Record Freelancer-Job Interaction
+    @PostMapping("/{proposalId}/record-interaction")
+    public ResponseEntity<Map<String, String>> recordInteraction(
+            @PathVariable Long proposalId) {
+        proposalService.recordInteraction(proposalId);
+        return ResponseEntity.ok(Map.of("message", "Interaction recorded successfully"));
     }
 
 }

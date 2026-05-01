@@ -163,7 +163,13 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );
+    // S3-F11: Get freelancer name
+    @Query(value = "SELECT name FROM users WHERE id = :freelancerId", nativeQuery = true)
+    String findFreelancerNameById(@Param("freelancerId") Long freelancerId);
 
+    // S3-F11: Get job title and category
+    @Query(value = "SELECT title || '|' || category FROM jobs WHERE id = :jobId", nativeQuery = true)
+    String findJobTitleAndCategoryById(@Param("jobId") Long jobId);
 
 
 }

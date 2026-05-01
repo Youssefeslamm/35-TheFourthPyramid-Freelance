@@ -30,6 +30,9 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.data.neo4j.core.Neo4jClient;
+
+import org.springframework.data.neo4j.core.Neo4jClient;
 
 @Service
 public class ProposalService {
@@ -42,7 +45,8 @@ public class ProposalService {
     @Autowired
     private ProposalEventRepository proposalEventRepository;
     private static final Logger log = LoggerFactory.getLogger(ProposalService.class);
-
+    @Autowired
+    private Neo4jClient neo4jClient;
 
     //private final ProposalRepository proposalRepository;
    // private final ProposalMilestoneRepository milestoneRepository;
@@ -535,6 +539,32 @@ public class ProposalService {
                 .averageEstimatedDays(averageEstimatedDays)
                 .proposalsByStatus(proposalsByStatus)
                 .build();
+    }
+    // S3-F11: Record Freelancer-Job Interaction
+    @Transactional
+    public void recordInteraction(Long proposalId) {
+        // b) Find proposal in PG
+        Proposal proposal = proposalRepository.findById(proposalId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Proposal not found"));
+
+        // c) Verify SUBMITTED status
+        if (proposal.getStatus() != ProposalStatus.SUBMITTED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Proposal is not in SUBMITTED status");
+        }
+
+        Long freelancerId = proposal.getFreelancerId();
+        Long jobId = proposal.getJobId();
+// d) Idempotency check in Neo4j
+        var countResult = neo4jClient.query(
+                        "MATCH (f:Freelancer {userId: " + freelancerId + "})-[r:PROPOSED_TO]->(j:Job {jobId: " + jobId + "}) " +
+                                "WHERE " + proposalId + " IN r.recordedProposalIds RETURN count(r) AS cnt")
+                .fetchAs(Long.class)
+                .mappedBy((typeSystem, record) -> record.get("cnt").asLong())
+                .one()
+                .orElse(0L);
+        boolean alreadyRecorded = countResult > 0;
     }
 }
 
