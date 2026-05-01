@@ -34,10 +34,9 @@ public class MongoEventLogger implements EntityObserver {
             @SuppressWarnings("unchecked")
             Map<String, Object> params = (Map<String, Object>) payload;
 
-            EventType type = EventType.AUTH;
+            params.put("action", eventType);
 
-            // ✅ FIX 3: use instance, NOT static
-            MongoEvent event = eventFactory.createEvent(type, params);
+            MongoEvent event = eventFactory.createEvent(EventType.AUTH, params);
 
             mongoTemplate.save(event);
 

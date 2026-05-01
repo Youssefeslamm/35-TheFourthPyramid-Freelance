@@ -7,6 +7,8 @@ import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.model.ContractStatus;
 import com.team35.freelance.contract.repository.ContractRepository;
+import com.team35.freelance.contract.common.observer.EntityObserver;
+import com.team35.freelance.contract.common.observer.MongoEventLogger;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
@@ -15,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,9 +28,26 @@ import java.util.stream.Collectors;
 public class ContractService {
 
     private final ContractRepository contractRepository;
+    private final List<EntityObserver> observers = new ArrayList<>();
 
-    public ContractService(ContractRepository contractRepository) {
+    public ContractService(ContractRepository contractRepository,
+                           MongoEventLogger mongoEventLogger) {
         this.contractRepository = contractRepository;
+        registerObserver(mongoEventLogger);
+    }
+
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
+
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
+    }
+
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
     }
 
     @CacheEvict(value = {
@@ -39,7 +60,15 @@ public class ContractService {
             "contract-service::S4-F9"
     }, allEntries = true)
     public Contract create(Contract contract) {
-        return contractRepository.save(contract);
+        Contract saved = contractRepository.save(contract);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "CREATED");
+        payload.put("contractId", saved.getId());
+
+        notifyObservers("CONTRACT", payload);
+
+        return saved;
     }
 
     public List<Contract> findAll() {
@@ -48,6 +77,7 @@ public class ContractService {
 
     @Cacheable(value = "contract-service::contract", key = "#id")
     public Optional<Contract> findById(Long id) {
+
         return contractRepository.findById(id);
     }
 
@@ -72,7 +102,15 @@ public class ContractService {
         existing.setEndDate(updatedContract.getEndDate());
         existing.setMetadata(updatedContract.getMetadata());
 
-        return contractRepository.save(existing);
+        Contract saved = contractRepository.save(existing);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "UPDATED");
+        payload.put("contractId", saved.getId());
+
+        notifyObservers("CONTRACT", payload);
+
+        return saved;
     }
 
     @CacheEvict(value = {
@@ -88,6 +126,13 @@ public class ContractService {
         if (!contractRepository.existsById(id)) {
             throw new RuntimeException("Contract not found");
         }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "DELETED");
+        payload.put("contractId", id);
+
+        notifyObservers("CONTRACT", payload);
+
         contractRepository.deleteById(id);
     }
 
@@ -123,7 +168,16 @@ public class ContractService {
         metadata.putAll(updates);
         contract.setMetadata(metadata);
 
-        return contractRepository.save(contract);
+        Contract saved = contractRepository.save(contract);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "PROGRESS_UPDATED");
+        payload.put("contractId", saved.getId());
+        payload.put("updates", updates);
+
+        notifyObservers("CONTRACT", payload);
+
+        return saved;
     }
 
     @Cacheable(value = "contract-service::S4-F6", key = "#startDate + ':' + #endDate + ':' + #status")
@@ -156,14 +210,14 @@ public class ContractService {
     }
 
     private ContractSummaryDTO toContractSummaryDTO(Object[] row) {
-        ContractSummaryDTO dto = new ContractSummaryDTO();
-        dto.setContractId(((Number) row[0]).longValue());
-        dto.setFreelancerName((String) row[1]);
-        dto.setJobTitle((String) row[2]);
-        dto.setAgreedAmount(((Number) row[3]).doubleValue());
-        dto.setStatus((String) row[4]);
-        dto.setDurationDays(row[5] != null ? ((Number) row[5]).doubleValue() : 0.0);
-        return dto;
+        return ContractSummaryDTO.builder()
+                .contractId(((Number) row[0]).longValue())
+                .freelancerName((String) row[1])
+                .jobTitle((String) row[2])
+                .agreedAmount(((Number) row[3]).doubleValue())
+                .status(String.valueOf(row[4]))
+                .durationDays(((Number) row[5]).doubleValue())
+                .build();
     }
 
     @Transactional
@@ -213,6 +267,12 @@ public class ContractService {
         }
 
         contractRepository.saveAll(contracts);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "BATCH_STATUS_UPDATED");
+        payload.put("count", contracts.size());
+        payload.put("contractIds", ids);
+
+        notifyObservers("CONTRACT", payload);
         return contracts.size();
     }
 
@@ -227,7 +287,16 @@ public class ContractService {
             "contract-service::S4-F9"
     }, allEntries = true)
     public int purgeOldContracts(int olderThanDays) {
-        return contractRepository.purgeOldContracts(LocalDateTime.now().minusDays(olderThanDays));
+        int deletedCount = contractRepository.purgeOldContracts(LocalDateTime.now().minusDays(olderThanDays));
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "OLD_DATA_PURGED");
+        payload.put("deletedCount", deletedCount);
+        payload.put("olderThanDays", olderThanDays);
+
+        notifyObservers("CONTRACT", payload);
+
+        return deletedCount;
     }
 
     @Cacheable(value = "contract-service::S4-F8", key = "#freelancerId + ':' + #startDate + ':' + #endDate")
@@ -250,14 +319,14 @@ public class ContractService {
         Double averageContractValue = totalContracts > 0 ? totalAmount / totalContracts : 0.0;
         Double completionRate = totalContracts > 0 ? ((double) completedContracts / totalContracts) * 100 : 0.0;
 
-        return new FreelancerPerformanceDTO(
-                freelancerId,
-                totalContracts,
-                averageContractValue,
-                completionRate,
-                avgDuration,
-                totalEarnings
-        );
+        return FreelancerPerformanceDTO.builder()
+                .freelancerId(freelancerId)
+                .totalContracts(totalContracts)
+                .averageContractValue(averageContractValue)
+                .completionRate(completionRate)
+                .averageDurationDays(avgDuration)
+                .totalEarnings(totalEarnings)
+                .build();
     }
 
     @Cacheable(value = "contract-service::S4-F9", key = "#maxProgress + ':' + #stalledDays")
@@ -265,14 +334,15 @@ public class ContractService {
         List<Object[]> results = contractRepository.findStalledContracts(maxProgress, stalledDays);
 
         return results.stream()
-                .map(row -> new StalledContractDTO(
-                        ((Number) row[0]).longValue(),
-                        (String) row[1],
-                        (String) row[2],
-                        ((Number) row[3]).doubleValue(),
-                        row[4] != null ? ((Number) row[4]).doubleValue() : 0.0,
-                        ((Number) row[5]).intValue()
-                ))
+                .map(row -> StalledContractDTO.builder()
+                        .contractId(((Number) row[0]).longValue())
+                        .freelancerName((String) row[1])
+                        .jobTitle((String) row[2])
+                        .agreedAmount(((Number) row[3]).doubleValue())
+                        .progressPercentage(row[4] != null ? ((Number) row[4]).doubleValue() : 0.0)
+                        .daysSinceLastActivity(((Number) row[5]).intValue())
+                        .build()
+                )
                 .collect(Collectors.toList());
     }
 

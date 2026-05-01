@@ -1,6 +1,5 @@
 package com.team35.freelance.proposal.security;
 
-import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,6 +9,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import com.team35.freelance.proposal.common.security.chain.*;
+import io.jsonwebtoken.Claims;
 
 import java.io.IOException;
 import java.util.List;
@@ -36,21 +37,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String authHeader = request.getHeader("Authorization");
+        // Create context
+        AuthContext ctx = new AuthContext(request);
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        // Build chain
+        AuthHandler chain = new TokenExtractionHandler();
+        chain.setNext(new SignatureValidationHandler(jwtService))
+                .setNext(new UserLoaderHandler(jwtService))
+                .setNext(new RoleAuthorizationHandler());
+
+        // Execute chain
+        boolean success = chain.handle(ctx, response);
+
+        if (!success) {
             return;
         }
 
-        String token = authHeader.substring(7);
-
-        if (!jwtService.isTokenValid(token)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
-        }
-
-        Claims claims = jwtService.extractClaims(token);
+        // Set Spring Security context
+        Claims claims = jwtService.extractClaims(ctx.getToken());
         String email = claims.getSubject();
         String role = claims.get("role", String.class);
 

@@ -9,6 +9,7 @@ import com.team35.freelance.user.repository.UserRepository;
 import com.team35.freelance.user.security.JwtService;
 import com.team35.freelance.user.common.observer.EntityObserver;
 import com.team35.freelance.user.common.observer.MongoEventLogger;
+import com.team35.freelance.user.model.Role;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -54,12 +55,18 @@ public class AuthController {
                     .body(Map.of("message", "Email already exists"));
         }
 
+
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setPhone(request.getPhone());
-        user.setRole(request.getRole());
+        if (request.getRole() != null &&
+                (request.getRole().name().equals("CLIENT") || request.getRole().name().equals("FREELANCER"))) {
+            user.setRole(request.getRole());
+        } else {
+            user.setRole(Role.CLIENT);
+        }
         user.setStatus(Status.ACTIVE);
         user.setPreferences(request.getPreferences());
 
