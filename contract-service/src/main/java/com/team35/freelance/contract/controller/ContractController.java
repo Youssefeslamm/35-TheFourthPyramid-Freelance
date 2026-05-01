@@ -1,6 +1,7 @@
 package com.team35.freelance.contract.controller;
 
 import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
+import com.team35.freelance.contract.dto.ContractAnalyticsDTO;
 import com.team35.freelance.contract.dto.ContractSummaryDTO;
 import com.team35.freelance.contract.dto.FreelancerPerformanceDTO;
 import com.team35.freelance.contract.dto.StalledContractDTO;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -135,5 +137,14 @@ public class ContractController {
             return ResponseEntity.badRequest().build(); // Throws 400 if operator or number cast is invalid
         }
     }
-
+    // --- S4-F10: Contract Analytics Dashboard ---
+    @GetMapping("/analytics")
+    public ResponseEntity<ContractAnalyticsDTO> getContractAnalytics(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        if (startDate.isAfter(endDate)) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(contractService.getContractAnalytics(startDate, endDate));
+    }
 }

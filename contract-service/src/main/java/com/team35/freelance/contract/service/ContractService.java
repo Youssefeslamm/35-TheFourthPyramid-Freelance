@@ -3,9 +3,11 @@ package com.team35.freelance.contract.service;
 import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
 import com.team35.freelance.contract.dto.ContractSummaryDTO;
 import com.team35.freelance.contract.dto.FreelancerPerformanceDTO;
+import com.team35.freelance.contract.dto.ContractAnalyticsDTO;
 import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.model.ContractStatus;
+import com.team35.freelance.contract.repository.ContractAnalyticsRepository;
 import com.team35.freelance.contract.repository.ContractRepository;
 import com.team35.freelance.contract.common.observer.EntityObserver;
 import com.team35.freelance.contract.common.observer.MongoEventLogger;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,11 +31,14 @@ import java.util.stream.Collectors;
 public class ContractService {
 
     private final ContractRepository contractRepository;
+    private final ContractAnalyticsRepository analyticsRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
 
     public ContractService(ContractRepository contractRepository,
+                           ContractAnalyticsRepository analyticsRepository,
                            MongoEventLogger mongoEventLogger) {
         this.contractRepository = contractRepository;
+        this.analyticsRepository = analyticsRepository;
         registerObserver(mongoEventLogger);
     }
 
@@ -358,4 +364,33 @@ public class ContractService {
             throw new IllegalArgumentException("Invalid operator: " + operator);
         }
     }
+    @Cacheable(value = "contract-service::S4-F10", key = "#startDate + ':' + #endDate")
+    public ContractAnalyticsDTO getContractAnalytics(LocalDate startDate, LocalDate endDate) {
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(23, 59, 59, 999000000);
+
+        long total = analyticsRepository.countContractsInRange(start, end);
+        double avgValue = analyticsRepository.avgContractValue(start, end);
+        long completed = analyticsRepository.countCompletedInRange(start, end);
+        double completionRate = total == 0 ? 0.0 : (double) completed / total;
+        double avgDuration = analyticsRepository.avgDurationDays(start, end);
+        Map<String, Long> byStatus = analyticsRepository.countByStatus(start, end);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "ANALYTICS_VIEWED");
+        payload.put("startDate", startDate.toString());
+        payload.put("endDate", endDate.toString());
+        notifyObservers("CONTRACT", payload);
+
+        return ContractAnalyticsDTO.builder()
+                .totalContracts(total)
+                .averageContractValue(avgValue)
+                .completionRate(completionRate)
+                .averageContractDurationDays(avgDuration)
+                .contractsByStatus(byStatus)
+                .build();
+    }
 }
+
+
+
