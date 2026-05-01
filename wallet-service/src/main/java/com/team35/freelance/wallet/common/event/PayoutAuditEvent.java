@@ -1,11 +1,16 @@
 package com.team35.freelance.wallet.common.event;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
+@Document(collection = "payout_audit_trail")
 public class PayoutAuditEvent implements MongoEvent {
 
+    @Id
     private final String id;
     private final LocalDateTime timestamp;
     private final String action;
