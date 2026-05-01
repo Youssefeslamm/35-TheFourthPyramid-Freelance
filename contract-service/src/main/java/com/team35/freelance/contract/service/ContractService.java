@@ -7,6 +7,8 @@ import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.model.ContractStatus;
 import com.team35.freelance.contract.repository.ContractRepository;
+import com.team35.freelance.contract.common.observer.EntityObserver;
+import com.team35.freelance.contract.common.observer.MongoEventLogger;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
@@ -15,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,9 +28,26 @@ import java.util.stream.Collectors;
 public class ContractService {
 
     private final ContractRepository contractRepository;
+    private final List<EntityObserver> observers = new ArrayList<>();
 
-    public ContractService(ContractRepository contractRepository) {
+    public ContractService(ContractRepository contractRepository,
+                           MongoEventLogger mongoEventLogger) {
         this.contractRepository = contractRepository;
+        registerObserver(mongoEventLogger);
+    }
+
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
+
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
+    }
+
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
     }
 
     @CacheEvict(value = {
@@ -39,7 +60,15 @@ public class ContractService {
             "contract-service::S4-F9"
     }, allEntries = true)
     public Contract create(Contract contract) {
-        return contractRepository.save(contract);
+        Contract saved = contractRepository.save(contract);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "CREATED");
+        payload.put("contractId", saved.getId());
+
+        notifyObservers("CONTRACT", payload);
+
+        return saved;
     }
 
     public List<Contract> findAll() {
@@ -48,6 +77,7 @@ public class ContractService {
 
     @Cacheable(value = "contract-service::contract", key = "#id")
     public Optional<Contract> findById(Long id) {
+
         return contractRepository.findById(id);
     }
 
@@ -72,7 +102,15 @@ public class ContractService {
         existing.setEndDate(updatedContract.getEndDate());
         existing.setMetadata(updatedContract.getMetadata());
 
-        return contractRepository.save(existing);
+        Contract saved = contractRepository.save(existing);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "UPDATED");
+        payload.put("contractId", saved.getId());
+
+        notifyObservers("CONTRACT", payload);
+
+        return saved;
     }
 
     @CacheEvict(value = {
@@ -88,6 +126,13 @@ public class ContractService {
         if (!contractRepository.existsById(id)) {
             throw new RuntimeException("Contract not found");
         }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "DELETED");
+        payload.put("contractId", id);
+
+        notifyObservers("CONTRACT", payload);
+
         contractRepository.deleteById(id);
     }
 

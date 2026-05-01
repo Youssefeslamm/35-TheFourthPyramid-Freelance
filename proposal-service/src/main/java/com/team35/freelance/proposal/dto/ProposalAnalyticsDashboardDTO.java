@@ -8,6 +8,14 @@ public class ProposalAnalyticsDashboardDTO {
     private Map<String, Long> proposalsByStatus;
     private ProposalAnalyticsDashboardDTO() {}
 
+    private ProposalAnalyticsDashboardDTO(Builder builder) {
+        this.totalProposals = builder.totalProposals;
+        this.acceptanceRate = builder.acceptanceRate;
+        this.averageBidAmount = builder.averageBidAmount;
+        this.averageEstimatedDays = builder.averageEstimatedDays;
+        this.proposalsByStatus = builder.proposalsByStatus;
+    }
+
     public static Builder builder() { return new Builder(); }
 
     public static class Builder {
@@ -38,13 +46,7 @@ public class ProposalAnalyticsDashboardDTO {
             return this;
         }
         public ProposalAnalyticsDashboardDTO build() {
-            ProposalAnalyticsDashboardDTO dto = new ProposalAnalyticsDashboardDTO();
-            dto.totalProposals = this.totalProposals;
-            dto.acceptanceRate = this.acceptanceRate;
-            dto.averageBidAmount = this.averageBidAmount;
-            dto.averageEstimatedDays = this.averageEstimatedDays;
-            dto.proposalsByStatus = this.proposalsByStatus;
-            return dto;
+            return new ProposalAnalyticsDashboardDTO(this);
         }
     }
 
