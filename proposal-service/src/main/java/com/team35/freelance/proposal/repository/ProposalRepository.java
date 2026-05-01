@@ -145,4 +145,25 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );
+    //S3-F10
+    @Query(value = """
+    SELECT 
+        COUNT(*) as totalProposals,
+        AVG(bid_amount) as averageBidAmount,
+        AVG(estimated_days) as averageEstimatedDays,
+        SUM(CASE WHEN status = 'ACCEPTED' THEN 1 ELSE 0 END) as acceptedCount,
+        SUM(CASE WHEN status = 'REJECTED' THEN 1 ELSE 0 END) as rejectedCount,
+        SUM(CASE WHEN status = 'WITHDRAWN' THEN 1 ELSE 0 END) as withdrawnCount,
+        SUM(CASE WHEN status = 'SUBMITTED' THEN 1 ELSE 0 END) as submittedCount,
+        SUM(CASE WHEN status = 'SHORTLISTED' THEN 1 ELSE 0 END) as shortlistedCount
+    FROM proposals
+    WHERE submitted_at BETWEEN :startDate AND :endDate
+    """, nativeQuery = true)
+    Object[] getProposalAnalytics(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
+
+
 }
