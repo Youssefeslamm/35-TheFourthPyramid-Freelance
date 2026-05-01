@@ -66,8 +66,16 @@ public class PayoutService {
     }, allEntries = true)
     public Payout createPayout(Payout payout) {
         payout.setCreatedAt(LocalDateTime.now());
-        return payoutRepository.save(payout);
-    }
+        Payout saved = payoutRepository.save(payout);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "PAYOUT_CREATED");
+        payload.put("payoutId", saved.getId());
+        payload.put("amount", saved.getAmount());
+
+        notifyObservers("PAYOUT_AUDIT", payload);
+
+        return saved;    }
 
     public List<Payout> getAllPayouts() {
         return payoutRepository.findAll();
@@ -99,8 +107,15 @@ public class PayoutService {
         existing.setStatus(updatedPayout.getStatus());
         existing.setTransactionDetails(updatedPayout.getTransactionDetails());
 
-        return payoutRepository.save(existing);
-    }
+        Payout saved = payoutRepository.save(existing);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "PAYOUT_UPDATED");
+        payload.put("payoutId", saved.getId());
+
+        notifyObservers("PAYOUT_AUDIT", payload);
+
+        return saved;    }
 
     @CacheEvict(value = {
             "wallet-service::payout",
@@ -116,8 +131,13 @@ public class PayoutService {
         if (!payoutRepository.existsById(id)) {
             throw new RuntimeException("Payout not found");
         }
-        payoutRepository.deleteById(id);
-    }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "PAYOUT_DELETED");
+        payload.put("payoutId", id);
+
+        notifyObservers("PAYOUT_AUDIT", payload);
+
+        payoutRepository.deleteById(id);    }
 
     @Cacheable(value = "wallet-service::S5-F3", key = "#freelancerId")
     public FreelancerPayoutSummaryDTO getFreelancerSummary(Long freelancerId) {
@@ -188,7 +208,13 @@ public class PayoutService {
 
         payout.setTransactionDetails(details);
 
-        payoutRepository.save(payout);
+        Payout saved = payoutRepository.save(payout);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "PAYOUT_PROCESSED");
+        payload.put("payoutId", saved.getId());
+
+        notifyObservers("PAYOUT_AUDIT", payload);
     }
 
     @Cacheable(value = "wallet-service::S5-F1", key = "#status + ':' + #startDate + ':' + #endDate")
@@ -324,8 +350,15 @@ public class PayoutService {
         }
 
         payout.setStatus(PayoutStatus.COMPLETED);
-        return payoutRepository.save(payout);
-    }
+        Payout saved = payoutRepository.save(payout);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "PAYOUT_RETRIED");
+        payload.put("payoutId", saved.getId());
+
+        notifyObservers("PAYOUT_AUDIT", payload);
+
+        return saved;    }
 
     @CacheEvict(value = {
             "wallet-service::payout",
