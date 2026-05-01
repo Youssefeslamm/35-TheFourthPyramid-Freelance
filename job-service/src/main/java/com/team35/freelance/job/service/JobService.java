@@ -8,24 +8,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.team35.freelance.job.dto.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.team35.freelance.job.dto.CloseJobRequest;
-import com.team35.freelance.job.dto.TopBudgetJobDTO;
-import com.team35.freelance.job.dto.ContractLookupProjection;
-import com.team35.freelance.job.dto.JobProposalSummaryDTO;
-import com.team35.freelance.job.dto.RateJobRequestDTO;
 import com.team35.freelance.job.exception.BadRequestException;
 import com.team35.freelance.job.exception.ResourceNotFoundException;
 import com.team35.freelance.job.model.Job;
 import com.team35.freelance.job.model.JobAttachment;
 import com.team35.freelance.job.model.JobStatus;
 import com.team35.freelance.job.repository.JobAttachmentRepository;
+import com.team35.freelance.job.common.observer.EntityObserver;
+import com.team35.freelance.job.common.observer.MongoEventLogger;
 import com.team35.freelance.job.repository.JobRepository;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
@@ -37,11 +34,21 @@ public class JobService {
 
     private final JobRepository jobRepository;
     private final JobAttachmentRepository jobAttachmentRepository;
+    private final List<EntityObserver> observers = new ArrayList<>();
 
+    public JobService(JobRepository jobRepository,
+                      JobAttachmentRepository jobAttachmentRepository,
+                      MongoEventLogger mongoEventLogger) {
 
-    public JobService(JobRepository jobRepository, JobAttachmentRepository jobAttachmentRepository) {
         this.jobRepository = jobRepository;
         this.jobAttachmentRepository = jobAttachmentRepository;
+
+        this.observers.add(mongoEventLogger);
+    }
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
     }
 
 
@@ -56,14 +63,14 @@ public class JobService {
         Map<String, Object> result = jobRepository.getProposalSummaryRaw(id, startDate, endDate);
 
         // 3. Map the database results to the DTO
-        return new JobProposalSummaryDTO(
-                ((Number) result.get("jobid")).longValue(),
-                (String) result.get("title"),
-                ((Number) result.get("totalproposals")).longValue(),
-                ((Number) result.get("averagebidamount")).doubleValue(),
-                ((Number) result.get("lowestbid")).doubleValue(),
-                ((Number) result.get("highestbid")).doubleValue()
-        );
+        return new JobProposalSummaryDTOBuilder()
+                .jobId(((Number) result.get("jobid")).longValue())
+                .title((String) result.get("title"))
+                .totalProposals(((Number) result.get("totalproposals")).longValue())
+                .averageBidAmount(((Number) result.get("averagebidamount")).doubleValue())
+                .lowestBid(((Number) result.get("lowestbid")).doubleValue())
+                .highestBid(((Number) result.get("highestbid")).doubleValue())
+                .build();
     }
 
     @CacheEvict(value = {
@@ -114,8 +121,15 @@ public class JobService {
             job.setTotalRatings(0);
         }
 
-        return jobRepository.save(job);
-    }
+        Job saved = jobRepository.save(job);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "JOB_CREATED");
+        payload.put("jobId", saved.getId());
+
+        notifyObservers("JOB_CREATED", payload);
+
+        return saved;    }
 
     @Cacheable(value = "job-service::job", key = "#id")
     public Job getJobById(Long id) {
@@ -158,8 +172,15 @@ public class JobService {
 
         existing.setRequirements(updatedJob.getRequirements());
 
-        return jobRepository.save(existing);
-    }
+        Job saved = jobRepository.save(existing);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "JOB_UPDATED");
+        payload.put("jobId", saved.getId());
+
+        notifyObservers("JOB_UPDATED", payload);
+
+        return saved;    }
 
     @CacheEvict(value = {
             "job-service::job",
@@ -171,7 +192,14 @@ public class JobService {
     }, allEntries = true)
     public void deleteJob(Long id) {
         Job existing = getJobById(id);
-        jobRepository.delete(existing);
+
+        jobRepository.delete(existing); // 🔥 MISSING
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "JOB_DELETED");
+        payload.put("jobId", id);
+
+        notifyObservers("JOB_DELETED", payload);
     }
 
     @Cacheable(value = "job-service::S2-F1", key = "#status + ':' + #minBudget + ':' + #maxBudget")
@@ -245,13 +273,15 @@ public class JobService {
                     jobAttachmentRepository.findByJobIdAndExpiryDateBefore(job.getId(), today);
 
             if (!expiredAttachments.isEmpty()) {
-                alerts.add(new JobAttachmentAlertDTO(
-                        job.getId(),
-                        job.getTitle(),
-                        job.getStatus(),
-                        expiredAttachments,
-                        expiredAttachments.size()
-                ));
+                alerts.add(
+                        new JobAttachmentAlertDTOBuilder()
+                                .jobId(job.getId())
+                                .jobTitle(job.getTitle())
+                                .jobStatus(job.getStatus())
+                                .expiredAttachments(expiredAttachments)
+                                .expiredCount(expiredAttachments.size())
+                                .build()
+                );
             }
         });
 
@@ -336,8 +366,16 @@ public class JobService {
         job.setStatus(JobStatus.CLOSED);
         jobRepository.rejectSubmittedProposalsForJob(id);
 
-        return jobRepository.save(job);
-    }
+        Job saved = jobRepository.save(job); // 🔥 MISSING
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "JOB_CLOSED");
+        payload.put("jobId", saved.getId());
+
+        notifyObservers("JOB_CLOSED", payload);
+
+        return saved; // 🔥 ALSO MISSING
+        }
 
 
     @Cacheable(value = "job-service::S2-F5", key = "#key + ':' + #value + ':' + #status")
