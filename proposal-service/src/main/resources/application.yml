@@ -40,3 +40,19 @@ server:
 jwt:
   secret: ${JWT_SECRET:0123456789abcdef0123456789abcdef01234567}
   expiration: ${JWT_EXPIRATION_MS:86400000}
+
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:postgresql://localhost:5432/freelancedb
+  data:
+    neo4j:
+      uri: bolt://localhost:7687
+    mongodb:
+      uri: mongodb://root:rootpass@localhost:27017/freelancemongo?authSource=admin
+    redis:
+      host: localhost
