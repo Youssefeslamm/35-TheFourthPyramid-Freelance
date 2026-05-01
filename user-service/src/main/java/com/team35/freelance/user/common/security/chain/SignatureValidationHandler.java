@@ -14,13 +14,11 @@ public class SignatureValidationHandler extends AuthHandler {
     @Override
     public boolean handle(AuthContext ctx, HttpServletResponse response) {
 
-        // ❌ Invalid or expired token
         if (!jwtService.isTokenValid(ctx.getToken())) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return false;
         }
 
-        // ✅ Valid → continue chain
         if (next != null) {
             return next.handle(ctx, response);
         }
