@@ -273,13 +273,13 @@ public class PayoutService {
         double averagePayout =
                 totalTransactions == 0 ? 0 : totalRevenue / totalTransactions;
 
-        return new RevenueReportDTO(
-                totalRevenue,
-                totalTransactions,
-                averagePayout,
-                refundedAmount,
-                refundCount
-        );
+        return RevenueReportDTO.builder()
+                .totalRevenue(totalRevenue)
+                .totalTransactions(totalTransactions)
+                .averagePayout(averagePayout)
+                .refundedAmount(refundedAmount)
+                .refundCount(refundCount)
+                .build();
     }
 
     @Cacheable(value = "wallet-service::S5-F9", key = "#limit")
@@ -313,16 +313,16 @@ public class PayoutService {
 
             Boolean expired = expiryDate.isBefore(LocalDateTime.now());
 
-            PromoCodeUsage dto = new PromoCodeUsage(
-                    promoCodeId,
-                    code,
-                    discountType,
-                    discountValue,
-                    timesUsed,
-                    totalDiscountGiven,
-                    active,
-                    expired
-            );
+            PromoCodeUsage dto = PromoCodeUsage.builder()
+                    .promoCodeId(promoCodeId)
+                    .code(code)
+                    .discountType(discountType)
+                    .discountValue(discountValue)
+                    .timesUsed(timesUsed)
+                    .totalDiscountGiven(totalDiscountGiven)
+                    .active(active)
+                    .expired(expired)
+                    .build();
 
             result.add(dto);
         }
