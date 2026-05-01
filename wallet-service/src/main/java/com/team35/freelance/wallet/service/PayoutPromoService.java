@@ -193,29 +193,31 @@ public class PayoutPromoService {
         for (PayoutPromo payoutPromo : payoutPromos) {
             PromoCode promoCode = payoutPromo.getPromoCode();
 
-            appliedPromoCodes.add(new PayoutDetailsDTO.AppliedPromoCodeDTO(
-                    promoCode.getCode(),
-                    promoCode.getDiscountType().name(),
-                    payoutPromo.getDiscountApplied(),
-                    payoutPromo.getAppliedAt()
-            ));
+            appliedPromoCodes.add(
+                    PayoutDetailsDTO.AppliedPromoCodeDTO.builder()
+                            .promoCode(promoCode.getCode())
+                            .discountType(promoCode.getDiscountType().name())
+                            .discountApplied(payoutPromo.getDiscountApplied())
+                            .appliedAt(payoutPromo.getAppliedAt())
+                            .build()
+            );
 
             totalDiscount += payoutPromo.getDiscountApplied();
         }
 
         double finalAmount = payout.getAmount() - totalDiscount;
 
-        return new PayoutDetailsDTO(
-                payout.getId(),
-                payout.getContractId(),
-                payout.getFreelancerId(),
-                payout.getAmount(),
-                payout.getMethod(),
-                payout.getStatus(),
-                payout.getTransactionDetails(),
-                appliedPromoCodes,
-                totalDiscount,
-                finalAmount
-        );
+        return PayoutDetailsDTO.builder()
+                .payoutId(payout.getId())
+                .contractId(payout.getContractId())
+                .freelancerId(payout.getFreelancerId())
+                .originalAmount(payout.getAmount())
+                .method(payout.getMethod())
+                .status(payout.getStatus())
+                .transactionDetails(payout.getTransactionDetails())
+                .appliedPromoCodes(appliedPromoCodes)
+                .totalDiscount(totalDiscount)
+                .finalAmount(finalAmount)
+                .build();
     }
 }
