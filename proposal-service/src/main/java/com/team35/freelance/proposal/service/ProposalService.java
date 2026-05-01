@@ -34,7 +34,7 @@ import java.util.Map;
 @Service
 public class ProposalService {
 
-<<<<<<< feat/proposal/S3-F10/55-10737
+
     @Autowired
     private ProposalRepository proposalRepository;
     @Autowired
@@ -42,9 +42,15 @@ public class ProposalService {
     @Autowired
     private ProposalEventRepository proposalEventRepository;
     private static final Logger log = LoggerFactory.getLogger(ProposalService.class);
-=======
-    private final ProposalRepository proposalRepository;
-    private final ProposalMilestoneRepository milestoneRepository;
+
+
+    //private final ProposalRepository proposalRepository;
+   // private final ProposalMilestoneRepository milestoneRepository;
+
+
+    // final ProposalRepository proposalRepository;
+   // private final ProposalMilestoneRepository milestoneRepository;
+
     private final List<EntityObserver> observers = new ArrayList<>();
 
     public ProposalService(ProposalRepository proposalRepository,
@@ -69,7 +75,7 @@ public class ProposalService {
     public void unregisterObserver(EntityObserver observer) {
         observers.remove(observer);
     }
->>>>>>> main
+
     @CacheEvict(value = {
             "proposal-service::proposal",
             "proposal-service::S3-F1",
