@@ -14,11 +14,9 @@ public class TokenExtractionHandler extends AuthHandler {
             return false;
         }
 
-        // ✅ Extract token
         String token = authHeader.substring(7);
         ctx.setToken(token);
 
-        // 👉 Pass to next handler
         if (next != null) {
             return next.handle(ctx, response);
         }

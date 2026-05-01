@@ -19,17 +19,13 @@ public class UserLoaderHandler extends AuthHandler {
     public boolean handle(AuthContext ctx, HttpServletResponse response) {
 
         try {
-            // ✅ extract claims
             Claims claims = jwtService.extractClaims(ctx.getToken());
-
             Long userId = claims.get("userId", Long.class);
 
-            // ❌ user not found
             return userRepository.findById(userId)
                     .map(user -> {
                         ctx.setUser(user);
 
-                        // 👉 continue chain
                         if (next != null) {
                             return next.handle(ctx, response);
                         }

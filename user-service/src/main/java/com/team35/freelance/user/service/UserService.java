@@ -52,7 +52,13 @@ public class UserService {
             observer.onEvent(eventType, payload);
         }
     }
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
 
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
+    }
     // ===================== USER =====================
 
 
@@ -75,10 +81,15 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
 
-        // 🔥 REQUIRED FOR CC-4 (Observer trigger)
-        notifyObservers("REGISTERED", savedUser);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "REGISTERED");
+        payload.put("userId", savedUser.getId());
+        payload.put("email", savedUser.getEmail());
 
-        return savedUser;    }
+        notifyObservers("REGISTERED", payload);
+
+        return savedUser;
+    }
 
     // ✅ CACHE DTO INSTEAD OF ENTITY
     @Cacheable(value = "user-service::user", key = "#id")
@@ -257,9 +268,16 @@ public class UserService {
             existingPreferences.putAll(newPreferences);
         }
 
-        user.setPreferences(existingPreferences);
+        user.setPreferences(existingPreferences);   // 🔥 MISSING LINE
+        User saved = userRepository.save(user);
 
-        return userRepository.save(user);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "PREFERENCES_UPDATED");
+        payload.put("userId", saved.getId());
+
+        notifyObservers("PREFERENCES_UPDATED", payload);
+
+        return saved;
     }
 
 
@@ -448,6 +466,15 @@ public class UserService {
         }
 
         user.setRole(newRole);
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "ROLE_CHANGED");
+        payload.put("userId", saved.getId());
+        payload.put("newRole", newRole.toString());
+
+        notifyObservers("ROLE_CHANGED", payload);
+
+        return saved;
     }
 }

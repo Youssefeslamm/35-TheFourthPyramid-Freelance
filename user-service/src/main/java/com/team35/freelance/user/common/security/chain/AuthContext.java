@@ -8,6 +8,7 @@ public class AuthContext {
     private HttpServletRequest request;
     private String token;
     private User user;
+    private String requiredRole;
 
     public AuthContext(HttpServletRequest request) {
         this.request = request;
@@ -20,4 +21,7 @@ public class AuthContext {
 
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
+
+    public String getRequiredRole() { return requiredRole; }
+    public void setRequiredRole(String requiredRole) { this.requiredRole = requiredRole; }
 }

@@ -1,12 +1,18 @@
 package com.team35.freelance.user.common.event;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
+@Document(collection = "auth_events")
 public class AuthEvent implements MongoEvent {
 
+    @Id
     private String id;
+
     private String timestamp;
     private String action;
     private Map<String, Object> details;
