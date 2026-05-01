@@ -168,7 +168,16 @@ public class ContractService {
         metadata.putAll(updates);
         contract.setMetadata(metadata);
 
-        return contractRepository.save(contract);
+        Contract saved = contractRepository.save(contract);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "PROGRESS_UPDATED");
+        payload.put("contractId", saved.getId());
+        payload.put("updates", updates);
+
+        notifyObservers("CONTRACT", payload);
+
+        return saved;
     }
 
     @Cacheable(value = "contract-service::S4-F6", key = "#startDate + ':' + #endDate + ':' + #status")
@@ -201,14 +210,14 @@ public class ContractService {
     }
 
     private ContractSummaryDTO toContractSummaryDTO(Object[] row) {
-        ContractSummaryDTO dto = new ContractSummaryDTO();
-        dto.setContractId(((Number) row[0]).longValue());
-        dto.setFreelancerName((String) row[1]);
-        dto.setJobTitle((String) row[2]);
-        dto.setAgreedAmount(((Number) row[3]).doubleValue());
-        dto.setStatus((String) row[4]);
-        dto.setDurationDays(row[5] != null ? ((Number) row[5]).doubleValue() : 0.0);
-        return dto;
+        return ContractSummaryDTO.builder()
+                .contractId(((Number) row[0]).longValue())
+                .freelancerName((String) row[1])
+                .jobTitle((String) row[2])
+                .agreedAmount(((Number) row[3]).doubleValue())
+                .status(String.valueOf(row[4]))
+                .durationDays(((Number) row[5]).doubleValue())
+                .build();
     }
 
     @Transactional
@@ -258,6 +267,12 @@ public class ContractService {
         }
 
         contractRepository.saveAll(contracts);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "BATCH_STATUS_UPDATED");
+        payload.put("count", contracts.size());
+        payload.put("contractIds", ids);
+
+        notifyObservers("CONTRACT", payload);
         return contracts.size();
     }
 
@@ -272,7 +287,16 @@ public class ContractService {
             "contract-service::S4-F9"
     }, allEntries = true)
     public int purgeOldContracts(int olderThanDays) {
-        return contractRepository.purgeOldContracts(LocalDateTime.now().minusDays(olderThanDays));
+        int deletedCount = contractRepository.purgeOldContracts(LocalDateTime.now().minusDays(olderThanDays));
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "OLD_DATA_PURGED");
+        payload.put("deletedCount", deletedCount);
+        payload.put("olderThanDays", olderThanDays);
+
+        notifyObservers("CONTRACT", payload);
+
+        return deletedCount;
     }
 
     @Cacheable(value = "contract-service::S4-F8", key = "#freelancerId + ':' + #startDate + ':' + #endDate")
@@ -295,14 +319,14 @@ public class ContractService {
         Double averageContractValue = totalContracts > 0 ? totalAmount / totalContracts : 0.0;
         Double completionRate = totalContracts > 0 ? ((double) completedContracts / totalContracts) * 100 : 0.0;
 
-        return new FreelancerPerformanceDTO(
-                freelancerId,
-                totalContracts,
-                averageContractValue,
-                completionRate,
-                avgDuration,
-                totalEarnings
-        );
+        return FreelancerPerformanceDTO.builder()
+                .freelancerId(freelancerId)
+                .totalContracts(totalContracts)
+                .averageContractValue(averageContractValue)
+                .completionRate(completionRate)
+                .averageDurationDays(avgDuration)
+                .totalEarnings(totalEarnings)
+                .build();
     }
 
     @Cacheable(value = "contract-service::S4-F9", key = "#maxProgress + ':' + #stalledDays")
@@ -310,14 +334,15 @@ public class ContractService {
         List<Object[]> results = contractRepository.findStalledContracts(maxProgress, stalledDays);
 
         return results.stream()
-                .map(row -> new StalledContractDTO(
-                        ((Number) row[0]).longValue(),
-                        (String) row[1],
-                        (String) row[2],
-                        ((Number) row[3]).doubleValue(),
-                        row[4] != null ? ((Number) row[4]).doubleValue() : 0.0,
-                        ((Number) row[5]).intValue()
-                ))
+                .map(row -> StalledContractDTO.builder()
+                        .contractId(((Number) row[0]).longValue())
+                        .freelancerName((String) row[1])
+                        .jobTitle((String) row[2])
+                        .agreedAmount(((Number) row[3]).doubleValue())
+                        .progressPercentage(row[4] != null ? ((Number) row[4]).doubleValue() : 0.0)
+                        .daysSinceLastActivity(((Number) row[5]).intValue())
+                        .build()
+                )
                 .collect(Collectors.toList());
     }
 

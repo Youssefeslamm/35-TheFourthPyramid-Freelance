@@ -28,7 +28,8 @@ public class MongoEventLogger implements EntityObserver {
         try {
             Map<String, Object> params = (Map<String, Object>) payload;
 
-            MongoEvent event = eventFactory.createEvent(EventType.JOB, params);
+            EventType type = EventType.valueOf(eventType);
+            MongoEvent event = eventFactory.createEvent(type, params);
 
             mongoTemplate.save(event, "job_events");
 

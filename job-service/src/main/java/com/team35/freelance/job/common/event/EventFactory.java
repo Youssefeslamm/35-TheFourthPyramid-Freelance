@@ -15,6 +15,6 @@ public class EventFactory {
             );
         }
 
-        throw new IllegalArgumentException("Unsupported event type");
+        throw new IllegalArgumentException("Unsupported event type: " + type);
     }
 }

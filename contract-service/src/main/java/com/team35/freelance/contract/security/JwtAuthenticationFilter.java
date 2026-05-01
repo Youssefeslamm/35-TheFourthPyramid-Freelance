@@ -54,8 +54,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         // Set Spring Security context
-        String email = ctx.getUser() != null ? ctx.getUser().toString() : "unknown";
         Claims claims = jwtService.extractClaims(ctx.getToken());
+        String email = claims.getSubject();
         String role = claims.get("role", String.class);
 
         UsernamePasswordAuthenticationToken authentication =

@@ -40,13 +40,13 @@ public class JobProposalSummaryDTOBuilder {
     }
 
     public JobProposalSummaryDTO build() {
-        return new JobProposalSummaryDTO(
-                jobId,
-                title,
-                totalProposals,
-                averageBidAmount,
-                lowestBid,
-                highestBid
-        );
+        return JobProposalSummaryDTO.builder()
+                .jobId(jobId)
+                .title(title)
+                .totalProposals(totalProposals)
+                .averageBidAmount(averageBidAmount)
+                .lowestBid(lowestBid)
+                .highestBid(highestBid)
+                .build();
     }
 }
