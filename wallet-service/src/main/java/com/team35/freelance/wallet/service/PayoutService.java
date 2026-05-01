@@ -9,6 +9,8 @@ import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
 import com.team35.freelance.wallet.dto.RevenueReportDTO;
 import com.team35.freelance.wallet.dto.PromoCodeUsage;
 import com.team35.freelance.wallet.common.refund.*;
+import com.team35.freelance.wallet.common.observer.EntityObserver;
+import com.team35.freelance.wallet.common.observer.MongoEventLogger;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
@@ -27,16 +29,31 @@ public class PayoutService {
     private final PayoutRepository payoutRepository;
     private final PromoCodeRepository promoCodeRepository;
     private final RefundStrategySelector refundStrategySelector;
+    private final List<EntityObserver> observers = new ArrayList<>();
 
     public PayoutService(PayoutRepository payoutRepository,
                          PromoCodeRepository promoCodeRepository,
-                         RefundStrategySelector refundStrategySelector) {
+                         RefundStrategySelector refundStrategySelector,
+                         MongoEventLogger mongoEventLogger) {
 
         this.payoutRepository = payoutRepository;
         this.promoCodeRepository = promoCodeRepository;
         this.refundStrategySelector = refundStrategySelector;
+        registerObserver(mongoEventLogger);
+    }
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
     }
 
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
+    }
+
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
+    }
     @CacheEvict(value = {
             "wallet-service::payout",
             "wallet-service::promo-code",
@@ -357,8 +374,16 @@ public class PayoutService {
 
         payout.setTransactionDetails(transactionDetails);
 
-        return payoutRepository.save(payout);
-    }
+        Payout saved = payoutRepository.save(payout);
+
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("action", "PAYOUT_REFUNDED");
+        eventPayload.put("payoutId", payout.getId());
+        eventPayload.put("amount", payout.getAmount());
+
+        notifyObservers("PAYOUT_AUDIT", eventPayload);
+
+        return saved;    }
     @Transactional
     @CacheEvict(value = {
             "wallet-service::payout",
@@ -387,6 +412,15 @@ public class PayoutService {
 
         RefundStrategy strategy = refundStrategySelector.select(payout, request);
 
-        return strategy.calculateRefund(payout, request);
-    }
+        RefundResult result = strategy.calculateRefund(payout, request);
+
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("action", "PAYOUT_REVERSED");
+        eventPayload.put("payoutId", payout.getId());
+        eventPayload.put("amount", result.getAmount());
+        eventPayload.put("strategy", strategy.getClass().getSimpleName());
+
+        notifyObservers("PAYOUT_AUDIT", eventPayload);
+
+        return result;    }
 }
