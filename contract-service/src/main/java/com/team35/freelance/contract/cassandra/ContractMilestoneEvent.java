@@ -1,83 +1,93 @@
 package com.team35.freelance.contract.cassandra;
 
-import org.springframework.data.cassandra.core.mapping.PrimaryKey;
+import org.springframework.data.cassandra.core.cql.PrimaryKeyType;
+import org.springframework.data.cassandra.core.mapping.Column;
+import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn;
 import org.springframework.data.cassandra.core.mapping.Table;
 
 import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.UUID;
 
 @Table("contract_milestone_events")
 public class ContractMilestoneEvent {
 
-    @PrimaryKey
-    private UUID id;
-
+    @PrimaryKeyColumn(name = "contract_id", type = PrimaryKeyType.PARTITIONED)
     private Long contractId;
-    private Long milestoneId;
-    private String eventType;
-    private LocalDateTime eventTimestamp;
-    private Map<String, String> metadata;
+
+    @PrimaryKeyColumn(name = "timestamp", type = PrimaryKeyType.CLUSTERED, ordinal = 0)
+    private LocalDateTime timestamp;
+
+    @Column("milestone_order")
+    private Integer milestoneOrder;
+
+    private String status;
+
+    @Column("recorded_by")
+    private String recordedBy;
+
+    private String notes;
 
     public ContractMilestoneEvent() {
-        this.id = UUID.randomUUID();
-        this.eventTimestamp = LocalDateTime.now();
+        this.timestamp = LocalDateTime.now();
     }
 
-    public ContractMilestoneEvent(Long contractId, Long milestoneId, String eventType, Map<String, String> metadata) {
-        this.id = UUID.randomUUID();
+    public ContractMilestoneEvent(Long contractId,
+                                  Integer milestoneOrder,
+                                  String status,
+                                  String recordedBy,
+                                  String notes) {
         this.contractId = contractId;
-        this.milestoneId = milestoneId;
-        this.eventType = eventType;
-        this.eventTimestamp = LocalDateTime.now();
-        this.metadata = metadata;
-    }
-
-    public UUID getId() {
-        return id;
+        this.timestamp = LocalDateTime.now();
+        this.milestoneOrder = milestoneOrder;
+        this.status = status;
+        this.recordedBy = recordedBy;
+        this.notes = notes;
     }
 
     public Long getContractId() {
         return contractId;
     }
 
-    public Long getMilestoneId() {
-        return milestoneId;
+    public LocalDateTime getTimestamp() {
+        return timestamp;
     }
 
-    public String getEventType() {
-        return eventType;
+    public Integer getMilestoneOrder() {
+        return milestoneOrder;
     }
 
-    public LocalDateTime getEventTimestamp() {
-        return eventTimestamp;
+    public String getStatus() {
+        return status;
     }
 
-    public Map<String, String> getMetadata() {
-        return metadata;
+    public String getRecordedBy() {
+        return recordedBy;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
+    public String getNotes() {
+        return notes;
     }
 
     public void setContractId(Long contractId) {
         this.contractId = contractId;
     }
 
-    public void setMilestoneId(Long milestoneId) {
-        this.milestoneId = milestoneId;
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.timestamp = timestamp;
     }
 
-    public void setEventType(String eventType) {
-        this.eventType = eventType;
+    public void setMilestoneOrder(Integer milestoneOrder) {
+        this.milestoneOrder = milestoneOrder;
     }
 
-    public void setEventTimestamp(LocalDateTime eventTimestamp) {
-        this.eventTimestamp = eventTimestamp;
+    public void setStatus(String status) {
+        this.status = status;
     }
 
-    public void setMetadata(Map<String, String> metadata) {
-        this.metadata = metadata;
+    public void setRecordedBy(String recordedBy) {
+        this.recordedBy = recordedBy;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 }

@@ -6,7 +6,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-@Document(collection = "wallet_events")
+@Document(collection = "payout_audit_trail")
 public class PayoutAuditEvent implements MongoEvent {
 
     @Id
@@ -15,19 +15,32 @@ public class PayoutAuditEvent implements MongoEvent {
     private Long payoutId;
     private Long contractId;
     private Long freelancerId;
+
     private String action;
     private LocalDateTime timestamp;
+
+    private String method;
+    private Double amount;
+
     private Map<String, Object> details;
 
     public PayoutAuditEvent() {
         this.timestamp = LocalDateTime.now();
     }
 
-    public PayoutAuditEvent(Long payoutId, Long contractId, Long freelancerId, String action, Map<String, Object> details) {
+    public PayoutAuditEvent(Long payoutId,
+                            Long contractId,
+                            Long freelancerId,
+                            String action,
+                            String method,
+                            Double amount,
+                            Map<String, Object> details) {
         this.payoutId = payoutId;
         this.contractId = contractId;
         this.freelancerId = freelancerId;
         this.action = action;
+        this.method = method;
+        this.amount = amount;
         this.details = details;
         this.timestamp = LocalDateTime.now();
     }
@@ -59,6 +72,14 @@ public class PayoutAuditEvent implements MongoEvent {
         return timestamp;
     }
 
+    public String getMethod() {
+        return method;
+    }
+
+    public Double getAmount() {
+        return amount;
+    }
+
     @Override
     public Map<String, Object> getDetails() {
         return details;
@@ -86,6 +107,14 @@ public class PayoutAuditEvent implements MongoEvent {
 
     public void setTimestamp(LocalDateTime timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public void setMethod(String method) {
+        this.method = method;
+    }
+
+    public void setAmount(Double amount) {
+        this.amount = amount;
     }
 
     public void setDetails(Map<String, Object> details) {
