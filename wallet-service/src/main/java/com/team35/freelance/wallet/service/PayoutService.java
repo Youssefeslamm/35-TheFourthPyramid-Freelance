@@ -8,7 +8,7 @@ import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
 import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
 import com.team35.freelance.wallet.dto.RevenueReportDTO;
 import com.team35.freelance.wallet.dto.PromoCodeUsage;
-
+import com.team35.freelance.wallet.common.refund.*;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
@@ -26,11 +26,15 @@ public class PayoutService {
 
     private final PayoutRepository payoutRepository;
     private final PromoCodeRepository promoCodeRepository;
+    private final RefundStrategySelector refundStrategySelector;
 
     public PayoutService(PayoutRepository payoutRepository,
-                         PromoCodeRepository promoCodeRepository) {
+                         PromoCodeRepository promoCodeRepository,
+                         RefundStrategySelector refundStrategySelector) {
+
         this.payoutRepository = payoutRepository;
         this.promoCodeRepository = promoCodeRepository;
+        this.refundStrategySelector = refundStrategySelector;
     }
 
     @CacheEvict(value = {
@@ -355,15 +359,23 @@ public class PayoutService {
 
         return payoutRepository.save(payout);
     }
-
     @Transactional
-    public double reversePayout(Long payoutId, String reversalScope) {
+    @CacheEvict(value = {
+            "wallet-service::payout",
+            "wallet-service::promo-code",
+            "wallet-service::payout-promo",
+            "wallet-service::S5-F1",
+            "wallet-service::S5-F3",
+            "wallet-service::S5-F6",
+            "wallet-service::S5-F8",
+            "wallet-service::S5-F9"
+    }, allEntries = true)
+    public RefundResult reversePayout(Long payoutId, String reversalScope) {
 
         Payout payout = payoutRepository.findById(payoutId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Payout not found"));
 
-        // 1. Only completed payouts can be reversed
         if (payout.getStatus() != PayoutStatus.COMPLETED) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -371,33 +383,10 @@ public class PayoutService {
             );
         }
 
-        // 2. 30-day window check
-        boolean expired = payout.getCreatedAt()
-                .isBefore(LocalDateTime.now().minusDays(30));
+        RefundRequest request = new RefundRequest(reversalScope);
 
-        if (expired) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Reversal window expired"
-            );
-        }
+        RefundStrategy strategy = refundStrategySelector.select(payout, request);
 
-        // 3. Reversal logic (THIS WILL BE REPLACED BY STRATEGY LATER)
-        double refundAmount;
-
-        if ("FULL".equalsIgnoreCase(reversalScope)) {
-            refundAmount = payout.getAmount();
-
-        } else if ("MILESTONE_ONLY".equalsIgnoreCase(reversalScope)) {
-            refundAmount = payout.getAmount() * 0.5; // placeholder
-
-        } else {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Invalid reversal scope"
-            );
-        }
-
-        return refundAmount;
+        return strategy.calculateRefund(payout, request);
     }
 }
