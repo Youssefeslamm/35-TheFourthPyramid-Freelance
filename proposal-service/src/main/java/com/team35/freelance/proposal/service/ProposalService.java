@@ -23,7 +23,7 @@ import com.team35.freelance.proposal.dto.ProposalAnalyticsDTO;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import com.team35.freelance.proposal.dto.ProposalAnalyticsDashboardDTO;
-import com.team35.freelance.proposal.model.ProposalEvent;
+import com.team35.freelance.proposal.common.event.ProposalEvent;
 import com.team35.freelance.proposal.repository.ProposalEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -522,9 +522,10 @@ public class ProposalService {
             ProposalEvent event = new ProposalEvent(
                     null,
                     "ANALYTICS_VIEWED",
-                    LocalDateTime.now(),
-                    Map.of("startDate", startDate.toString(),
-                            "endDate", endDate.toString())
+                    Map.of(
+                            "startDate", startDate.toString(),
+                            "endDate", endDate.toString()
+                    )
             );
             proposalEventRepository.save(event);
         } catch (Exception e) {

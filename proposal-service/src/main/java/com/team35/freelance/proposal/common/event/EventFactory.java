@@ -12,7 +12,13 @@ public class EventFactory {
         String action = (String) params.get("action");
 
         if (type == EventType.PROPOSAL) {
-            return new ProposalEvent(action, params);
+            return new ProposalEvent(
+                    params.get("proposalId") instanceof Number
+                            ? ((Number) params.get("proposalId")).longValue()
+                            : null,
+                    action,
+                    params
+            );
         }
 
         throw new IllegalArgumentException("Unknown event type: " + type);
