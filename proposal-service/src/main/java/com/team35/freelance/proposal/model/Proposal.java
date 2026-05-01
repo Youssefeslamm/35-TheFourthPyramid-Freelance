@@ -56,7 +56,9 @@ public class Proposal implements Serializable {
 
     @PrePersist
     public void prePersist() {
-        this.submittedAt = LocalDateTime.now();
+        if (this.submittedAt == null) {  // only set if not already provided
+            this.submittedAt = LocalDateTime.now();
+        }
         if (this.status == null) {
             this.status = ProposalStatus.SUBMITTED;
         }

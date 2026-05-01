@@ -1,8 +1,6 @@
 package com.team35.freelance.proposal.controller;
 
-import com.team35.freelance.proposal.dto.FeeEstimateDTO;
-import com.team35.freelance.proposal.dto.FeeEstimateRequest;
-import com.team35.freelance.proposal.dto.ProposalDetailsDTO;
+import com.team35.freelance.proposal.dto.*;
 import com.team35.freelance.proposal.model.Proposal;
 import com.team35.freelance.proposal.model.ProposalStatus;
 import com.team35.freelance.proposal.service.ProposalService;
@@ -10,9 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.team35.freelance.proposal.dto.MilestoneRequest;
-import com.team35.freelance.proposal.dto.ProposalAnalyticsDTO;
 import org.springframework.format.annotation.DateTimeFormat;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import java.util.List;
@@ -116,4 +114,13 @@ public class ProposalController {
         return ResponseEntity.ok(
                 proposalService.getProposalsByStatusAndDateRange(status, startDate, endDate));
     }
+    // S3-F10
+    @GetMapping("/analytics/dashboard")
+    public ResponseEntity<ProposalAnalyticsDashboardDTO> getAnalyticsDashboard(
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+        return ResponseEntity.ok(
+                proposalService.getAnalyticsDashboard(startDate, endDate));
+    }
+
 }

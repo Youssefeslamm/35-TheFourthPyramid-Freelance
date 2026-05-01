@@ -22,10 +22,27 @@ import com.team35.freelance.proposal.repository.ProposalMilestoneRepository;
 import com.team35.freelance.proposal.dto.ProposalAnalyticsDTO;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
+import com.team35.freelance.proposal.dto.ProposalAnalyticsDashboardDTO;
+import com.team35.freelance.proposal.model.ProposalEvent;
+import com.team35.freelance.proposal.repository.ProposalEventRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 public class ProposalService {
 
+<<<<<<< feat/proposal/S3-F10/55-10737
+    @Autowired
+    private ProposalRepository proposalRepository;
+    @Autowired
+    private ProposalMilestoneRepository milestoneRepository;
+    @Autowired
+    private ProposalEventRepository proposalEventRepository;
+    private static final Logger log = LoggerFactory.getLogger(ProposalService.class);
+=======
     private final ProposalRepository proposalRepository;
     private final ProposalMilestoneRepository milestoneRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
@@ -52,6 +69,7 @@ public class ProposalService {
     public void unregisterObserver(EntityObserver observer) {
         observers.remove(observer);
     }
+>>>>>>> main
     @CacheEvict(value = {
             "proposal-service::proposal",
             "proposal-service::S3-F1",
@@ -452,6 +470,65 @@ public class ProposalService {
             status = null;
         }
         return proposalRepository.findByStatusAndDateRange(status, startDate, endDate);
+    }
+    public ProposalAnalyticsDashboardDTO getAnalyticsDashboard(
+            LocalDate startDate, LocalDate endDate) {
+
+        // Validate date range
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "startDate must not be after endDate");
+        }
+
+        // Expand to full day range
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(23, 59, 59, 999000000);
+
+        // Query PostgreSQL
+        Object[] result = proposalRepository.getProposalAnalytics(start, end);
+        Object[] row = (Object[]) result[0];
+
+        long totalProposals = row[0] != null ? ((Number) row[0]).longValue() : 0L;
+        double averageBidAmount = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
+        double averageEstimatedDays = row[2] != null ? ((Number) row[2]).doubleValue() : 0.0;
+        long acceptedCount = row[3] != null ? ((Number) row[3]).longValue() : 0L;
+        long rejectedCount = row[4] != null ? ((Number) row[4]).longValue() : 0L;
+        long withdrawnCount = row[5] != null ? ((Number) row[5]).longValue() : 0L;
+        long submittedCount = row[6] != null ? ((Number) row[6]).longValue() : 0L;
+        long shortlistedCount = row[7] != null ? ((Number) row[7]).longValue() : 0L;
+
+        double acceptanceRate = totalProposals > 0
+                ? (double) acceptedCount / totalProposals : 0.0;
+
+        Map<String, Long> proposalsByStatus = new LinkedHashMap<>();
+        if (acceptedCount > 0) proposalsByStatus.put("ACCEPTED", acceptedCount);
+        if (rejectedCount > 0) proposalsByStatus.put("REJECTED", rejectedCount);
+        if (withdrawnCount > 0) proposalsByStatus.put("WITHDRAWN", withdrawnCount);
+        if (submittedCount > 0) proposalsByStatus.put("SUBMITTED", submittedCount);
+        if (shortlistedCount > 0) proposalsByStatus.put("SHORTLISTED", shortlistedCount);
+
+        // Log ANALYTICS_VIEWED to MongoDB
+        try {
+            ProposalEvent event = new ProposalEvent(
+                    null,
+                    "ANALYTICS_VIEWED",
+                    LocalDateTime.now(),
+                    Map.of("startDate", startDate.toString(),
+                            "endDate", endDate.toString())
+            );
+            proposalEventRepository.save(event);
+        } catch (Exception e) {
+            log.warn("Failed to log analytics event to MongoDB: {}", e.getMessage());
+        }
+
+        // Build and return DTO
+        return ProposalAnalyticsDashboardDTO.builder()
+                .totalProposals(totalProposals)
+                .acceptanceRate(acceptanceRate)
+                .averageBidAmount(averageBidAmount)
+                .averageEstimatedDays(averageEstimatedDays)
+                .proposalsByStatus(proposalsByStatus)
+                .build();
     }
 }
 
