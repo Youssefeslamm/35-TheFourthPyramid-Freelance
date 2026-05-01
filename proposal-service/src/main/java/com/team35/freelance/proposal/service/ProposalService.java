@@ -1,4 +1,6 @@
 package com.team35.freelance.proposal.service;
+import com.team35.freelance.proposal.common.observer.EntityObserver;
+import com.team35.freelance.proposal.common.observer.MongoEventLogger;
 import com.team35.freelance.proposal.dto.FeeEstimateDTO;
 import com.team35.freelance.proposal.dto.ProposalDetailsDTO;
 import com.team35.freelance.proposal.model.MilestoneStatus;
@@ -12,13 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import com.team35.freelance.proposal.model.ProposalMilestone;
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import com.team35.freelance.proposal.dto.MilestoneDTO;
 import com.team35.freelance.proposal.dto.MilestoneRequest;
 import com.team35.freelance.proposal.repository.ProposalMilestoneRepository;
-import java.util.HashMap;
 import com.team35.freelance.proposal.dto.ProposalAnalyticsDTO;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
@@ -26,12 +26,32 @@ import org.springframework.cache.annotation.CacheEvict;
 @Service
 public class ProposalService {
 
-    @Autowired
-    private ProposalRepository proposalRepository;
-    @Autowired
-    private ProposalMilestoneRepository milestoneRepository;
+    private final ProposalRepository proposalRepository;
+    private final ProposalMilestoneRepository milestoneRepository;
+    private final List<EntityObserver> observers = new ArrayList<>();
 
+    public ProposalService(ProposalRepository proposalRepository,
+                           ProposalMilestoneRepository milestoneRepository,
+                           MongoEventLogger mongoEventLogger) {
 
+        this.proposalRepository = proposalRepository;
+        this.milestoneRepository = milestoneRepository;
+
+        this.observers.add(mongoEventLogger);
+    }
+
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
+    }
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
+
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
+    }
     @CacheEvict(value = {
             "proposal-service::proposal",
             "proposal-service::S3-F1",
@@ -41,9 +61,16 @@ public class ProposalService {
             "proposal-service::S3-F9"
     }, allEntries = true)
     public Proposal create(Proposal proposal) {
-        return proposalRepository.save(proposal);
-    }
+        Proposal saved = proposalRepository.save(proposal);
 
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "CREATED");
+        payload.put("proposalId", saved.getId());
+
+        notifyObservers("PROPOSAL", payload);
+
+        return saved;
+    }
 
     @Cacheable(value = "proposal-service::proposal", key = "#id")
     public Proposal getById(Long id) {
@@ -72,8 +99,15 @@ public class ProposalService {
         existing.setStatus(updated.getStatus());
         existing.setMetadata(updated.getMetadata());
         existing.setAcceptedAt(updated.getAcceptedAt());
-        return proposalRepository.save(existing);
-    }
+        Proposal saved = proposalRepository.save(existing);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "UPDATED");
+        payload.put("proposalId", saved.getId());
+
+        notifyObservers("PROPOSAL", payload);
+
+        return saved;    }
 
     private Proposal getProposalEntity(Long id) {
         return proposalRepository.findById(id)
@@ -90,8 +124,15 @@ public class ProposalService {
             "proposal-service::S3-F9"
     }, allEntries = true)
     public void delete(Long id) {
-        getById(id);
+        Proposal proposal = getById(id);
+
         proposalRepository.deleteById(id);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "DELETED");
+        payload.put("proposalId", id);
+
+        notifyObservers("PROPOSAL", payload);
     }
 
     @Cacheable(value = "proposal-service::S3-F3", key = "#bidAmount + ':' + #estimatedDays")
@@ -118,9 +159,13 @@ public class ProposalService {
         double freelancerPayout = bidAmount - platformFee;
         double estimatedDailyRate = freelancerPayout / estimatedDays;
 
-        return new FeeEstimateDTO(bidAmount, platformFee,
-                freelancerPayout, feePercentage,
-                estimatedDailyRate);
+        return FeeEstimateDTO.builder()
+                .bidAmount(bidAmount)
+                .platformFee(platformFee)
+                .freelancerPayout(freelancerPayout)
+                .feePercentage(feePercentage)
+                .estimatedDailyRate(estimatedDailyRate)
+                .build();
     }
     @Transactional
     @CacheEvict(value = {
@@ -144,14 +189,22 @@ public class ProposalService {
 
         proposal.setStatus(ProposalStatus.WITHDRAWN);
 
-        // If this was the only active proposal and job is IN_PROGRESS, revert to OPEN
         long otherActive = proposalRepository
                 .countOtherActiveProposalsForJob(proposal.getJobId(), id);
+
         if (otherActive == 0) {
             proposalRepository.revertJobToOpen(proposal.getJobId());
         }
 
-        return proposalRepository.save(proposal);
+        Proposal saved = proposalRepository.save(proposal);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "WITHDRAWN");
+        payload.put("proposalId", saved.getId());
+
+        notifyObservers("PROPOSAL", payload);
+
+        return saved;
     }
 
     @Cacheable(value = "proposal-service::S3-F9", key = "#proposalId")
@@ -163,15 +216,15 @@ public class ProposalService {
         List<MilestoneDTO> milestoneDTOs = proposal.getProposalMilestones()
                 .stream()
                 .sorted(Comparator.comparingInt(ProposalMilestone::getMilestoneOrder))
-                .map(m -> new MilestoneDTO(
-                        m.getId(),
-                        m.getMilestoneOrder(),
-                        m.getTitle(),
-                        m.getDescription(),
-                        m.getAmount(),
-                        m.getStatus(),
-                        m.getMetadata()
-                ))
+                .map(m -> MilestoneDTO.builder()
+                        .id(m.getId())
+                        .milestoneOrder(m.getMilestoneOrder())
+                        .title(m.getTitle())
+                        .description(m.getDescription())
+                        .amount(m.getAmount())
+                        .status(m.getStatus())
+                        .metadata(m.getMetadata())
+                        .build())
                 .collect(Collectors.toList());
 
         long completedCount = proposal.getProposalMilestones()
@@ -180,17 +233,17 @@ public class ProposalService {
                         || m.getStatus() == MilestoneStatus.APPROVED)
                 .count();
 
-        return new ProposalDetailsDTO(
-                proposal.getId(),
-                proposal.getJobId(),
-                proposal.getFreelancerId(),
-                proposal.getStatus(),
-                proposal.getBidAmount(),
-                proposal.getMetadata(),
-                milestoneDTOs,
-                milestoneDTOs.size(),
-                completedCount
-        );
+        return ProposalDetailsDTO.builder()
+                .proposalId(proposal.getId())
+                .jobId(proposal.getJobId())
+                .freelancerId(proposal.getFreelancerId())
+                .status(proposal.getStatus())
+                .bidAmount(proposal.getBidAmount())
+                .metadata(proposal.getMetadata())
+                .milestones(milestoneDTOs)
+                .totalMilestones(milestoneDTOs.size())
+                .completedMilestones(completedCount)
+                .build();
     }
     // S3-F2: Accept Proposal and Create Contract
     @Transactional
@@ -236,7 +289,15 @@ public class ProposalService {
                 proposal.getBidAmount()
         );
 
-        return proposalRepository.save(proposal);
+        Proposal saved = proposalRepository.save(proposal);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "ACCEPTED");
+        payload.put("proposalId", saved.getId());
+
+        notifyObservers("PROPOSAL", payload);
+
+        return saved;
     }
     // S3-F4: Complete Proposal's Contract
     @Transactional
@@ -270,7 +331,15 @@ public class ProposalService {
         proposalRepository.updateJobStatusToClosed(jobId);
         proposalRepository.insertPendingPayout(contractId, freelancerId, agreedAmount);
 
-        return proposalRepository.save(proposal);
+        Proposal saved = proposalRepository.save(proposal);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "COMPLETED");
+        payload.put("proposalId", saved.getId());
+
+        notifyObservers("PROPOSAL", payload);
+
+        return saved;
     }
     // S3-F8: Add Milestones to Proposal
     @Transactional
@@ -331,8 +400,15 @@ public class ProposalService {
             proposal.getProposalMilestones().add(milestone);
         }
 
-        return proposalRepository.save(proposal);
-    }
+        Proposal saved = proposalRepository.save(proposal);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "MILESTONES_ADDED");
+        payload.put("proposalId", saved.getId());
+
+        notifyObservers("PROPOSAL", payload);
+
+        return saved;    }
     // S3-F6
     @Cacheable(value = "proposal-service::S3-F6", key = "#startDate + ':' + #endDate")
     public ProposalAnalyticsDTO getAnalytics(
@@ -348,8 +424,14 @@ public class ProposalService {
         Double rate = (total == 0) ? 0.0
                 : row[5] != null ? ((Number) row[5]).doubleValue() : 0.0;
 
-        return new ProposalAnalyticsDTO(
-                total, accepted, rejected, totalBid, avgBid, rate);
+        return ProposalAnalyticsDTO.builder()
+                .totalProposals(total)
+                .acceptedProposals(accepted)
+                .rejectedProposals(rejected)
+                .totalBidValue(totalBid)
+                .averageBid(avgBid)
+                .acceptanceRate(rate)
+                .build();
     }
     // S3-F5
 

@@ -51,6 +51,14 @@ public class JobService {
         }
     }
 
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
+
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
+    }
+
 
     @Cacheable(value = "job-service::S2-F3", key = "#id + ':' + #startDate + ':' + #endDate")
     public JobProposalSummaryDTO getProposalSummary(Long id, String startDate, String endDate) {
@@ -96,7 +104,15 @@ public class JobService {
         job.getRequirements().putAll(incomingRequirements);
 
         // 4. Save and return
-        return jobRepository.save(job);
+        Job saved = jobRepository.save(job);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "JOB_REQUIREMENTS_UPDATED");
+        payload.put("jobId", saved.getId());
+
+        notifyObservers("JOB_UPDATED", payload);
+
+        return saved;
     }
 
 
@@ -274,7 +290,7 @@ public class JobService {
 
             if (!expiredAttachments.isEmpty()) {
                 alerts.add(
-                        new JobAttachmentAlertDTOBuilder()
+                        JobAttachmentAlertDTO.builder()
                                 .jobId(job.getId())
                                 .jobTitle(job.getTitle())
                                 .jobStatus(job.getStatus())
@@ -334,7 +350,15 @@ public class JobService {
         job.setRating(newAverage);
         job.setTotalRatings(totalRatings + 1);
 
-        return jobRepository.save(job);
+        Job saved = jobRepository.save(job);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "JOB_RATED");
+        payload.put("jobId", saved.getId());
+
+        notifyObservers("JOB_UPDATED", payload);
+
+        return saved;
     }
     @Transactional
     @CacheEvict(value = {
@@ -418,3 +442,4 @@ public class JobService {
     }
 
 }
+
