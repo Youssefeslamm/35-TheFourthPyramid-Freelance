@@ -7,6 +7,8 @@ import com.team35.freelance.proposal.service.ProposalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -131,4 +133,20 @@ public class ProposalController {
         return ResponseEntity.ok(Map.of("message", "Interaction recorded successfully"));
     }
 
+    //S3-F12
+    @GetMapping("/recommendations")
+    public ResponseEntity<List<JobRecommendationDTO>> getRecommendations(
+            @RequestParam Long freelancerId,
+            @RequestParam(defaultValue = "5") int limit) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Long callerUid = (Long) auth.getCredentials();
+        String callerRole = auth.getAuthorities().stream()
+                .findFirst()
+                .map(a -> a.getAuthority().replace("ROLE_", ""))
+                .orElse(null);
+
+        return ResponseEntity.ok(
+                proposalService.getRecommendedJobs(freelancerId, limit, callerUid, callerRole));
+    }
 }

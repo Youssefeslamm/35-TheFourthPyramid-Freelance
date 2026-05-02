@@ -1,14 +1,18 @@
-package com.team35.freelance.proposal.model;
+package com.team35.freelance.proposal.model.neo4j;
 
-import org.springframework.data.neo4j.core.schema.Id;
-import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.*;
 
 @Node("Job")
 public class JobNode {
 
     @Id
+    @Property("jobId")
     private Long jobId;
+
+    @Property("title")
     private String title;
+
+    @Property("category")
     private String category;
 
     public JobNode() {}
