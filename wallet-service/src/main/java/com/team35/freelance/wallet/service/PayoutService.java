@@ -456,4 +456,87 @@ public class PayoutService {
         notifyObservers("PAYOUT_AUDIT", eventPayload);
 
         return result;    }
+
+
+
+
+    @Transactional
+    @CacheEvict(value = {
+            "wallet-service::S5-F10",
+            "wallet-service::S5-F11",
+            "wallet-service::payout"
+    }, allEntries = true)
+    public Payout reversePayout(Long payoutId, String reversalScope, String reason) {
+
+        // 1. FIND
+        Payout payout = payoutRepository.findById(payoutId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Payout not found"));
+
+        // 2. VALIDATE
+        if (payout.getStatus() != PayoutStatus.COMPLETED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only completed payouts can be reversed"
+            );
+        }
+
+        // 3. STRATEGY
+        com.team35.freelance.wallet.common.refund.RefundRequest internalRequest =
+                new com.team35.freelance.wallet.common.refund.RefundRequest(reversalScope);
+
+        RefundStrategy strategy = refundStrategySelector.select(payout, internalRequest);
+        RefundResult result = strategy.calculateRefund(payout, internalRequest);
+
+        String strategyName = strategy.getClass().getSimpleName();
+
+        // 4. DENIED CASE
+        if (strategy instanceof NoReversalStrategy) {
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("action", "REFUND_DENIED");
+            payload.put("payoutId", payout.getId());
+            payload.put("strategy", strategyName);
+            payload.put("reason", "reversal window expired");
+
+            notifyObservers("PAYOUT_AUDIT", payload);
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "reversal window expired"
+            );
+        }
+
+        // 5. SUCCESS
+        payout.setStatus(PayoutStatus.REFUNDED);
+
+        Map<String, Object> details = payout.getTransactionDetails();
+        if (details == null) details = new HashMap<>();
+
+        details.put("refundAmount", result.getAmount());
+        details.put("reversalScope", reversalScope);
+        details.put("refundReason", reason);
+        details.put("refundedAt", LocalDateTime.now().toString());
+
+        payout.setTransactionDetails(details);
+
+        Payout saved = payoutRepository.save(payout);
+
+        // 6. AUDIT EVENT (FULL REQUIRED DATA)
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "REFUNDED");
+        payload.put("payoutId", payout.getId());
+        payload.put("originalAmount", payout.getAmount());
+        payload.put("refundAmount", result.getAmount());
+        payload.put("reversalScope", reversalScope);
+        payload.put("strategy", strategyName);
+        payload.put("reason", reason);
+
+        notifyObservers("PAYOUT_AUDIT", payload);
+
+        return saved;
+    }
+
+
+
 }
