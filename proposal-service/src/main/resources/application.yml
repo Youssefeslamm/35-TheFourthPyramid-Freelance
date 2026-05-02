@@ -28,19 +28,23 @@ spring:
       username: ${SPRING_NEO4J_USERNAME:neo4j}
       password: ${SPRING_NEO4J_PASSWORD:neo4jpass}
 
-server:
-  port: 8080
-
   cache:
     type: redis
     redis:
-      time-to-live: 600000  # 10 minutes in milliseconds
+      time-to-live: 600000
 
+neo4j:
+  uri: ${SPRING_NEO4J_URI:bolt://neo4j:7687}
+  authentication:
+    username: ${SPRING_NEO4J_USERNAME:neo4j}
+    password: ${SPRING_NEO4J_PASSWORD:neo4jpass}
+
+server:
+  port: 8080
 
 jwt:
   secret: ${JWT_SECRET:0123456789abcdef0123456789abcdef01234567}
   expiration: ${JWT_EXPIRATION_MS:86400000}
-
 
 ---
 spring:

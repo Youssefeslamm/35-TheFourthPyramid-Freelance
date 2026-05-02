@@ -170,6 +170,17 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     // S3-F11: Get job title and category
     @Query(value = "SELECT title || '|' || category FROM jobs WHERE id = :jobId", nativeQuery = true)
     String findJobTitleAndCategoryById(@Param("jobId") Long jobId);
+    //S3-F12
+    @Query(value = "SELECT name FROM users WHERE id = :userId", nativeQuery = true)
+    String findUserNameById(@Param("userId") Long userId);
 
+    @Query(value = "SELECT title FROM jobs WHERE id = :jobId", nativeQuery = true)
+    String findJobTitleById(@Param("jobId") Long jobId);
+
+    @Query(value = "SELECT category FROM jobs WHERE id = :jobId", nativeQuery = true)
+    String findJobCategoryById(@Param("jobId") Long jobId);
+
+    @Query(value = "SELECT id, title, category FROM jobs WHERE id IN :jobIds", nativeQuery = true)
+    List<Object[]> findJobDetailsByIds(@Param("jobIds") List<Long> jobIds);
 
 }

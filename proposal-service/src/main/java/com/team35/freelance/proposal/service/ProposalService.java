@@ -1,18 +1,26 @@
 package com.team35.freelance.proposal.service;
+
 import com.team35.freelance.proposal.common.observer.EntityObserver;
 import com.team35.freelance.proposal.common.observer.MongoEventLogger;
-import com.team35.freelance.proposal.dto.FeeEstimateDTO;
-import com.team35.freelance.proposal.dto.ProposalDetailsDTO;
+import com.team35.freelance.proposal.dto.*;
 import com.team35.freelance.proposal.model.MilestoneStatus;
 import com.team35.freelance.proposal.model.Proposal;
 import com.team35.freelance.proposal.model.ProposalStatus;
-import com.team35.freelance.proposal.repository.ProposalRepository;
+import com.team35.freelance.proposal.model.ProposalMilestone;
+import com.team35.freelance.proposal.repository.*;
+import org.neo4j.driver.Driver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import com.team35.freelance.proposal.model.ProposalMilestone;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -45,26 +53,24 @@ public class ProposalService {
     @Autowired
     private ProposalEventRepository proposalEventRepository;
     private static final Logger log = LoggerFactory.getLogger(ProposalService.class);
-    @Autowired
-    private Neo4jClient neo4jClient;
-
-    //private final ProposalRepository proposalRepository;
-   // private final ProposalMilestoneRepository milestoneRepository;
 
 
-    // final ProposalRepository proposalRepository;
-   // private final ProposalMilestoneRepository milestoneRepository;
-
+//    private final ProposalRepository proposalRepository;
+//    private final ProposalMilestoneRepository milestoneRepository;
+//    private final ProposalEventRepository proposalEventRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
+    private final Driver neo4jDriver;
 
     public ProposalService(ProposalRepository proposalRepository,
                            ProposalMilestoneRepository milestoneRepository,
-                           MongoEventLogger mongoEventLogger) {
-
+                           ProposalEventRepository proposalEventRepository,
+                           MongoEventLogger mongoEventLogger,
+                           Driver neo4jDriver) {
         this.proposalRepository = proposalRepository;
         this.milestoneRepository = milestoneRepository;
-
+        this.proposalEventRepository = proposalEventRepository;
         this.observers.add(mongoEventLogger);
+        this.neo4jDriver = neo4jDriver;
     }
 
     private void notifyObservers(String eventType, Object payload) {
@@ -541,8 +547,8 @@ public class ProposalService {
                 .proposalsByStatus(proposalsByStatus)
                 .build();
     }
-    // S3-F11: Record Freelancer-Job Interaction
-    @Transactional
+
+    // ── S3-F11: Record Freelancer-Job Interaction ──
     public void recordInteraction(Long proposalId) {
         // b) Find proposal in PG
         Proposal proposal = proposalRepository.findById(proposalId)
@@ -557,15 +563,140 @@ public class ProposalService {
 
         Long freelancerId = proposal.getFreelancerId();
         Long jobId = proposal.getJobId();
-// d) Idempotency check in Neo4j
-        var countResult = neo4jClient.query(
-                        "MATCH (f:Freelancer {userId: " + freelancerId + "})-[r:PROPOSED_TO]->(j:Job {jobId: " + jobId + "}) " +
-                                "WHERE " + proposalId + " IN r.recordedProposalIds RETURN count(r) AS cnt")
-                .fetchAs(Long.class)
-                .mappedBy((typeSystem, record) -> record.get("cnt").asLong())
-                .one()
-                .orElse(0L);
-        boolean alreadyRecorded = countResult > 0;
+
+        // 3. Get PG data for node creation
+        String name = proposalRepository.findFreelancerNameById(freelancerId);
+        String titleAndCategory = proposalRepository.findJobTitleAndCategoryById(jobId);
+        String title = "Unknown", category = "Unknown";
+        if (titleAndCategory != null && titleAndCategory.contains("|")) {
+            String[] parts = titleAndCategory.split("\\|");
+            title = parts[0];
+            category = parts.length > 1 ? parts[1] : "Unknown";
+        }
+
+        // 4. Write to Neo4j using raw driver (idempotency handled by MERGE)
+        try (var session = neo4jDriver.session()) {
+
+            String cypher = "MERGE (f:Freelancer {userId: $userId}) " +
+                    "ON CREATE SET f.name = $name " +
+                    "MERGE (j:Job {jobId: $jobId}) " +
+                    "ON CREATE SET j.title = $title, j.category = $category " +
+                    "MERGE (f)-[r:PROPOSED_TO]->(j) " +
+                    "ON CREATE SET r.proposalCount = 1, r.lastProposalDate = datetime(), r.recordedProposalIdsStr = $proposalId " +
+                    "ON MATCH SET r.proposalCount = r.proposalCount + 1, r.lastProposalDate = datetime(), " +
+                    "r.recordedProposalIdsStr = r.recordedProposalIdsStr + ',' + $proposalId";
+
+            session.run(cypher, org.neo4j.driver.Values.parameters(
+                    "userId", freelancerId,
+                    "name", name != null ? name : "Unknown",
+                    "jobId", jobId,
+                    "title", title,
+                    "category", category,
+                    "proposalId", String.valueOf(proposalId)
+            ));
+            log.info("Neo4j interaction recorded for freelancer {} -> job {}", freelancerId, jobId);
+        } catch (Exception e) {
+            log.error("Neo4j write failed: {} - {}", e.getClass().getName(), e.getMessage());
+        }
+
+        // 5. Log INTERACTION_RECORDED event via Observer
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "INTERACTION_RECORDED");
+        payload.put("proposalId", proposalId);
+        payload.put("freelancerId", freelancerId);
+        payload.put("jobId", jobId);
+        notifyObservers("PROPOSAL", payload);
+    }
+
+    // ── S3-F12: Get Recommended Jobs for Freelancer ──
+    @Cacheable(value = "proposal-service::S3-F12", key = "#freelancerId + ':' + #limit")
+    public List<JobRecommendationDTO> getRecommendedJobs(Long freelancerId, int limit,
+                                                         Long callerUid, String callerRole) {
+        // 1. Ownership check
+        boolean isOwner = callerUid != null && callerUid.equals(freelancerId);
+        boolean isAdmin = "ADMIN".equals(callerRole);
+        if (!isOwner && !isAdmin)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+
+        // 2. Verify freelancer exists in PG
+        String name = proposalRepository.findUserNameById(freelancerId);
+        if (name == null)
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Freelancer not found");
+
+        // 3. Read from Neo4j using raw driver
+        Set<Long> myJobIds = new HashSet<>();
+        List<Map<String, Object>> allInteractions = new ArrayList<>();
+
+        try (var session = neo4jDriver.session()) {
+
+            var result1 = session.run(
+                    "MATCH (f:Freelancer {userId: $userId})-[r:PROPOSED_TO]->(j:Job) RETURN j.jobId AS jobId",
+                    org.neo4j.driver.Values.parameters("userId", freelancerId));
+            while (result1.hasNext()) {
+                myJobIds.add(result1.next().get("jobId").asLong());
+            }
+
+            if (myJobIds.isEmpty()) return List.of();
+
+            var result2 = session.run(
+                    "MATCH (f:Freelancer)-[r:PROPOSED_TO]->(j:Job) WHERE f.userId <> $userId RETURN f.userId AS fId, j.jobId AS jobId",
+                    org.neo4j.driver.Values.parameters("userId", freelancerId));
+            while (result2.hasNext()) {
+                var record = result2.next();
+                Map<String, Object> row = new HashMap<>();
+                row.put("fId", record.get("fId").asLong());
+                row.put("jobId", record.get("jobId").asLong());
+                allInteractions.add(row);
+            }
+
+        } catch (Exception e) {
+            log.error("Neo4j read failed: {}", e.getMessage());
+            return List.of();
+        }
+
+        if (myJobIds.isEmpty()) return List.of();
+
+        // 4. Score candidate jobs
+        Map<Long, Integer> scores = new HashMap<>();
+        Map<Long, Set<Long>> freelancerJobs = new HashMap<>();
+
+        for (Map<String, Object> row : allInteractions) {
+            Long fId = (Long) row.get("fId");
+            Long jId = (Long) row.get("jobId");
+            freelancerJobs.computeIfAbsent(fId, k -> new HashSet<>()).add(jId);
+        }
+
+        for (Map.Entry<Long, Set<Long>> entry : freelancerJobs.entrySet()) {
+            boolean isSimilar = entry.getValue().stream().anyMatch(myJobIds::contains);
+            if (isSimilar) {
+                for (Long jId : entry.getValue()) {
+                    if (!myJobIds.contains(jId)) scores.merge(jId, 1, Integer::sum);
+                }
+            }
+        }
+
+        if (scores.isEmpty()) return List.of();
+
+        // 5. Sort by score, apply limit
+        List<Long> topJobIds = scores.entrySet().stream()
+                .sorted(Map.Entry.<Long, Integer>comparingByValue().reversed())
+                .limit(limit).map(Map.Entry::getKey).collect(Collectors.toList());
+
+        if (topJobIds.isEmpty()) return List.of();
+
+        // 6. Enrich from PG
+        List<Object[]> jobDetails = proposalRepository.findJobDetailsByIds(topJobIds);
+        Map<Long, Object[]> detailsMap = new HashMap<>();
+        for (Object[] row : jobDetails) {
+            Long jid = ((Number) row[0]).longValue();
+            detailsMap.put(jid, row);
+        }
+
+        // 7. Build DTOs
+        return topJobIds.stream().filter(detailsMap::containsKey)
+                .map(jid -> JobRecommendationDTO.builder()
+                        .jobId(jid).title((String) detailsMap.get(jid)[1])
+                        .category((String) detailsMap.get(jid)[2]).score(scores.get(jid)).build())
+                .collect(Collectors.toList());
     }
 }
-
