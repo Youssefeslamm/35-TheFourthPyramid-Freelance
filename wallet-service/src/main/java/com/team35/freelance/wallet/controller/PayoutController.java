@@ -168,4 +168,18 @@ public class PayoutController {
                 payoutService.getRevenueReport(startDate, endDate)
         );
     }
+
+    @PostMapping("/{id}/reverse-milestone")
+    public ResponseEntity<Payout> reverseMilestone(
+            @PathVariable Long id,
+            @RequestBody RefundRequest request
+    ) {
+        return ResponseEntity.ok(
+                payoutService.reversePayout(
+                        id,
+                        request.getReversalScope(),
+                        request.getReason()
+                )
+        );
+    }
 }
