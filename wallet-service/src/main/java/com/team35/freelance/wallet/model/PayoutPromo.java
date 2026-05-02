@@ -2,11 +2,13 @@ package com.team35.freelance.wallet.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "payout_promos")
-public class PayoutPromo {
+public class PayoutPromo implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

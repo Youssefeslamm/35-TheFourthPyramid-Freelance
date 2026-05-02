@@ -1,21 +1,22 @@
 package com.team35.freelance.proposal.controller;
 
-import com.team35.freelance.proposal.dto.FeeEstimateDTO;
-import com.team35.freelance.proposal.dto.FeeEstimateRequest;
-import com.team35.freelance.proposal.dto.ProposalDetailsDTO;
+import com.team35.freelance.proposal.dto.*;
 import com.team35.freelance.proposal.model.Proposal;
 import com.team35.freelance.proposal.model.ProposalStatus;
 import com.team35.freelance.proposal.service.ProposalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import com.team35.freelance.proposal.dto.MilestoneRequest;
-import com.team35.freelance.proposal.dto.ProposalAnalyticsDTO;
 import org.springframework.format.annotation.DateTimeFormat;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/proposals")
@@ -115,5 +116,37 @@ public class ProposalController {
             LocalDateTime endDate) {
         return ResponseEntity.ok(
                 proposalService.getProposalsByStatusAndDateRange(status, startDate, endDate));
+    }
+    // S3-F10
+    @GetMapping("/analytics/dashboard")
+    public ResponseEntity<ProposalAnalyticsDashboardDTO> getAnalyticsDashboard(
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+        return ResponseEntity.ok(
+                proposalService.getAnalyticsDashboard(startDate, endDate));
+    }
+    // S3-F11: Record Freelancer-Job Interaction
+    @PostMapping("/{proposalId}/record-interaction")
+    public ResponseEntity<Map<String, String>> recordInteraction(
+            @PathVariable Long proposalId) {
+        proposalService.recordInteraction(proposalId);
+        return ResponseEntity.ok(Map.of("message", "Interaction recorded successfully"));
+    }
+
+    //S3-F12
+    @GetMapping("/recommendations")
+    public ResponseEntity<List<JobRecommendationDTO>> getRecommendations(
+            @RequestParam Long freelancerId,
+            @RequestParam(defaultValue = "5") int limit) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Long callerUid = (Long) auth.getCredentials();
+        String callerRole = auth.getAuthorities().stream()
+                .findFirst()
+                .map(a -> a.getAuthority().replace("ROLE_", ""))
+                .orElse(null);
+
+        return ResponseEntity.ok(
+                proposalService.getRecommendedJobs(freelancerId, limit, callerUid, callerRole));
     }
 }

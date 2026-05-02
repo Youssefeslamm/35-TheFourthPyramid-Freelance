@@ -2,9 +2,12 @@ package com.team35.freelance.user.dto;
 
 import com.team35.freelance.user.model.ProficiencyLevel;
 
+import java.io.Serializable;
 import java.util.Map;
 
-public class UserSkillProfileDTO {
+public class UserSkillProfileDTO implements Serializable {  // ✅ ADD THIS
+
+    private static final long serialVersionUID = 1L;  // ✅ ADD THIS
 
     private String skillName;
     private String category;
@@ -30,7 +33,65 @@ public class UserSkillProfileDTO {
         this.metadata = metadata;
     }
 
-    public String getSkillName() {
+    private UserSkillProfileDTO(Builder builder) {
+        this.skillName = builder.skillName;
+        this.category = builder.category;
+        this.yearsOfExperience = builder.yearsOfExperience;
+        this.proficiencyLevel = builder.proficiencyLevel;
+        this.isPrimary = builder.isPrimary;
+        this.metadata = builder.metadata;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private String skillName;
+        private String category;
+        private Integer yearsOfExperience;
+        private ProficiencyLevel proficiencyLevel;
+        private Boolean isPrimary;
+        private Map<String, Object> metadata;
+
+        public Builder skillName(String skillName) {
+            this.skillName = skillName;
+            return this;
+        }
+
+        public Builder category(String category) {
+            this.category = category;
+            return this;
+        }
+
+        public Builder yearsOfExperience(Integer yearsOfExperience) {
+            this.yearsOfExperience = yearsOfExperience;
+            return this;
+        }
+
+        public Builder proficiencyLevel(ProficiencyLevel proficiencyLevel) {
+            this.proficiencyLevel = proficiencyLevel;
+            return this;
+        }
+
+        public Builder isPrimary(Boolean isPrimary) {
+            this.isPrimary = isPrimary;
+            return this;
+        }
+
+        public Builder metadata(Map<String, Object> metadata) {
+            this.metadata = metadata;
+            return this;
+        }
+
+        public UserSkillProfileDTO build() {
+            return new UserSkillProfileDTO(this);
+        }
+    }
+
+
+
+public String getSkillName() {
         return skillName;
     }
 

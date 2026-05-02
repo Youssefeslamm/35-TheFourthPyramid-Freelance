@@ -8,26 +8,67 @@ public class StalledContractDTO {
     private Double progressPercentage;
     private Integer daysSinceLastActivity;
 
-    public StalledContractDTO(Long contractId, String freelancerName, String jobTitle, Double agreedAmount, Double progressPercentage, Integer daysSinceLastActivity) {
-        this.contractId = contractId;
-        this.freelancerName = freelancerName;
-        this.jobTitle = jobTitle;
-        this.agreedAmount = agreedAmount;
-        this.progressPercentage = progressPercentage;
-        this.daysSinceLastActivity = daysSinceLastActivity;
+    private StalledContractDTO(Builder builder) {
+        this.contractId = builder.contractId;
+        this.freelancerName = builder.freelancerName;
+        this.jobTitle = builder.jobTitle;
+        this.agreedAmount = builder.agreedAmount;
+        this.progressPercentage = builder.progressPercentage;
+        this.daysSinceLastActivity = builder.daysSinceLastActivity;
     }
 
-    // Getters and Setters
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private Long contractId;
+        private String freelancerName;
+        private String jobTitle;
+        private Double agreedAmount;
+        private Double progressPercentage;
+        private Integer daysSinceLastActivity;
+
+        public Builder contractId(Long contractId) {
+            this.contractId = contractId;
+            return this;
+        }
+
+        public Builder freelancerName(String freelancerName) {
+            this.freelancerName = freelancerName;
+            return this;
+        }
+
+        public Builder jobTitle(String jobTitle) {
+            this.jobTitle = jobTitle;
+            return this;
+        }
+
+        public Builder agreedAmount(Double agreedAmount) {
+            this.agreedAmount = agreedAmount;
+            return this;
+        }
+
+        public Builder progressPercentage(Double progressPercentage) {
+            this.progressPercentage = progressPercentage;
+            return this;
+        }
+
+        public Builder daysSinceLastActivity(Integer daysSinceLastActivity) {
+            this.daysSinceLastActivity = daysSinceLastActivity;
+            return this;
+        }
+
+        public StalledContractDTO build() {
+            return new StalledContractDTO(this);
+        }
+    }
+
+    // Getters
     public Long getContractId() { return contractId; }
-    public void setContractId(Long contractId) { this.contractId = contractId; }
     public String getFreelancerName() { return freelancerName; }
-    public void setFreelancerName(String freelancerName) { this.freelancerName = freelancerName; }
     public String getJobTitle() { return jobTitle; }
-    public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
     public Double getAgreedAmount() { return agreedAmount; }
-    public void setAgreedAmount(Double agreedAmount) { this.agreedAmount = agreedAmount; }
     public Double getProgressPercentage() { return progressPercentage; }
-    public void setProgressPercentage(Double progressPercentage) { this.progressPercentage = progressPercentage; }
     public Integer getDaysSinceLastActivity() { return daysSinceLastActivity; }
-    public void setDaysSinceLastActivity(Integer daysSinceLastActivity) { this.daysSinceLastActivity = daysSinceLastActivity; }
 }

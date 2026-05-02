@@ -1,5 +1,6 @@
 package com.team35.freelance.user.service;
 
+import com.team35.freelance.user.common.adapter.UserContractSummaryAdapter;
 import com.team35.freelance.user.model.Role;
 import com.team35.freelance.user.model.Status;
 import com.team35.freelance.user.model.User;
@@ -13,6 +14,8 @@ import com.team35.freelance.user.dto.UserProfileDTO;
 import com.team35.freelance.user.dto.UserSkillProfileDTO;
 import com.team35.freelance.user.dto.UserContractSummaryDTO;
 import com.team35.freelance.user.dto.TopFreelancerDTO;
+import com.team35.freelance.user.common.observer.EntityObserver;
+import com.team35.freelance.user.common.observer.MongoEventLogger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,51 +23,98 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import jakarta.transaction.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
     private final UserSkillRepository userSkillRepository;
+    private final List<EntityObserver> observers = new ArrayList<>();
+    private final MongoEventLogger mongoEventLogger;
 
-    public UserService(UserRepository userRepository, UserSkillRepository userSkillRepository) {
+
+    public UserService(UserRepository userRepository,
+                       UserSkillRepository userSkillRepository,
+                       MongoEventLogger mongoEventLogger) {
+
         this.userRepository = userRepository;
         this.userSkillRepository = userSkillRepository;
+        this.mongoEventLogger = mongoEventLogger;
+
+        // register observer
+        this.observers.add(mongoEventLogger);
     }
 
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
+    }
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
+
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
+    }
     // ===================== USER =====================
 
-    public User createUser(User user) {
 
+    public User createUser(User user) {
         if (user.getName() == null || user.getName().isBlank() ||
                 user.getEmail() == null || user.getEmail().isBlank() ||
                 user.getPassword() == null || user.getPassword().isBlank() ||
                 user.getPhone() == null || user.getPhone().isBlank() ||
                 user.getRole() == null) {
-
             throw new RuntimeException("Missing or invalid required fields");
         }
 
         if (userRepository.existsByEmail(user.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists");        }
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists");
+        }
 
         if (user.getStatus() == null) {
             user.setStatus(Status.ACTIVE);
         }
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "REGISTERED");
+        payload.put("userId", savedUser.getId());
+        payload.put("email", savedUser.getEmail());
+
+        notifyObservers("REGISTERED", payload);
+
+        return savedUser;
     }
 
-    public User getUserById(Long id) {
-        return userRepository.findById(id)
+    // ✅ CACHE DTO INSTEAD OF ENTITY
+    @Cacheable(value = "user-service::user", key = "#id")
+    public UserProfileDTO getUserById(Long id) {
+        User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        return buildUserProfileDTO(user);
     }
 
+    // ✅ NO CACHING - Returns entities which shouldn't be cached
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
+    @CacheEvict(value = {
+            "user-service::user",
+            "user-service::S1-F1",
+            "user-service::S1-F3",
+            "user-service::S1-F5",
+            "user-service::S1-F6",
+            "user-service::S1-F9"
+    }, allEntries = true)
     public User updateUser(Long id, User updatedUser) {
-        User user = getUserById(id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (updatedUser.getName() != null && !updatedUser.getName().isBlank())
             user.setName(updatedUser.getName());
@@ -72,7 +122,8 @@ public class UserService {
         if (updatedUser.getEmail() != null && !updatedUser.getEmail().isBlank()) {
             if (!updatedUser.getEmail().equals(user.getEmail()) &&
                     userRepository.existsByEmail(updatedUser.getEmail())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists");            }
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists");
+            }
             user.setEmail(updatedUser.getEmail());
         }
 
@@ -91,35 +142,86 @@ public class UserService {
         if (updatedUser.getPreferences() != null)
             user.setPreferences(updatedUser.getPreferences());
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "USER_UPDATED");
+        payload.put("userId", saved.getId());
+
+        notifyObservers("USER_UPDATED", payload);
+
+        return saved;
     }
 
+    @CacheEvict(value = {
+            "user-service::user",
+            "user-service::S1-F1",
+            "user-service::S1-F3",
+            "user-service::S1-F5",
+            "user-service::S1-F6",
+            "user-service::S1-F9"
+    }, allEntries = true)
     public void deleteUser(Long id) {
-        User user = getUserById(id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
         userRepository.delete(user);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "USER_DELETED");
+        payload.put("userId", id);
+
+        notifyObservers("USER_DELETED", payload);
     }
 
     // ===================== USER SKILLS =====================
 
+
+    @CacheEvict(value = {
+            "user-service::user",
+            "user-service::S1-F1",
+            "user-service::S1-F3",
+            "user-service::S1-F5",
+            "user-service::S1-F6",
+            "user-service::S1-F9"
+    }, allEntries = true)
     public UserSkill addSkillToUser(Long userId, UserSkill skill) {
         if (skill.getSkillName() == null || skill.getSkillName().isBlank() ||
                 skill.getCategory() == null || skill.getCategory().isBlank() ||
                 skill.getYearsOfExperience() == null ||
                 skill.getProficiencyLevel() == null) {
-
             throw new RuntimeException("Invalid skill data");
         }
-        User user = getUserById(userId);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
         skill.setUser(user);
-        return userSkillRepository.save(skill);
+
+        UserSkill saved = userSkillRepository.save(skill);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "SKILL_ADDED");
+        payload.put("userId", userId);
+        payload.put("skillId", saved.getId());
+
+        notifyObservers("SKILL_ADDED", payload);
+
+        return saved;
     }
 
     public List<UserSkill> getUserSkills(Long userId) {
-        // ensure user exists
-        getUserById(userId);
+        userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
         return userSkillRepository.findByUserId(userId);
     }
 
+    @CacheEvict(value = {
+            "user-service::user",
+            "user-service::S1-F1",
+            "user-service::S1-F3",
+            "user-service::S1-F5",
+            "user-service::S1-F6",
+            "user-service::S1-F9"
+    }, allEntries = true)
     public UserSkill updateUserSkill(Long skillId, UserSkill updatedSkill) {
         UserSkill skill = userSkillRepository.findById(skillId)
                 .orElseThrow(() -> new RuntimeException("Skill not found"));
@@ -142,19 +244,53 @@ public class UserService {
         if (updatedSkill.getMetadata() != null)
             skill.setMetadata(updatedSkill.getMetadata());
 
-        return userSkillRepository.save(skill);
+        UserSkill saved = userSkillRepository.save(skill);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "SKILL_UPDATED");
+        payload.put("skillId", saved.getId());
+
+        notifyObservers("SKILL_UPDATED", payload);
+
+        return saved;
     }
 
+    @CacheEvict(value = {
+            "user-service::user",
+            "user-service::S1-F1",
+            "user-service::S1-F3",
+            "user-service::S1-F5",
+            "user-service::S1-F6",
+            "user-service::S1-F9"
+    }, allEntries = true)
     public void deleteUserSkill(Long skillId) {
         UserSkill skill = userSkillRepository.findById(skillId)
                 .orElseThrow(() -> new RuntimeException("Skill not found"));
         userSkillRepository.delete(skill);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "SKILL_DELETED");
+        payload.put("skillId", skillId);
+
+        notifyObservers("SKILL_DELETED", payload);
     }
 
+
+    @Cacheable(value = "user-service::S1-F1", key = "#name + ':' + #email + ':' + #role")
     public List<User> searchUsers(String name, String email, String role) {
         return userRepository.searchUsers(name, email, role);
     }
 
+
+
+    @CacheEvict(value = {
+            "user-service::user",
+            "user-service::S1-F1",
+            "user-service::S1-F3",
+            "user-service::S1-F5",
+            "user-service::S1-F6",
+            "user-service::S1-F9"
+    }, allEntries = true)
     public User updateUserPreferences(Long id, Map<String, Object> newPreferences) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -166,16 +302,24 @@ public class UserService {
         }
 
         if (newPreferences != null) {
-            existingPreferences.putAll(newPreferences); // 🔥 MERGE
+            existingPreferences.putAll(newPreferences);
         }
 
-        user.setPreferences(existingPreferences);
+        user.setPreferences(existingPreferences);   // 🔥 MISSING LINE
+        User saved = userRepository.save(user);
 
-        return userRepository.save(user);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "PREFERENCES_UPDATED");
+        payload.put("userId", saved.getId());
+
+        notifyObservers("PREFERENCES_UPDATED", payload);
+
+        return saved;
     }
 
-    public List<User> searchUsersByPreference(String key, String value) {
 
+    @Cacheable(value = "user-service::S1-F5", key = "#key + ':' + #value")
+    public List<User> searchUsersByPreference(String key, String value) {
         if (key == null || key.isBlank() || value == null || value.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Key and value must not be blank");
         }
@@ -183,6 +327,7 @@ public class UserService {
         return userRepository.findUsersByPreference(key, value);
     }
 
+    @Cacheable(value = "user-service::S1-F3", key = "#userId")
     public UserContractSummaryDTO getUserContractSummary(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -190,32 +335,30 @@ public class UserService {
                 ));
 
         Object[] row = ((Object[]) userRepository.getUserContractSummary(userId)[0]);
-        return new UserContractSummaryDTO(
-                ((Number) row[0]).longValue(),
-                (String) row[1],
-                ((Number) row[2]).longValue(),
-                ((Number) row[3]).longValue(),
-                ((Number) row[4]).longValue(),
-                ((Number) row[5]).doubleValue(),
-                ((Number) row[6]).doubleValue()
-        );
+        UserContractSummaryAdapter adapter = new UserContractSummaryAdapter();
+        return adapter.adapt(row);
     }
-    @Transactional
-    public User setPrimarySkill(Long userId, Long skillId) {
 
-        // 1. Find user (404)
+    @Transactional
+    @CacheEvict(value = {
+            "user-service::user",
+            "user-service::S1-F1",
+            "user-service::S1-F3",
+            "user-service::S1-F5",
+            "user-service::S1-F6",
+            "user-service::S1-F9"
+    }, allEntries = true)
+    public User setPrimarySkill(Long userId, Long skillId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"
                 ));
 
-        // 2. Find skill (404)
         UserSkill skill = userSkillRepository.findById(skillId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Skill not found"
                 ));
 
-        // 3. Verify ownership (400)
         if (skill.getUser() == null || !skill.getUser().getId().equals(userId)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -223,61 +366,77 @@ public class UserService {
             );
         }
 
-        // 4. Reset all user skills
         List<UserSkill> userSkills = userSkillRepository.findByUserId(userId);
 
         for (UserSkill s : userSkills) {
             s.setIsPrimary(false);
         }
 
-        // 5. Set target skill as primary
         skill.setIsPrimary(true);
-
-        // 6. Save changes
         userSkillRepository.saveAll(userSkills);
 
-        // 7. Return updated user
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "PRIMARY_SKILL_SET");
+        payload.put("userId", userId);
+        payload.put("skillId", skillId);
+
+        notifyObservers("PRIMARY_SKILL_SET", payload);
+
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"
                 ));
     }
 
+    // ✅ CACHE DTO INSTEAD OF ENTITY
+    @Cacheable(value = "user-service::user", key = "#id")
     public UserProfileDTO getUserProfile(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"
                 ));
+        return buildUserProfileDTO(user);
+    }
 
-        List<UserSkill> userSkills = userSkillRepository.findByUserId(id);
+    // ✅ HELPER METHOD TO BUILD DTO
+    private UserProfileDTO buildUserProfileDTO(User user) {
+        List<UserSkill> userSkills = userSkillRepository.findByUserId(user.getId());
         List<UserSkillProfileDTO> skillDTOs = new ArrayList<>();
 
         for (UserSkill skill : userSkills) {
-            UserSkillProfileDTO skillDTO = new UserSkillProfileDTO(
-                    skill.getSkillName(),
-                    skill.getCategory(),
-                    skill.getYearsOfExperience(),
-                    skill.getProficiencyLevel(),
-                    skill.getIsPrimary(),
-                    skill.getMetadata()
-            );
+            UserSkillProfileDTO skillDTO = UserSkillProfileDTO.builder()
+                    .skillName(skill.getSkillName())
+                    .category(skill.getCategory())
+                    .yearsOfExperience(skill.getYearsOfExperience())
+                    .proficiencyLevel(skill.getProficiencyLevel())
+                    .isPrimary(skill.getIsPrimary())
+                    .metadata(skill.getMetadata())
+                    .build();
             skillDTOs.add(skillDTO);
         }
 
-        return new UserProfileDTO(
-                user.getId(),
-                user.getName(),
-                user.getEmail(),
-                user.getPhone(),
-                user.getPreferences(),
-                skillDTOs,
-                skillDTOs.size()
-        );
+        return UserProfileDTO.builder()
+                .userId(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .preferences(user.getPreferences())
+                .skills(skillDTOs)
+                .totalSkills(skillDTOs.size())
+                .build();
     }
 
-    // ===================== S1-F4: Deactivate User Account =====================
+    // ===================== DEACTIVATE USER ACCOUNT =====================
 
     @Transactional
+    @CacheEvict(value = {
+            "user-service::user",
+            "user-service::S1-F1",
+            "user-service::S1-F3",
+            "user-service::S1-F5",
+            "user-service::S1-F6",
+            "user-service::S1-F9"
+    }, allEntries = true)
     public User deactivateUser(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -290,11 +449,20 @@ public class UserService {
 
         user.setStatus(Status.DEACTIVATED);
         userRepository.withdrawSubmittedProposalsForUser(id);
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "USER_DEACTIVATED");
+        payload.put("userId", saved.getId());
+
+        notifyObservers("USER_DEACTIVATED", payload);
+
+        return saved;
     }
 
-    // ===================== S1-F6: Top Freelancers by Earnings =====================
+    // ===================== TOP FREELANCERS BY EARNINGS =====================
 
+    @Cacheable(value = "user-service::S1-F6", key = "#startDate + ':' + #endDate + ':' + #limit")
     public List<TopFreelancerDTO> getTopFreelancersByEarnings(LocalDate startDate, LocalDate endDate, int limit) {
         if (startDate.isAfter(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must not be after endDate");
@@ -303,16 +471,21 @@ public class UserService {
                 startDate.atStartOfDay(), endDate.atTime(23, 59, 59), limit);
         List<TopFreelancerDTO> result = new ArrayList<>();
         for (Object[] row : rows) {
-            result.add(new TopFreelancerDTO(
-                    ((Number) row[0]).longValue(), (String) row[1],
-                    ((Number) row[2]).doubleValue(), ((Number) row[3]).longValue()));
+            result.add(
+                    TopFreelancerDTO.builder()
+                            .userId(((Number) row[0]).longValue())
+                            .name((String) row[1])
+                            .totalEarnings(((Number) row[2]).doubleValue())
+                            .contractCount(((Number) row[3]).longValue())
+                            .build()
+            );
         }
         return result;
     }
 
+    // ===================== USERS BY LANGUAGE + MIN COMPLETED CONTRACTS =====================
 
-    // ===================== S1-F9: Users by Language + Min Completed Contracts =====================
-
+    @Cacheable(value = "user-service::S1-F9", key = "#lang + ':' + #minContracts")
     public List<User> findUsersByLanguageAndMinContracts(String lang, int minContracts) {
         if (lang == null || lang.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "lang must not be blank");
@@ -321,16 +494,20 @@ public class UserService {
     }
 
 
-
+    @CacheEvict(value = {
+            "user-service::user",
+            "user-service::S1-F1",
+            "user-service::S1-F3",
+            "user-service::S1-F5",
+            "user-service::S1-F6",
+            "user-service::S1-F9"
+    }, allEntries = true)
     public User updateUserRole(Long id, String role) {
-
-        // 1. Find user (404)
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"
                 ));
 
-        // 2. Validate role (400)
         Role newRole;
         try {
             newRole = Role.valueOf(role.toUpperCase());
@@ -340,18 +517,16 @@ public class UserService {
             );
         }
 
-        // 3. Update role
-        Role oldRole = user.getRole();
         user.setRole(newRole);
+        User saved = userRepository.save(user);
 
-        User savedUser = userRepository.save(user);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "ROLE_CHANGED");
+        payload.put("userId", saved.getId());
+        payload.put("newRole", newRole.toString());
 
-        // 🔥 (IMPORTANT FOR CC-2)
-        // Later you will add:
-        // - Mongo event: ROLE_CHANGED
-        // - Redis invalidation
+        notifyObservers("ROLE_CHANGED", payload);
 
-        return savedUser;
+        return saved;
     }
-
 }

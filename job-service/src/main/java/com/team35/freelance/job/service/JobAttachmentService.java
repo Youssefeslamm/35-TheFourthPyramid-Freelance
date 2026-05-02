@@ -2,15 +2,20 @@ package com.team35.freelance.job.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.team35.freelance.job.common.observer.EntityObserver;
+import com.team35.freelance.job.common.observer.MongoEventLogger;
 import com.team35.freelance.job.dto.VerifyAttachmentRequestDTO;
 import com.team35.freelance.job.exception.BadRequestException;
 import com.team35.freelance.job.exception.ForbiddenException;
@@ -26,11 +31,28 @@ public class JobAttachmentService {
 
     private final JobAttachmentRepository jobAttachmentRepository;
     private final JobRepository jobRepository;
+    private final List<EntityObserver> observers = new ArrayList<>();
 
     public JobAttachmentService(JobAttachmentRepository jobAttachmentRepository,
-                                JobRepository jobRepository) {
+                                JobRepository jobRepository,
+                                MongoEventLogger mongoEventLogger) {
         this.jobAttachmentRepository = jobAttachmentRepository;
         this.jobRepository = jobRepository;
+        this.observers.add(mongoEventLogger);
+    }
+
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
+    }
+
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
+
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
     }
 
     public JobAttachment createAttachment(Long jobId, JobAttachment attachment) {
@@ -40,7 +62,16 @@ public class JobAttachmentService {
         validateAttachment(attachment);
 
         attachment.setJob(job);
-        return jobAttachmentRepository.save(attachment);
+        JobAttachment saved = jobAttachmentRepository.save(attachment);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "ATTACHMENT_CREATED");
+        payload.put("jobId", jobId);
+        payload.put("attachmentId", saved.getId());
+
+        notifyObservers("JOB_ATTACHMENT", payload);
+
+        return saved;
     }
 
     public List<JobAttachment> getAttachmentsByJob(Long jobId) {
@@ -51,6 +82,7 @@ public class JobAttachmentService {
         return jobAttachmentRepository.findByJobId(jobId);
     }
 
+    @Cacheable(value = "job-service::attachment", key = "#attachmentId")
     public JobAttachment getAttachmentById(Long jobId, Long attachmentId) {
         if (!jobRepository.existsById(jobId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found");
@@ -74,12 +106,37 @@ public class JobAttachmentService {
             existing.setVerified(updatedAttachment.getVerified());
         }
 
-        return jobAttachmentRepository.save(existing);
+        JobAttachment saved = jobAttachmentRepository.save(existing);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "ATTACHMENT_UPDATED");
+        payload.put("jobId", jobId);
+        payload.put("attachmentId", saved.getId());
+
+        notifyObservers("JOB_ATTACHMENT", payload);
+
+        return saved;
     }
 
+
+    @CacheEvict(value = {
+            "job-service::attachment",
+            "job-service::S2-F1",
+            "job-service::S2-F3",
+            "job-service::S2-F5",
+            "job-service::S2-F6",
+            "job-service::S2-F9"
+    }, allEntries = true)
     public void deleteAttachment(Long jobId, Long attachmentId) {
         JobAttachment existing = getAttachmentById(jobId, attachmentId);
         jobAttachmentRepository.delete(existing);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "ATTACHMENT_DELETED");
+        payload.put("jobId", jobId);
+        payload.put("attachmentId", attachmentId);
+
+        notifyObservers("JOB_ATTACHMENT", payload);
     }
 
     private void validateAttachment(JobAttachment attachment) {
@@ -139,6 +196,14 @@ public class JobAttachmentService {
         attachment.setMetadata(metadata);
 
         jobAttachmentRepository.save(attachment);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "ATTACHMENT_VERIFIED");
+        payload.put("jobId", jobId);
+        payload.put("attachmentId", attachmentId);
+        payload.put("verifiedBy", request.getVerifiedBy());
+
+        notifyObservers("JOB_ATTACHMENT", payload);
 
         return jobRepository.findByIdWithAttachments(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Job not found"));

@@ -8,26 +8,67 @@ public class FreelancerPerformanceDTO {
     private Double averageDurationDays;
     private Double totalEarnings;
 
-    public FreelancerPerformanceDTO(Long freelancerId, Integer totalContracts, Double averageContractValue, Double completionRate, Double averageDurationDays, Double totalEarnings) {
-        this.freelancerId = freelancerId;
-        this.totalContracts = totalContracts;
-        this.averageContractValue = averageContractValue;
-        this.completionRate = completionRate;
-        this.averageDurationDays = averageDurationDays;
-        this.totalEarnings = totalEarnings;
+    private FreelancerPerformanceDTO(Builder builder) {
+        this.freelancerId = builder.freelancerId;
+        this.totalContracts = builder.totalContracts;
+        this.averageContractValue = builder.averageContractValue;
+        this.completionRate = builder.completionRate;
+        this.averageDurationDays = builder.averageDurationDays;
+        this.totalEarnings = builder.totalEarnings;
     }
 
-    // Getters and Setters
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private Long freelancerId;
+        private Integer totalContracts;
+        private Double averageContractValue;
+        private Double completionRate;
+        private Double averageDurationDays;
+        private Double totalEarnings;
+
+        public Builder freelancerId(Long freelancerId) {
+            this.freelancerId = freelancerId;
+            return this;
+        }
+
+        public Builder totalContracts(Integer totalContracts) {
+            this.totalContracts = totalContracts;
+            return this;
+        }
+
+        public Builder averageContractValue(Double averageContractValue) {
+            this.averageContractValue = averageContractValue;
+            return this;
+        }
+
+        public Builder completionRate(Double completionRate) {
+            this.completionRate = completionRate;
+            return this;
+        }
+
+        public Builder averageDurationDays(Double averageDurationDays) {
+            this.averageDurationDays = averageDurationDays;
+            return this;
+        }
+
+        public Builder totalEarnings(Double totalEarnings) {
+            this.totalEarnings = totalEarnings;
+            return this;
+        }
+
+        public FreelancerPerformanceDTO build() {
+            return new FreelancerPerformanceDTO(this);
+        }
+    }
+
+    // Getters
     public Long getFreelancerId() { return freelancerId; }
-    public void setFreelancerId(Long freelancerId) { this.freelancerId = freelancerId; }
     public Integer getTotalContracts() { return totalContracts; }
-    public void setTotalContracts(Integer totalContracts) { this.totalContracts = totalContracts; }
     public Double getAverageContractValue() { return averageContractValue; }
-    public void setAverageContractValue(Double averageContractValue) { this.averageContractValue = averageContractValue; }
     public Double getCompletionRate() { return completionRate; }
-    public void setCompletionRate(Double completionRate) { this.completionRate = completionRate; }
     public Double getAverageDurationDays() { return averageDurationDays; }
-    public void setAverageDurationDays(Double averageDurationDays) { this.averageDurationDays = averageDurationDays; }
     public Double getTotalEarnings() { return totalEarnings; }
-    public void setTotalEarnings(Double totalEarnings) { this.totalEarnings = totalEarnings; }
 }
