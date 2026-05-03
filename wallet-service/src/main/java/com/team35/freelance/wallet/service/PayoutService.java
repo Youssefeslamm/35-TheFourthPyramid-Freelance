@@ -1,13 +1,11 @@
 package com.team35.freelance.wallet.service;
 
+import com.team35.freelance.wallet.common.refund.RefundRequest;
+import com.team35.freelance.wallet.dto.*;
 import com.team35.freelance.wallet.model.Payout;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.wallet.repository.PayoutRepository;
 import com.team35.freelance.wallet.repository.PromoCodeRepository;
-import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
-import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
-import com.team35.freelance.wallet.dto.RevenueReportDTO;
-import com.team35.freelance.wallet.dto.PromoCodeUsage;
 import com.team35.freelance.wallet.common.refund.*;
 import com.team35.freelance.wallet.common.observer.EntityObserver;
 import com.team35.freelance.wallet.common.observer.MongoEventLogger;
@@ -17,6 +15,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import java.util.HashMap;
+import java.util.Map;
+
+import com.team35.freelance.wallet.dto.CategoryRevenueDTO;
+import java.util.List;
 
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -30,15 +33,17 @@ public class PayoutService {
     private final PromoCodeRepository promoCodeRepository;
     private final RefundStrategySelector refundStrategySelector;
     private final List<EntityObserver> observers = new ArrayList<>();
+    private final WalletAnalyticsCacheService walletAnalyticsCacheService;
 
     public PayoutService(PayoutRepository payoutRepository,
                          PromoCodeRepository promoCodeRepository,
                          RefundStrategySelector refundStrategySelector,
-                         MongoEventLogger mongoEventLogger) {
+                         MongoEventLogger mongoEventLogger,WalletAnalyticsCacheService walletAnalyticsCacheService) {
 
         this.payoutRepository = payoutRepository;
         this.promoCodeRepository = promoCodeRepository;
         this.refundStrategySelector = refundStrategySelector;
+        this.walletAnalyticsCacheService = walletAnalyticsCacheService;
         registerObserver(mongoEventLogger);
     }
     public void registerObserver(EntityObserver observer) {
@@ -535,6 +540,28 @@ public class PayoutService {
         notifyObservers("PAYOUT_AUDIT", payload);
 
         return saved;
+    }
+
+    public List<CategoryRevenueDTO> getCategoryRevenueAnalytics(LocalDate startDate, LocalDate endDate) {
+
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate cannot be after endDate");
+        }
+
+        // ✅ ALWAYS runs
+        logAnalyticsViewedEvent(startDate, endDate);
+
+        // ✅ cached logic
+        return walletAnalyticsCacheService.getCategoryRevenueAnalyticsCached(startDate, endDate);
+    }
+    private void logAnalyticsViewedEvent(LocalDate startDate, LocalDate endDate) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "ANALYTICS_VIEWED");
+        payload.put("feature", "S5-F10");
+        payload.put("startDate", startDate.toString());
+        payload.put("endDate", endDate.toString());
+
+        notifyObservers("PAYOUT_AUDIT", payload);
     }
 
 
