@@ -1,17 +1,11 @@
 package com.team35.freelance.wallet.controller;
 
+import com.team35.freelance.wallet.dto.*;
 import com.team35.freelance.wallet.model.Payout;
 import com.team35.freelance.wallet.model.PayoutStatus;
 
 import com.team35.freelance.wallet.service.PayoutService;
 import com.team35.freelance.wallet.service.PayoutPromoService;
-
-import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
-import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
-import com.team35.freelance.wallet.dto.PayoutDetailsDTO;
-import com.team35.freelance.wallet.dto.PromoCodeUsage;
-import com.team35.freelance.wallet.dto.RefundRequest;
-import com.team35.freelance.wallet.dto.RevenueReportDTO;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -45,6 +39,21 @@ public class PayoutController {
         return ResponseEntity.ok(payoutService.getAllPayouts());
     }
 
+    // -------- S5-F10: PLATFORM FEE ANALYTICS BY CATEGORY --------
+    @GetMapping("/analytics/category")
+    public ResponseEntity<List<CategoryRevenueDTO>> getCategoryRevenueAnalytics(
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate startDate,
+
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate endDate
+    ) {
+        return ResponseEntity.ok(
+                payoutService.getCategoryRevenueAnalytics(startDate, endDate)
+        );
+    }
     @GetMapping("/{id}")
     public ResponseEntity<Payout> getPayoutById(@PathVariable Long id) {
         return ResponseEntity.ok(payoutService.getPayoutById(id));
@@ -182,4 +191,5 @@ public class PayoutController {
                 )
         );
     }
+
 }
