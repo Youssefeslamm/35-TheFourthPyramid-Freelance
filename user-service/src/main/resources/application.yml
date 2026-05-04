@@ -22,7 +22,7 @@ spring:
 
   data:
     mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin}
+      uri: ${SPRING_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin}
     redis:
       host: ${SPRING_REDIS_HOST:redis}
       port: ${SPRING_REDIS_PORT:6379}
@@ -40,3 +40,9 @@ logging:
   level:
     root: INFO
     org.hibernate: INFO
+
+
+cache:
+  type: redis
+  redis:
+  time-to-live: 600000  # 10 minutes in milliseconds

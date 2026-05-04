@@ -1,11 +1,12 @@
 package com.team35.freelance.contract.dto;
 
 public class MilestoneTrackRequestDTO {
-
     private Integer milestoneOrder;
     private String status;
     private String recordedBy;
     private String notes;
+
+    public MilestoneTrackRequestDTO() {}
 
     public Integer getMilestoneOrder() {
         return milestoneOrder;

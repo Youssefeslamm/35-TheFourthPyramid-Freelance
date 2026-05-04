@@ -28,9 +28,35 @@ spring:
       username: ${SPRING_NEO4J_USERNAME:neo4j}
       password: ${SPRING_NEO4J_PASSWORD:neo4jpass}
 
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000
+
+neo4j:
+  uri: ${SPRING_NEO4J_URI:bolt://neo4j:7687}
+  authentication:
+    username: ${SPRING_NEO4J_USERNAME:neo4j}
+    password: ${SPRING_NEO4J_PASSWORD:neo4jpass}
+
 server:
   port: 8080
 
 jwt:
   secret: ${JWT_SECRET:0123456789abcdef0123456789abcdef01234567}
   expiration: ${JWT_EXPIRATION_MS:86400000}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:postgresql://localhost:5432/freelancedb
+  data:
+    neo4j:
+      uri: bolt://localhost:7687
+    mongodb:
+      uri: mongodb://root:rootpass@localhost:27017/freelancemongo?authSource=admin
+    redis:
+      host: localhost

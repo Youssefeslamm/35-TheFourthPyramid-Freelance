@@ -33,14 +33,19 @@ public class ContractController {
 
     @Autowired
     private ContractService contractService;
+
     @Autowired
     private ContractAnalyticsService contractAnalyticsService;
+
     @Autowired
     private ContractEventService contractEventService;
+
     @Autowired
     private ContractMilestoneTrackingService contractMilestoneTrackingService;
+
     @Autowired
     private ContractMilestoneTimelineService contractMilestoneTimelineService;
+
     @Autowired
     private JwtValidator jwtValidator;
 
@@ -59,7 +64,9 @@ public class ContractController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Contract> getById(@PathVariable Long id) {
-        return contractService.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        return contractService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping
@@ -92,7 +99,9 @@ public class ContractController {
     }
 
     @PutMapping("/{contractId}/progress")
-    public ResponseEntity<Contract> updateProgress(@PathVariable Long contractId, @RequestBody Map<String, Object> updates) {
+    public ResponseEntity<Contract> updateProgress(
+            @PathVariable Long contractId,
+            @RequestBody Map<String, Object> updates) {
         try {
             return ResponseEntity.ok(contractService.updateProgress(contractId, updates));
         } catch (RuntimeException e) {
@@ -109,7 +118,8 @@ public class ContractController {
     }
 
     @PutMapping("/batch-status")
-    public ResponseEntity<Map<String, Integer>> batchUpdateStatus(@RequestBody List<BatchStatusUpdateDTO> updates) {
+    public ResponseEntity<Map<String, Integer>> batchUpdateStatus(
+            @RequestBody List<BatchStatusUpdateDTO> updates) {
         try {
             return ResponseEntity.ok(Map.of("updatedCount", contractService.batchUpdateStatus(updates)));
         } catch (RuntimeException e) {
@@ -136,6 +146,7 @@ public class ContractController {
             return ResponseEntity.notFound().build();
         }
     }
+
     // --- S4-F9: Find Stalled Contracts ---
     @GetMapping("/stalled")
     public ResponseEntity<List<StalledContractDTO>> getStalledContracts(
@@ -143,6 +154,7 @@ public class ContractController {
             @RequestParam Integer stalledDays) {
         return ResponseEntity.ok(contractService.getStalledContracts(maxProgress, stalledDays));
     }
+
     // --- S4-F5: Metadata JSONB Filter ---
     @GetMapping("/metadata/search")
     public ResponseEntity<List<Contract>> searchContractsByMetadata(
@@ -152,7 +164,7 @@ public class ContractController {
         try {
             return ResponseEntity.ok(contractService.searchContractsByMetadata(key, operator, value));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build(); // Throws 400 if operator or number cast is invalid
+            return ResponseEntity.badRequest().build();
         }
     }
 
@@ -162,18 +174,22 @@ public class ContractController {
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
         jwtValidator.validateAuthorizationHeader(authorizationHeader);
+
         if (startDate.isAfter(endDate)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must be before or equal to endDate");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "startDate must be before or equal to endDate"
+            );
         }
+
         LocalDateTime from = startDate.atStartOfDay();
         LocalDateTime to = endDate.atTime(23, 59, 59, 999_000_000);
-        // Keep observability logging outside cache-backed analytics service so it also runs on cache hits.
+
         contractEventService.logAnalyticsViewed(from, to);
-        return ResponseEntity.ok(contractAnalyticsService.getContractAnalytics(
-                from,
-                to
-        ));
+
+        return ResponseEntity.ok(contractAnalyticsService.getContractAnalytics(from, to));
     }
 
     // --- S4-F11: Track Contract Milestones ---
@@ -182,8 +198,11 @@ public class ContractController {
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @PathVariable Long id,
             @RequestBody MilestoneTrackRequestDTO request) {
+
         jwtValidator.validateAuthorizationHeader(authorizationHeader);
+
         contractMilestoneTrackingService.trackMilestone(id, request);
+
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
@@ -192,13 +211,22 @@ public class ContractController {
     public ResponseEntity<List<ContractMilestoneDTO>> getMilestoneTimeline(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @PathVariable Long id,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime) {
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime startTime,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime endTime) {
+
         jwtValidator.validateAuthorizationHeader(authorizationHeader);
+
         if (startTime != null && endTime != null && startTime.isAfter(endTime)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startTime must be before or equal to endTime");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "startTime must be before or equal to endTime"
+            );
         }
+
         return ResponseEntity.ok(contractMilestoneTimelineService.getTimeline(id, startTime, endTime));
     }
-
 }

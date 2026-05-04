@@ -3,11 +3,12 @@ package com.team35.freelance.wallet.dto;
 import com.team35.freelance.wallet.model.PayoutMethod;
 import com.team35.freelance.wallet.model.PayoutStatus;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-public class PayoutDetailsDTO {
+public class PayoutDetailsDTO implements Serializable {
 
     private Long payoutId;
     private Long contractId;
@@ -20,153 +21,123 @@ public class PayoutDetailsDTO {
     private Double totalDiscount;
     private Double finalAmount;
 
-    public PayoutDetailsDTO() {
+    private PayoutDetailsDTO(Builder builder) {
+        this.payoutId = builder.payoutId;
+        this.contractId = builder.contractId;
+        this.freelancerId = builder.freelancerId;
+        this.originalAmount = builder.originalAmount;
+        this.method = builder.method;
+        this.status = builder.status;
+        this.transactionDetails = builder.transactionDetails;
+        this.appliedPromoCodes = builder.appliedPromoCodes;
+        this.totalDiscount = builder.totalDiscount;
+        this.finalAmount = builder.finalAmount;
     }
 
-    public PayoutDetailsDTO(Long payoutId, Long contractId, Long freelancerId,
-                            Double originalAmount, PayoutMethod method, PayoutStatus status,
-                            Map<String, Object> transactionDetails,
-                            List<AppliedPromoCodeDTO> appliedPromoCodes,
-                            Double totalDiscount, Double finalAmount) {
-        this.payoutId = payoutId;
-        this.contractId = contractId;
-        this.freelancerId = freelancerId;
-        this.originalAmount = originalAmount;
-        this.method = method;
-        this.status = status;
-        this.transactionDetails = transactionDetails;
-        this.appliedPromoCodes = appliedPromoCodes;
-        this.totalDiscount = totalDiscount;
-        this.finalAmount = finalAmount;
+    public static Builder builder() {
+        return new Builder();
     }
 
-    public Long getPayoutId() {
-        return payoutId;
+    public static class Builder {
+        private Long payoutId;
+        private Long contractId;
+        private Long freelancerId;
+        private Double originalAmount;
+        private PayoutMethod method;
+        private PayoutStatus status;
+        private Map<String, Object> transactionDetails;
+        private List<AppliedPromoCodeDTO> appliedPromoCodes;
+        private Double totalDiscount;
+        private Double finalAmount;
+
+        public Builder payoutId(Long val) { this.payoutId = val; return this; }
+        public Builder contractId(Long val) { this.contractId = val; return this; }
+        public Builder freelancerId(Long val) { this.freelancerId = val; return this; }
+        public Builder originalAmount(Double val) { this.originalAmount = val; return this; }
+        public Builder method(PayoutMethod val) { this.method = val; return this; }
+        public Builder status(PayoutStatus val) { this.status = val; return this; }
+        public Builder transactionDetails(Map<String, Object> val) { this.transactionDetails = val; return this; }
+        public Builder appliedPromoCodes(List<AppliedPromoCodeDTO> val) { this.appliedPromoCodes = val; return this; }
+        public Builder totalDiscount(Double val) { this.totalDiscount = val; return this; }
+        public Builder finalAmount(Double val) { this.finalAmount = val; return this; }
+
+        public PayoutDetailsDTO build() {
+            return new PayoutDetailsDTO(this);
+        }
     }
 
-    public void setPayoutId(Long payoutId) {
-        this.payoutId = payoutId;
-    }
+    public Long getPayoutId() { return payoutId; }
+    public Long getContractId() { return contractId; }
 
-    public Long getContractId() {
-        return contractId;
-    }
+    public Long getFreelancerId() { return freelancerId; }
 
-    public void setContractId(Long contractId) {
-        this.contractId = contractId;
-    }
+    public Double getOriginalAmount() { return originalAmount; }
 
-    public Long getFreelancerId() {
-        return freelancerId;
-    }
+    public PayoutMethod getMethod() { return method; }
 
-    public void setFreelancerId(Long freelancerId) {
-        this.freelancerId = freelancerId;
-    }
+    public PayoutStatus getStatus() { return status; }
 
-    public Double getOriginalAmount() {
-        return originalAmount;
-    }
+    public Map<String, Object> getTransactionDetails() { return transactionDetails; }
 
-    public void setOriginalAmount(Double originalAmount) {
-        this.originalAmount = originalAmount;
-    }
+    public List<AppliedPromoCodeDTO> getAppliedPromoCodes() { return appliedPromoCodes; }
 
-    public PayoutMethod getMethod() {
-        return method;
-    }
+    public Double getTotalDiscount() { return totalDiscount; }
 
-    public void setMethod(PayoutMethod method) {
-        this.method = method;
-    }
-
-    public PayoutStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(PayoutStatus status) {
-        this.status = status;
-    }
-
-    public Map<String, Object> getTransactionDetails() {
-        return transactionDetails;
-    }
-
-    public void setTransactionDetails(Map<String, Object> transactionDetails) {
-        this.transactionDetails = transactionDetails;
-    }
-
-    public List<AppliedPromoCodeDTO> getAppliedPromoCodes() {
-        return appliedPromoCodes;
-    }
-
-    public void setAppliedPromoCodes(List<AppliedPromoCodeDTO> appliedPromoCodes) {
-        this.appliedPromoCodes = appliedPromoCodes;
-    }
-
-    public Double getTotalDiscount() {
-        return totalDiscount;
-    }
-
-    public void setTotalDiscount(Double totalDiscount) {
-        this.totalDiscount = totalDiscount;
-    }
-
-    public Double getFinalAmount() {
-        return finalAmount;
-    }
-
-    public void setFinalAmount(Double finalAmount) {
-        this.finalAmount = finalAmount;
-    }
+    public Double getFinalAmount() { return finalAmount; }
 
     public static class AppliedPromoCodeDTO {
+
         private String promoCode;
         private String discountType;
         private Double discountApplied;
         private LocalDateTime appliedAt;
 
-        public AppliedPromoCodeDTO() {
+        private AppliedPromoCodeDTO(Builder builder) {
+            this.promoCode = builder.promoCode;
+            this.discountType = builder.discountType;
+            this.discountApplied = builder.discountApplied;
+            this.appliedAt = builder.appliedAt;
         }
 
-        public AppliedPromoCodeDTO(String promoCode, String discountType,
-                                   Double discountApplied, LocalDateTime appliedAt) {
-            this.promoCode = promoCode;
-            this.discountType = discountType;
-            this.discountApplied = discountApplied;
-            this.appliedAt = appliedAt;
+        public static Builder builder() {
+            return new Builder();
         }
 
-        public String getPromoCode() {
-            return promoCode;
+        public static class Builder {
+            private String promoCode;
+            private String discountType;
+            private Double discountApplied;
+            private LocalDateTime appliedAt;
+
+            public Builder promoCode(String promoCode) {
+                this.promoCode = promoCode;
+                return this;
+            }
+
+            public Builder discountType(String discountType) {
+                this.discountType = discountType;
+                return this;
+            }
+
+            public Builder discountApplied(Double discountApplied) {
+                this.discountApplied = discountApplied;
+                return this;
+            }
+
+            public Builder appliedAt(LocalDateTime appliedAt) {
+                this.appliedAt = appliedAt;
+                return this;
+            }
+
+            public AppliedPromoCodeDTO build() {
+                return new AppliedPromoCodeDTO(this);
+            }
         }
 
-        public void setPromoCode(String promoCode) {
-            this.promoCode = promoCode;
-        }
-
-        public String getDiscountType() {
-            return discountType;
-        }
-
-        public void setDiscountType(String discountType) {
-            this.discountType = discountType;
-        }
-
-        public Double getDiscountApplied() {
-            return discountApplied;
-        }
-
-        public void setDiscountApplied(Double discountApplied) {
-            this.discountApplied = discountApplied;
-        }
-
-        public LocalDateTime getAppliedAt() {
-            return appliedAt;
-        }
-
-        public void setAppliedAt(LocalDateTime appliedAt) {
-            this.appliedAt = appliedAt;
-        }
+        // getters (REQUIRED for serialization)
+        public String getPromoCode() { return promoCode; }
+        public String getDiscountType() { return discountType; }
+        public Double getDiscountApplied() { return discountApplied; }
+        public LocalDateTime getAppliedAt() { return appliedAt; }
     }
 }

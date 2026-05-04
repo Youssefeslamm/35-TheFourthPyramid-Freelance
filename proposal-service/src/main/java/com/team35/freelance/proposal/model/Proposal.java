@@ -7,6 +7,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
 import org.hibernate.type.SqlTypes;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,7 +16,7 @@ import java.util.Map;
 
 @Entity
 @Table(name = "proposals")
-public class Proposal {
+public class Proposal implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,7 +56,9 @@ public class Proposal {
 
     @PrePersist
     public void prePersist() {
-        this.submittedAt = LocalDateTime.now();
+        if (this.submittedAt == null) {  // only set if not already provided
+            this.submittedAt = LocalDateTime.now();
+        }
         if (this.status == null) {
             this.status = ProposalStatus.SUBMITTED;
         }

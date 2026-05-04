@@ -1,61 +1,60 @@
 package com.team35.freelance.contract.cassandra;
 
+import org.springframework.data.cassandra.core.cql.Ordering;
+import org.springframework.data.cassandra.core.cql.PrimaryKeyType;
 import org.springframework.data.cassandra.core.mapping.Column;
-import org.springframework.data.cassandra.core.mapping.PrimaryKey;
+import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn;
 import org.springframework.data.cassandra.core.mapping.Table;
+
+import java.time.LocalDateTime;
 
 @Table("contract_milestone_events")
 public class ContractMilestoneEvent {
 
-    @PrimaryKey
-    private ContractMilestoneEventKey key;
+    @PrimaryKeyColumn(name = "contract_id", type = PrimaryKeyType.PARTITIONED)
+    private Long contractId;
+
+    @PrimaryKeyColumn(name = "timestamp", type = PrimaryKeyType.CLUSTERED, ordinal = 0, ordering = Ordering.DESCENDING)
+    private LocalDateTime timestamp;
 
     @Column("milestone_order")
     private Integer milestoneOrder;
+
     private String status;
 
-    @Column("recordedby")
+    @Column("recorded_by")
     private String recordedBy;
 
     private String notes;
 
-    public ContractMilestoneEventKey getKey() {
-        return key;
+    public ContractMilestoneEvent() {
+        this.timestamp = LocalDateTime.now();
     }
 
-    public void setKey(ContractMilestoneEventKey key) {
-        this.key = key;
-    }
-
-    public Integer getMilestoneOrder() {
-        return milestoneOrder;
-    }
-
-    public void setMilestoneOrder(Integer milestoneOrder) {
+    public ContractMilestoneEvent(Long contractId,
+                                  Integer milestoneOrder,
+                                  String status,
+                                  String recordedBy,
+                                  String notes) {
+        this.contractId = contractId;
+        this.timestamp = LocalDateTime.now();
         this.milestoneOrder = milestoneOrder;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
         this.status = status;
-    }
-
-    public String getRecordedBy() {
-        return recordedBy;
-    }
-
-    public void setRecordedBy(String recordedBy) {
         this.recordedBy = recordedBy;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setNotes(String notes) {
         this.notes = notes;
     }
+
+    public Long getContractId() { return contractId; }
+    public LocalDateTime getTimestamp() { return timestamp; }
+    public Integer getMilestoneOrder() { return milestoneOrder; }
+    public String getStatus() { return status; }
+    public String getRecordedBy() { return recordedBy; }
+    public String getNotes() { return notes; }
+
+    public void setContractId(Long contractId) { this.contractId = contractId; }
+    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+    public void setMilestoneOrder(Integer milestoneOrder) { this.milestoneOrder = milestoneOrder; }
+    public void setStatus(String status) { this.status = status; }
+    public void setRecordedBy(String recordedBy) { this.recordedBy = recordedBy; }
+    public void setNotes(String notes) { this.notes = notes; }
 }

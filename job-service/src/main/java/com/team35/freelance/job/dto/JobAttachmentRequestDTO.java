@@ -13,6 +13,55 @@ public class JobAttachmentRequestDTO {
     private Boolean verified;
     private Map<String, Object> metadata;
 
+    private JobAttachmentRequestDTO(Builder builder) {
+        this.type = builder.type;
+        this.fileUrl = builder.fileUrl;
+        this.expiryDate = builder.expiryDate;
+        this.verified = builder.verified;
+        this.metadata = builder.metadata;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private JobAttachmentType type;
+        private String fileUrl;
+        private LocalDate expiryDate;
+        private Boolean verified;
+        private Map<String, Object> metadata;
+
+        public Builder type(JobAttachmentType type) {
+            this.type = type;
+            return this;
+        }
+
+        public Builder fileUrl(String fileUrl) {
+            this.fileUrl = fileUrl;
+            return this;
+        }
+
+        public Builder expiryDate(LocalDate expiryDate) {
+            this.expiryDate = expiryDate;
+            return this;
+        }
+
+        public Builder verified(Boolean verified) {
+            this.verified = verified;
+            return this;
+        }
+
+        public Builder metadata(Map<String, Object> metadata) {
+            this.metadata = metadata;
+            return this;
+        }
+
+        public JobAttachmentRequestDTO build() {
+            return new JobAttachmentRequestDTO(this);
+        }
+    }
+
     public JobAttachmentType getType() {
         return type;
     }
