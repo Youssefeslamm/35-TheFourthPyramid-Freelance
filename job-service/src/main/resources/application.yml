@@ -3,13 +3,14 @@ spring:
     name: job-service
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/freelancedb}
+    # UPDATED: Changed freelance_db to freelancedb to match Docker
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/freelancedb}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update # 'update' is safer for development than 'validate'
     show-sql: true
     properties:
       hibernate:
@@ -18,14 +19,18 @@ spring:
 
   data:
     mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin}
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://root:rootpass@localhost:27017/freelancemongo?authSource=admin}
     redis:
-      host: ${SPRING_REDIS_HOST:redis}
+      host: ${SPRING_REDIS_HOST:localhost}
       port: ${SPRING_REDIS_PORT:6379}
       password: ${SPRING_REDIS_PASSWORD:redispass}
+    elasticsearch:
+      repositories:
+        enabled: true
+        bootstrap-mode: lazy
 
   elasticsearch:
-    uris: ${SPRING_ELASTICSEARCH_URIS:http://elasticsearch:9200}
+    uris: ${SPRING_ELASTICSEARCH_URIS:http://localhost:9200}
 
 server:
   port: 8080
@@ -33,10 +38,3 @@ server:
 jwt:
   secret: ${JWT_SECRET:0123456789abcdef0123456789abcdef01234567}
   expiration: ${JWT_EXPIRATION_MS:86400000}
-
-
-
-cache:
-  type: redis
-  redis:
-  time-to-live: 600000  # 10 minutes in milliseconds
