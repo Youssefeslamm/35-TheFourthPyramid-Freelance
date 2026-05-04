@@ -583,8 +583,16 @@ public class ProposalService {
                     "ON CREATE SET j.title = $title, j.category = $category " +
                     "MERGE (f)-[r:PROPOSED_TO]->(j) " +
                     "ON CREATE SET r.proposalCount = 1, r.lastProposalDate = datetime(), r.recordedProposalIdsStr = $proposalId " +
-                    "ON MATCH SET r.proposalCount = r.proposalCount + 1, r.lastProposalDate = datetime(), " +
-                    "r.recordedProposalIdsStr = r.recordedProposalIdsStr + ',' + $proposalId";
+                    "ON MATCH SET r.proposalCount = CASE " +
+                    "  WHEN NOT (r.recordedProposalIdsStr CONTAINS $proposalId) " +
+                    "  THEN r.proposalCount + 1 ELSE r.proposalCount END, " +
+                    "r.lastProposalDate = CASE " +
+                    "  WHEN NOT (r.recordedProposalIdsStr CONTAINS $proposalId) " +
+                    "  THEN datetime() ELSE r.lastProposalDate END, " +
+                    "r.recordedProposalIdsStr = CASE " +
+                    "  WHEN NOT (r.recordedProposalIdsStr CONTAINS $proposalId) " +
+                    "  THEN r.recordedProposalIdsStr + ',' + $proposalId " +
+                    "  ELSE r.recordedProposalIdsStr END";
 
             session.run(cypher, org.neo4j.driver.Values.parameters(
                     "userId", freelancerId,
