@@ -1,12 +1,33 @@
 package com.team35.freelance.contract.dto;
 
-public class MilestoneTrackRequestDTO {
+import java.time.Instant;
+
+public class ContractMilestoneDTO {
+
+    private Instant timestamp;
     private Integer milestoneOrder;
     private String status;
     private String recordedBy;
     private String notes;
 
-    public MilestoneTrackRequestDTO() {}
+    public ContractMilestoneDTO() {
+    }
+
+    public ContractMilestoneDTO(Instant timestamp, Integer milestoneOrder, String status, String recordedBy, String notes) {
+        this.timestamp = timestamp;
+        this.milestoneOrder = milestoneOrder;
+        this.status = status;
+        this.recordedBy = recordedBy;
+        this.notes = notes;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Instant timestamp) {
+        this.timestamp = timestamp;
+    }
 
     public Integer getMilestoneOrder() {
         return milestoneOrder;
