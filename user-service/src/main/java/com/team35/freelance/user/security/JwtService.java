@@ -50,4 +50,7 @@ public class JwtService {
             return false;
         }
     }
+    public Long getExpiration() {
+        return config.getExpiration();
+    }
 }

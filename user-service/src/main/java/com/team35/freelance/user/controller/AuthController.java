@@ -11,6 +11,7 @@ import com.team35.freelance.user.common.observer.EntityObserver;
 import com.team35.freelance.user.common.observer.MongoEventLogger;
 import com.team35.freelance.user.model.Role;
 
+import com.team35.freelance.user.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,16 +29,17 @@ public class AuthController {
 
     private final List<EntityObserver> observers = new ArrayList<>();
     private final MongoEventLogger mongoEventLogger;
-
+    private final UserService userService;
     public AuthController(UserRepository userRepository,
                           PasswordEncoder passwordEncoder,
                           JwtService jwtService,
-                          MongoEventLogger mongoEventLogger) {
+                          MongoEventLogger mongoEventLogger, UserService userService) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.mongoEventLogger = mongoEventLogger;
+        this.userService = userService;
 
         this.observers.add(mongoEventLogger);
     }
@@ -50,39 +52,13 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("message", "Email already exists"));
-        }
-
-
-        User user = new User();
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setPhone(request.getPhone());
-        if (request.getRole() != null &&
-                (request.getRole().name().equals("CLIENT") || request.getRole().name().equals("FREELANCER"))) {
-            user.setRole(request.getRole());
-        } else {
-            user.setRole(Role.CLIENT);
-        }
-        user.setStatus(Status.ACTIVE);
-        user.setPreferences(request.getPreferences());
-
-        User savedUser = userRepository.save(user);
+        User savedUser = userService.registerUser(request);
         String token = jwtService.generateToken(savedUser);
-
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("action", "REGISTERED");
-        payload.put("userId", savedUser.getId());
-        payload.put("email", savedUser.getEmail());
-
-        notifyObservers("REGISTERED", payload);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new AuthResponse(
                         token,
+                        jwtService.getExpiration(),
                         savedUser.getId(),
                         savedUser.getEmail(),
                         savedUser.getRole().name()
@@ -112,6 +88,7 @@ public class AuthController {
                 token,
                 user.getId(),
                 user.getEmail(),
+
                 user.getRole().name()
         ));
     }
