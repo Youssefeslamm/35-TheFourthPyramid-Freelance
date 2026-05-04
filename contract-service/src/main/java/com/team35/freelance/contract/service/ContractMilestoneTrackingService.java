@@ -4,7 +4,7 @@ import com.team35.freelance.contract.cassandra.ContractMilestoneEvent;
 import com.team35.freelance.contract.dto.MilestoneTrackRequestDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.model.MilestoneTrackStatus;
-import com.team35.freelance.contract.repository.ContractMilestoneEventRepository;
+import com.team35.freelance.contract.cassandra.ContractMilestoneEventRepository;
 import com.team35.freelance.contract.repository.ContractRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
