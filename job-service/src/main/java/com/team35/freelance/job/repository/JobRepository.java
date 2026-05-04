@@ -129,6 +129,29 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     List<Object[]> findTopBudgetJobs(@Param("limitValue") int limitValue);
 
     @Query(value = """
+            SELECT *
+            FROM jobs j
+            WHERE (LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
+                   OR LOWER(j.description) LIKE LOWER(CONCAT('%', :query, '%')))
+              AND (:category IS NULL OR j.category = CAST(:category AS job_category_enum))
+              AND (:status IS NULL OR j.status = CAST(:status AS job_status_enum))
+              AND (:minBudget IS NULL OR j.budget_max >= :minBudget)
+              AND (:maxBudget IS NULL OR j.budget_min <= :maxBudget)
+            ORDER BY
+              CASE
+                WHEN LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%')) THEN 0
+                ELSE 1
+              END,
+              j.rating DESC,
+              j.created_at DESC
+            """, nativeQuery = true)
+    List<Job> searchJobsFullTextFallback(@Param("query") String query,
+                                         @Param("category") String category,
+                                         @Param("status") String status,
+                                         @Param("minBudget") Double minBudget,
+                                         @Param("maxBudget") Double maxBudget);
+
+    @Query(value = """
         SELECT
             j.id AS job_id,
             j.title AS title,

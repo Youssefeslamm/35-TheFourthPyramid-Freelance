@@ -43,6 +43,27 @@ public class JobController {
         return ResponseEntity.ok(jobService.getProposalSummary(id, startDate, endDate));
     }
 
+    @GetMapping("/search/full-text")
+    public ResponseEntity<List<Job>> fullTextSearchJobs(
+            @RequestParam String query,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Double minBudget,
+            @RequestParam(required = false) Double maxBudget) {
+
+        return ResponseEntity.ok(jobService.fullTextSearchJobs(query, category, status, minBudget, maxBudget));
+    }
+
+    @PostMapping("/{id}/index")
+    public ResponseEntity<Map<String, Object>> indexJobForSearch(@PathVariable Long id) {
+        jobService.indexJobForSearch(id);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Job indexed successfully",
+                "jobId", id
+        ));
+    }
+
     @GetMapping("/search")
     public ResponseEntity<List<Job>> searchJobs(
             @RequestParam(required = false) String status,
