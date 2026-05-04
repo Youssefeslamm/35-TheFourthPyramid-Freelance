@@ -44,51 +44,17 @@ public class ContractMilestoneEvent {
         this.notes = notes;
     }
 
-    public Long getContractId() {
-        return contractId;
-    }
+    public Long getContractId() { return contractId; }
+    public LocalDateTime getTimestamp() { return timestamp; }
+    public Integer getMilestoneOrder() { return milestoneOrder; }
+    public String getStatus() { return status; }
+    public String getRecordedBy() { return recordedBy; }
+    public String getNotes() { return notes; }
 
-    public LocalDateTime getTimestamp() {
-        return timestamp;
-    }
-
-    public Integer getMilestoneOrder() {
-        return milestoneOrder;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public String getRecordedBy() {
-        return recordedBy;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setContractId(Long contractId) {
-        this.contractId = contractId;
-    }
-
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public void setMilestoneOrder(Integer milestoneOrder) {
-        this.milestoneOrder = milestoneOrder;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public void setRecordedBy(String recordedBy) {
-        this.recordedBy = recordedBy;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
-    }
+    public void setContractId(Long contractId) { this.contractId = contractId; }
+    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+    public void setMilestoneOrder(Integer milestoneOrder) { this.milestoneOrder = milestoneOrder; }
+    public void setStatus(String status) { this.status = status; }
+    public void setRecordedBy(String recordedBy) { this.recordedBy = recordedBy; }
+    public void setNotes(String notes) { this.notes = notes; }
 }

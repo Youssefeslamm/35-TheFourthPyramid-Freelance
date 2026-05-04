@@ -33,7 +33,14 @@ import com.team35.freelance.user.common.event.AuthEvent;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
+import com.team35.freelance.user.dto.AuthRequest;
+import com.team35.freelance.user.dto.AuthResponse;
+import com.team35.freelance.user.security.JwtService;
+import com.team35.freelance.user.common.observer.EntityObserver;
+import com.team35.freelance.user.common.observer.MongoEventLogger;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import java.util.HashMap;
+import java.util.Map;
 @Service
 public class UserService {
 
@@ -43,21 +50,23 @@ public class UserService {
     private final MongoEventLogger mongoEventLogger;
     private final PasswordEncoder passwordEncoder;
     private final AuthEventRepository authEventRepository;
+    private final JwtService jwtService;
 
 
     public UserService(UserRepository userRepository,
                        UserSkillRepository userSkillRepository,
                        MongoEventLogger mongoEventLogger,
                        PasswordEncoder passwordEncoder,
-                       AuthEventRepository authEventRepository) {
-
+                       AuthEventRepository authEventRepository,
+                       JwtService jwtService) {
+      
         this.userRepository = userRepository;
         this.userSkillRepository = userSkillRepository;
         this.mongoEventLogger = mongoEventLogger;
         this.passwordEncoder = passwordEncoder;
         this.authEventRepository = authEventRepository;
+        this.jwtService = jwtService;
 
-        // register observer
         this.observers.add(mongoEventLogger);
     }
 
@@ -627,5 +636,36 @@ public class UserService {
                 .toList();
 
         return new ActivityFeedResponseDTO(content, page, size, eventsPage.getTotalElements());
+
+    public AuthResponse login(AuthRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Invalid email or password"
+                ));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Invalid email or password"
+            );
+        }
+
+        String token = jwtService.generateToken(user);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "LOGGED_IN");
+        payload.put("userId", user.getId());
+        payload.put("email", user.getEmail());
+
+        mongoEventLogger.onEvent("LOGGED_IN", payload);
+
+        return new AuthResponse(
+                token,
+                jwtService.getExpiration(),
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name()
+        );
     }
 }

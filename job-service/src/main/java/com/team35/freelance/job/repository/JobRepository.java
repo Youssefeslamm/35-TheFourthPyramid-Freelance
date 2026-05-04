@@ -4,13 +4,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import com.team35.freelance.job.model.JobStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.team35.freelance.job.dto.ContractLookupProjection;
@@ -128,4 +127,48 @@ public interface JobRepository extends JpaRepository<Job, Long> {
             LIMIT :limitValue
             """, nativeQuery = true)
     List<Object[]> findTopBudgetJobs(@Param("limitValue") int limitValue);
+
+    @Query(value = """
+            SELECT *
+            FROM jobs j
+            WHERE (LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
+                   OR LOWER(j.description) LIKE LOWER(CONCAT('%', :query, '%')))
+              AND (:category IS NULL OR j.category = CAST(:category AS job_category_enum))
+              AND (:status IS NULL OR j.status = CAST(:status AS job_status_enum))
+              AND (:minBudget IS NULL OR j.budget_max >= :minBudget)
+              AND (:maxBudget IS NULL OR j.budget_min <= :maxBudget)
+            ORDER BY
+              CASE
+                WHEN LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%')) THEN 0
+                ELSE 1
+              END,
+              j.rating DESC,
+              j.created_at DESC
+            """, nativeQuery = true)
+    List<Job> searchJobsFullTextFallback(@Param("query") String query,
+                                         @Param("category") String category,
+                                         @Param("status") String status,
+                                         @Param("minBudget") Double minBudget,
+                                         @Param("maxBudget") Double maxBudget);
+
+    @Query(value = """
+        SELECT
+            j.id AS job_id,
+            j.title AS title,
+            COUNT(p.id) AS total_proposals,
+            COALESCE(SUM(CASE WHEN p.status = 'ACCEPTED' THEN 1 ELSE 0 END), 0) AS accepted_proposals,
+            COALESCE(AVG(p.bid_amount), 0) AS average_bid_amount,
+            (
+                SELECT COUNT(*)
+                FROM job_attachments ja
+                WHERE ja.job_id = j.id
+                  AND ja.expiry_date >= CURRENT_DATE
+            ) AS active_attachments,
+            COALESCE(j.rating, 0) AS rating
+        FROM jobs j
+        LEFT JOIN proposals p ON p.job_id = j.id
+        WHERE j.id = :jobId
+        GROUP BY j.id, j.title, j.rating
+        """, nativeQuery = true)
+Map<String, Object> getJobDashboardRaw(@Param("jobId") Long jobId);
 }

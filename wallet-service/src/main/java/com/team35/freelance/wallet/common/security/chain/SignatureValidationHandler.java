@@ -14,7 +14,9 @@ public class SignatureValidationHandler extends AuthHandler {
     @Override
     public boolean handle(AuthContext ctx, HttpServletResponse response) {
 
-        if (!jwtService.isTokenValid(ctx.getToken())) {
+        try {
+            jwtService.extractClaims(ctx.getToken());
+        } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return false;
         }

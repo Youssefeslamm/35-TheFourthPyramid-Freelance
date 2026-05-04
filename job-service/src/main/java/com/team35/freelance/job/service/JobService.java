@@ -2,49 +2,74 @@ package com.team35.freelance.job.service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-import com.team35.freelance.job.dto.*;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
-
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.query.Query;
+import org.springframework.data.elasticsearch.core.query.StringQuery;
 
+import com.team35.freelance.job.common.observer.EntityObserver;
+import com.team35.freelance.job.common.observer.MongoEventLogger;
+import com.team35.freelance.job.elasticsearch.JobSearchDocument;
+import com.team35.freelance.job.dto.CloseJobRequest;
+import com.team35.freelance.job.dto.ContractLookupProjection;
+import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
+import com.team35.freelance.job.dto.JobDashboardDTO;
+import com.team35.freelance.job.dto.JobProposalSummaryDTO;
+import com.team35.freelance.job.dto.JobProposalSummaryDTOBuilder;
+import com.team35.freelance.job.dto.RateJobRequestDTO;
+import com.team35.freelance.job.dto.TopBudgetJobDTO;
 import com.team35.freelance.job.exception.BadRequestException;
 import com.team35.freelance.job.exception.ResourceNotFoundException;
 import com.team35.freelance.job.model.Job;
+import com.team35.freelance.job.model.JobCategory;
 import com.team35.freelance.job.model.JobAttachment;
 import com.team35.freelance.job.model.JobStatus;
 import com.team35.freelance.job.repository.JobAttachmentRepository;
-import com.team35.freelance.job.common.observer.EntityObserver;
-import com.team35.freelance.job.common.observer.MongoEventLogger;
 import com.team35.freelance.job.repository.JobRepository;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CacheEvict;
-
-
+import com.team35.freelance.job.repository.JobSearchRepository;
 
 @Service
 public class JobService {
 
+    private static final Logger log = LoggerFactory.getLogger(JobService.class);
+
     private final JobRepository jobRepository;
     private final JobAttachmentRepository jobAttachmentRepository;
+    private final JobSearchRepository jobSearchRepository;
+    private final ElasticsearchOperations elasticsearchOperations;
     private final List<EntityObserver> observers = new ArrayList<>();
+    private final JobDashboardCacheService jobDashboardCacheService;
 
     public JobService(JobRepository jobRepository,
-                      JobAttachmentRepository jobAttachmentRepository,
-                      MongoEventLogger mongoEventLogger) {
+            JobAttachmentRepository jobAttachmentRepository,
+            JobSearchRepository jobSearchRepository,
+            ElasticsearchOperations elasticsearchOperations,
+            MongoEventLogger mongoEventLogger,
+            JobDashboardCacheService jobDashboardCacheService) {
 
         this.jobRepository = jobRepository;
         this.jobAttachmentRepository = jobAttachmentRepository;
+        this.jobSearchRepository = jobSearchRepository;
+        this.elasticsearchOperations = elasticsearchOperations;
+        this.jobDashboardCacheService = jobDashboardCacheService;
 
         this.observers.add(mongoEventLogger);
     }
+
     private void notifyObservers(String eventType, Object payload) {
         for (EntityObserver observer : observers) {
             observer.onEvent(eventType, payload);
@@ -58,7 +83,6 @@ public class JobService {
     public void unregisterObserver(EntityObserver observer) {
         observers.remove(observer);
     }
-
 
     @Cacheable(value = "job-service::S2-F3", key = "#id + ':' + #startDate + ':' + #endDate")
     public JobProposalSummaryDTO getProposalSummary(Long id, String startDate, String endDate) {
@@ -82,12 +106,14 @@ public class JobService {
     }
 
     @CacheEvict(value = {
-            "job-service::job",
-            "job-service::S2-F1",
-            "job-service::S2-F3",
-            "job-service::S2-F5",
-            "job-service::S2-F6",
-            "job-service::S2-F9"
+        "job-service::job",
+        "job-service::S2-F1",
+        "job-service::S2-F3",
+        "job-service::S2-F5",
+        "job-service::S2-F6",
+        "job-service::S2-F9",
+        "job-service::S2-F10",
+        "job-service::S2-F12"
     }, allEntries = true)
     public Job updateRequirements(Long id, Map<String, Object> incomingRequirements) {
         // 1. Find the job or throw 404
@@ -115,14 +141,15 @@ public class JobService {
         return saved;
     }
 
-
     @CacheEvict(value = {
-            "job-service::job",
-            "job-service::S2-F1",
-            "job-service::S2-F3",
-            "job-service::S2-F5",
-            "job-service::S2-F6",
-            "job-service::S2-F9"
+        "job-service::job",
+        "job-service::S2-F1",
+        "job-service::S2-F3",
+        "job-service::S2-F5",
+        "job-service::S2-F6",
+        "job-service::S2-F9",
+        "job-service::S2-F10",
+        "job-service::S2-F12"
     }, allEntries = true)
     public Job createJob(Job job) {
         validateJob(job);
@@ -138,6 +165,7 @@ public class JobService {
         }
 
         Job saved = jobRepository.save(job);
+        indexJobForSearchSafely(saved, "auto_crud_create");
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "JOB_CREATED");
@@ -145,7 +173,8 @@ public class JobService {
 
         notifyObservers("JOB_CREATED", payload);
 
-        return saved;    }
+        return saved;
+    }
 
     @Cacheable(value = "job-service::job", key = "#id")
     public Job getJobById(Long id) {
@@ -158,12 +187,14 @@ public class JobService {
     }
 
     @CacheEvict(value = {
-            "job-service::job",
-            "job-service::S2-F1",
-            "job-service::S2-F3",
-            "job-service::S2-F5",
-            "job-service::S2-F6",
-            "job-service::S2-F9"
+        "job-service::job",
+        "job-service::S2-F1",
+        "job-service::S2-F3",
+        "job-service::S2-F5",
+        "job-service::S2-F6",
+        "job-service::S2-F9",
+        "job-service::S2-F10",
+        "job-service::S2-F12"
     }, allEntries = true)
     public Job updateJob(Long id, Job updatedJob) {
         Job existing = getJobById(id);
@@ -189,6 +220,7 @@ public class JobService {
         existing.setRequirements(updatedJob.getRequirements());
 
         Job saved = jobRepository.save(existing);
+        indexJobForSearchSafely(saved, "auto_crud_update");
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "JOB_UPDATED");
@@ -196,20 +228,24 @@ public class JobService {
 
         notifyObservers("JOB_UPDATED", payload);
 
-        return saved;    }
+        return saved;
+    }
 
     @CacheEvict(value = {
-            "job-service::job",
-            "job-service::S2-F1",
-            "job-service::S2-F3",
-            "job-service::S2-F5",
-            "job-service::S2-F6",
-            "job-service::S2-F9"
+        "job-service::job",
+        "job-service::S2-F1",
+        "job-service::S2-F3",
+        "job-service::S2-F5",
+        "job-service::S2-F6",
+        "job-service::S2-F9",
+        "job-service::S2-F10",
+        "job-service::S2-F12"
     }, allEntries = true)
     public void deleteJob(Long id) {
         Job existing = getJobById(id);
 
         jobRepository.delete(existing); // 🔥 MISSING
+        removeJobFromSearchSafely(id);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "JOB_DELETED");
@@ -236,6 +272,264 @@ public class JobService {
         }
 
         return jobRepository.searchJobs(status, minBudget, maxBudget);
+    }
+
+
+    @Cacheable(value = "job-service::S2-F10", key = "(#query == null ? '' : #query.trim().toLowerCase()) + ':' + (#category == null ? '' : #category.trim().toUpperCase()) + ':' + (#status == null ? '' : #status.trim().toUpperCase()) + ':' + (#minBudget == null ? '' : #minBudget) + ':' + (#maxBudget == null ? '' : #maxBudget)")
+    public List<Job> fullTextSearchJobs(String query,
+                                        String category,
+                                        String status,
+                                        Double minBudget,
+                                        Double maxBudget) {
+        String normalizedQuery = normalizeSearchQuery(query);
+        JobCategory categoryFilter = parseCategory(category);
+        JobStatus statusFilter = parseStatus(status);
+        validateBudgetRange(minBudget, maxBudget);
+
+        try {
+            Query elasticsearchQuery = buildFullTextQuery(
+                    normalizedQuery,
+                    categoryFilter,
+                    statusFilter,
+                    minBudget,
+                    maxBudget
+            );
+
+            SearchHits<JobSearchDocument> hits = elasticsearchOperations.search(
+                    elasticsearchQuery,
+                    JobSearchDocument.class
+            );
+
+            List<Long> orderedIds = hits.stream()
+                    .map(SearchHit::getContent)
+                    .map(JobSearchDocument::getId)
+                    .filter(id -> id != null)
+                    .distinct()
+                    .toList();
+
+            if (orderedIds.isEmpty()) {
+                return List.of();
+            }
+
+            Map<Long, Job> jobsById = jobRepository.findAllById(orderedIds).stream()
+                    .collect(Collectors.toMap(Job::getId, job -> job));
+
+            return orderedIds.stream()
+                    .map(jobsById::get)
+                    .filter(job -> job != null)
+                    .toList();
+
+        } catch (Exception ex) {
+            log.warn("Elasticsearch full-text search failed, falling back to PostgreSQL: {}", ex.getMessage());
+
+            return jobRepository.searchJobsFullTextFallback(
+                    normalizedQuery,
+                    categoryFilter == null ? null : categoryFilter.name(),
+                    statusFilter == null ? null : statusFilter.name(),
+                    minBudget,
+                    maxBudget
+            );
+        }
+    }
+
+    @CacheEvict(value = "job-service::S2-F10", allEntries = true)
+    public void indexJobForSearch(Long id) {
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found"));
+
+        jobSearchRepository.save(toSearchDocument(job));
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("jobId", job.getId());
+        payload.put("indexedFields", List.of("id", "title", "description", "category", "budgetMin", "budgetMax", "rating", "status"));
+        payload.put("source", "explicit");
+
+        notifyObservers("INDEXED", payload);
+    }
+
+    private void indexJobForSearchSafely(Job job, String source) {
+        if (job == null || job.getId() == null) {
+            return;
+        }
+
+        try {
+            jobSearchRepository.save(toSearchDocument(job));
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("jobId", job.getId());
+            payload.put("indexedFields", List.of("id", "title", "description", "category", "budgetMin", "budgetMax", "rating", "status"));
+            payload.put("source", source);
+
+            notifyObservers("INDEXED", payload);
+        } catch (Exception ex) {
+            log.warn("Elasticsearch auto-index failed for job {}: {}", job.getId(), ex.getMessage());
+        }
+    }
+
+    private void removeJobFromSearchSafely(Long jobId) {
+        if (jobId == null) {
+            return;
+        }
+
+        try {
+            jobSearchRepository.deleteById(jobId);
+        } catch (Exception ex) {
+            log.warn("Elasticsearch delete failed for job {}: {}", jobId, ex.getMessage());
+        }
+    }
+
+    private JobSearchDocument toSearchDocument(Job job) {
+        return new JobSearchDocument(
+                job.getId(),
+                job.getTitle(),
+                job.getDescription(),
+                job.getCategory() == null ? null : job.getCategory().name(),
+                job.getBudgetMin(),
+                job.getBudgetMax(),
+                job.getRating(),
+                job.getStatus() == null ? null : job.getStatus().name()
+        );
+    }
+
+    private Query buildFullTextQuery(String query,
+                                     JobCategory category,
+                                     JobStatus status,
+                                     Double minBudget,
+                                     Double maxBudget) {
+        List<String> filters = new ArrayList<>();
+
+        if (category != null) {
+            filters.add("""
+                    {"term":{"category":"%s"}}
+                    """.formatted(escapeJson(category.name())).trim());
+        }
+
+        if (status != null) {
+            filters.add("""
+                    {"term":{"status":"%s"}}
+                    """.formatted(escapeJson(status.name())).trim());
+        }
+
+        if (minBudget != null) {
+            filters.add("""
+                    {"range":{"budgetMax":{"gte":%s}}}
+                    """.formatted(minBudget).trim());
+        }
+
+        if (maxBudget != null) {
+            filters.add("""
+                    {"range":{"budgetMin":{"lte":%s}}}
+                    """.formatted(maxBudget).trim());
+        }
+
+        String filterJson = String.join(",", filters);
+        String escapedQuery = escapeJson(query);
+        String escapedWildcardQuery = escapeJson("*" + query.toLowerCase() + "*");
+
+        String json = """
+                {
+                  "bool": {
+                    "must": [
+                      {
+                        "bool": {
+                          "should": [
+                            {
+                              "multi_match": {
+                                "query": "%s",
+                                "fields": ["title^2", "description"],
+                                "type": "best_fields",
+                                "fuzziness": "AUTO"
+                              }
+                            },
+                            {
+                              "wildcard": {
+                                "title": {
+                                  "value": "%s",
+                                  "case_insensitive": true
+                                }
+                              }
+                            },
+                            {
+                              "wildcard": {
+                                "description": {
+                                  "value": "%s",
+                                  "case_insensitive": true
+                                }
+                              }
+                            }
+                          ],
+                          "minimum_should_match": 1
+                        }
+                      }
+                    ],
+                    "filter": [%s]
+                  }
+                }
+                """.formatted(escapedQuery, escapedWildcardQuery, escapedWildcardQuery, filterJson);
+
+        return new StringQuery(json);
+    }
+
+    private String normalizeSearchQuery(String query) {
+        if (query == null || query.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "query is required");
+        }
+        return query.trim();
+    }
+
+    private JobCategory parseCategory(String category) {
+        if (category == null || category.isBlank()) {
+            return null;
+        }
+
+        try {
+            return JobCategory.valueOf(category.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid category");
+        }
+    }
+
+    private JobStatus parseStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+
+        try {
+            return JobStatus.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status must be one of OPEN, IN_PROGRESS, CLOSED");
+        }
+    }
+
+    private void validateBudgetRange(Double minBudget, Double maxBudget) {
+        if (minBudget != null && maxBudget != null && minBudget > maxBudget) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minBudget cannot be greater than maxBudget");
+        }
+    }
+
+    private String escapeJson(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        StringBuilder escaped = new StringBuilder();
+
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+
+            switch (c) {
+                case '\\' -> escaped.append("\\\\");
+                case '"' -> escaped.append("\\\"");
+                case '\b' -> escaped.append("\\b");
+                case '\f' -> escaped.append("\\f");
+                case '\n' -> escaped.append("\\n");
+                case '\r' -> escaped.append("\\r");
+                case '\t' -> escaped.append("\\t");
+                default -> escaped.append(c);
+            }
+        }
+
+        return escaped.toString();
     }
 
 
@@ -285,8 +579,8 @@ public class JobService {
             Job job = jobRepository.findByIdWithAttachments(row.getJobId())
                     .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
 
-            List<JobAttachment> expiredAttachments =
-                    jobAttachmentRepository.findByJobIdAndExpiryDateBefore(job.getId(), today);
+            List<JobAttachment> expiredAttachments
+                    = jobAttachmentRepository.findByJobIdAndExpiryDateBefore(job.getId(), today);
 
             if (!expiredAttachments.isEmpty()) {
                 alerts.add(
@@ -303,14 +597,17 @@ public class JobService {
 
         return alerts;
     }
+
     @Transactional
     @CacheEvict(value = {
-            "job-service::job",
-            "job-service::S2-F1",
-            "job-service::S2-F3",
-            "job-service::S2-F5",
-            "job-service::S2-F6",
-            "job-service::S2-F9"
+        "job-service::job",
+        "job-service::S2-F1",
+        "job-service::S2-F3",
+        "job-service::S2-F5",
+        "job-service::S2-F6",
+        "job-service::S2-F9",
+        "job-service::S2-F10",
+        "job-service::S2-F12"
     }, allEntries = true)
     public Job rateJob(Long jobId, RateJobRequestDTO request) {
         Job job = jobRepository.findById(jobId)
@@ -343,14 +640,15 @@ public class JobService {
         double currentRating = job.getRating() == null ? 0.0 : job.getRating();
         int totalRatings = job.getTotalRatings() == null ? 0 : job.getTotalRatings();
 
-        double newAverage =
-                ((currentRating * totalRatings) + request.getRating())
-                        / (totalRatings + 1);
+        double newAverage
+                = ((currentRating * totalRatings) + request.getRating())
+                / (totalRatings + 1);
 
         job.setRating(newAverage);
         job.setTotalRatings(totalRatings + 1);
 
         Job saved = jobRepository.save(job);
+        indexJobForSearchSafely(saved, "auto_crud_update");
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "JOB_RATED");
@@ -360,14 +658,17 @@ public class JobService {
 
         return saved;
     }
+
     @Transactional
     @CacheEvict(value = {
-            "job-service::job",
-            "job-service::S2-F1",
-            "job-service::S2-F3",
-            "job-service::S2-F5",
-            "job-service::S2-F6",
-            "job-service::S2-F9"
+        "job-service::job",
+        "job-service::S2-F1",
+        "job-service::S2-F3",
+        "job-service::S2-F5",
+        "job-service::S2-F6",
+        "job-service::S2-F9",
+        "job-service::S2-F10",
+        "job-service::S2-F12"
     }, allEntries = true)
     public Job closeJob(Long id, CloseJobRequest request) {
         Job job = getJobById(id);
@@ -391,6 +692,7 @@ public class JobService {
         jobRepository.rejectSubmittedProposalsForJob(id);
 
         Job saved = jobRepository.save(job); // 🔥 MISSING
+        indexJobForSearchSafely(saved, "auto_crud_update");
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "JOB_CLOSED");
@@ -399,8 +701,7 @@ public class JobService {
         notifyObservers("JOB_CLOSED", payload);
 
         return saved; // 🔥 ALSO MISSING
-        }
-
+    }
 
     @Cacheable(value = "job-service::S2-F5", key = "#key + ':' + #value + ':' + #status")
     public List<Job> filterJobsByRequirement(String key, String value, String status) {
@@ -418,7 +719,6 @@ public class JobService {
                 status
         );
     }
-
 
     @Cacheable(value = "job-service::S2-F6", key = "#limit")
     public List<TopBudgetJobDTO> getTopBudgetJobs(Integer limit) {
@@ -441,5 +741,18 @@ public class JobService {
         return result;
     }
 
-}
+    public JobDashboardDTO getJobDashboard(Long id) {
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
 
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "DASHBOARD_VIEWED");
+        payload.put("jobId", job.getId());
+        payload.put("title", job.getTitle());
+
+        notifyObservers("JOB", payload);
+
+        return jobDashboardCacheService.getJobDashboard(id);
+    }
+
+}

@@ -7,6 +7,14 @@ import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.wallet.service.PayoutService;
 import com.team35.freelance.wallet.service.PayoutPromoService;
 
+import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
+import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
+import com.team35.freelance.wallet.dto.PayoutDetailsDTO;
+import com.team35.freelance.wallet.dto.PromoCodeUsage;
+import com.team35.freelance.wallet.dto.RefundRequest;
+import com.team35.freelance.wallet.dto.RevenueReportDTO;
+import com.team35.freelance.wallet.dto.PayoutMethodDTO;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -176,6 +184,13 @@ public class PayoutController {
         return ResponseEntity.ok(
                 payoutService.getRevenueReport(startDate, endDate)
         );
+    }
+    // S5-F11
+    @GetMapping("/analytics/methods")
+    public ResponseEntity<List<PayoutMethodDTO>> getPayoutMethodBreakdown(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(payoutService.getPayoutMethodBreakdown(startDate, endDate));
     }
 
     @PostMapping("/{id}/reverse-milestone")

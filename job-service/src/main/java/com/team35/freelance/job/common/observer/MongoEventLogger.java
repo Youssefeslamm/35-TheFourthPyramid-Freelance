@@ -1,10 +1,12 @@
 package com.team35.freelance.job.common.observer;
 
-import com.team35.freelance.job.common.event.*;
+import com.team35.freelance.job.common.event.EventFactory;
+import com.team35.freelance.job.common.event.EventType;
+import com.team35.freelance.job.common.event.MongoEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
@@ -24,12 +26,13 @@ public class MongoEventLogger implements EntityObserver {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void onEvent(String eventType, Object payload) {
         try {
             Map<String, Object> params = (Map<String, Object>) payload;
 
-            EventType type = EventType.valueOf(eventType);
-            MongoEvent event = eventFactory.createEvent(type, params);
+            params.putIfAbsent("action", eventType);
+            MongoEvent event = eventFactory.createEvent(EventType.JOB, params);
 
             mongoTemplate.save(event, "job_events");
 

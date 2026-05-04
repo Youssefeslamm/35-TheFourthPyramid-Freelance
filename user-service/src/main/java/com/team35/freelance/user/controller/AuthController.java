@@ -66,30 +66,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElse(null);
-
-        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Invalid email or password"));
-        }
-
-        String token = jwtService.generateToken(user);
-
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("action", "LOGGED_IN");
-        payload.put("userId", user.getId());
-        payload.put("email", user.getEmail());
-
-        notifyObservers("LOGGED_IN", payload);
-
-        return ResponseEntity.ok(new AuthResponse(
-                token,
-                user.getId(),
-                user.getEmail(),
-
-                user.getRole().name()
-        ));
+    public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request) {
+        return ResponseEntity.ok(userService.login(request));
     }
 }
