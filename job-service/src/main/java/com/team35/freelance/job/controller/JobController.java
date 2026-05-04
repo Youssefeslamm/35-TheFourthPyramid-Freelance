@@ -3,24 +3,24 @@ package com.team35.freelance.job.controller;
 import java.util.List;
 import java.util.Map;
 
-import com.team35.freelance.job.model.JobStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping; // Good to have, though Map is the main one needed here
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping; // Good to have, though Map is the main one needed here
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.team35.freelance.job.dto.TopBudgetJobDTO;
 import com.team35.freelance.job.dto.CloseJobRequest;
 import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
+import com.team35.freelance.job.dto.JobDashboardDTO;
 import com.team35.freelance.job.dto.JobProposalSummaryDTO;
 import com.team35.freelance.job.dto.RateJobRequestDTO;
+import com.team35.freelance.job.dto.TopBudgetJobDTO;
 import com.team35.freelance.job.model.Job;
 import com.team35.freelance.job.service.JobService;
 
@@ -42,6 +42,7 @@ public class JobController {
 
         return ResponseEntity.ok(jobService.getProposalSummary(id, startDate, endDate));
     }
+
     @GetMapping("/search")
     public ResponseEntity<List<Job>> searchJobs(
             @RequestParam(required = false) String status,
@@ -71,7 +72,6 @@ public class JobController {
         return ResponseEntity.ok(jobService.updateJob(id, job));
     }
 
-
     @PutMapping("/{id}/requirements")
     public ResponseEntity<Job> updateJobRequirements(
             @PathVariable Long id,
@@ -91,7 +91,8 @@ public class JobController {
     public ResponseEntity<List<JobAttachmentAlertDTO>> getJobsWithExpiredAttachments() {
         return ResponseEntity.ok(jobService.getJobsWithExpiredAttachments());
     }
-     @PostMapping("/{id}/rate")
+
+    @PostMapping("/{id}/rate")
     public ResponseEntity<Job> rateJob(
             @PathVariable Long id,
             @RequestBody RateJobRequestDTO request
@@ -101,10 +102,9 @@ public class JobController {
 
     @PutMapping("/{id}/close")
     public ResponseEntity<Job> closeJob(@PathVariable Long id,
-                                        @RequestBody CloseJobRequest request) {
+            @RequestBody CloseJobRequest request) {
         return ResponseEntity.ok(jobService.closeJob(id, request));
     }
-
 
     @GetMapping("/requirements/search")
     public ResponseEntity<List<Job>> filterJobsByRequirement(
@@ -115,10 +115,14 @@ public class JobController {
         return ResponseEntity.ok(jobService.filterJobsByRequirement(key, value, status));
     }
 
-
     @GetMapping("/reports/top-budget")
     public ResponseEntity<List<TopBudgetJobDTO>> getTopBudgetJobs(@RequestParam Integer limit) {
         return ResponseEntity.ok(jobService.getTopBudgetJobs(limit));
+    }
+
+    @GetMapping("/{id}/dashboard")
+    public ResponseEntity<JobDashboardDTO> getJobDashboard(@PathVariable Long id) {
+        return ResponseEntity.ok(jobService.getJobDashboard(id));
     }
 
 }

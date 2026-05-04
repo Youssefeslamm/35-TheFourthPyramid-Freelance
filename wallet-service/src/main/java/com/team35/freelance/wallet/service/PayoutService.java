@@ -1,13 +1,11 @@
 package com.team35.freelance.wallet.service;
 
+import com.team35.freelance.wallet.common.refund.RefundRequest;
+import com.team35.freelance.wallet.dto.*;
 import com.team35.freelance.wallet.model.Payout;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.wallet.repository.PayoutRepository;
 import com.team35.freelance.wallet.repository.PromoCodeRepository;
-import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
-import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
-import com.team35.freelance.wallet.dto.RevenueReportDTO;
-import com.team35.freelance.wallet.dto.PromoCodeUsage;
 import com.team35.freelance.wallet.common.refund.*;
 import com.team35.freelance.wallet.common.observer.EntityObserver;
 import com.team35.freelance.wallet.common.observer.MongoEventLogger;
@@ -22,6 +20,13 @@ import com.team35.freelance.wallet.common.event.PayoutAuditEvent;
 import com.team35.freelance.wallet.repository.MongoEventRepository;
 import java.time.LocalTime;
 import java.util.stream.Collectors;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import com.team35.freelance.wallet.dto.CategoryRevenueDTO;
+import java.util.List;
+
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,17 +40,20 @@ public class PayoutService {
     private final RefundStrategySelector refundStrategySelector;
     private final MongoEventRepository mongoEventRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
+    private final WalletAnalyticsCacheService walletAnalyticsCacheService;
 
     public PayoutService(PayoutRepository payoutRepository,
                          PromoCodeRepository promoCodeRepository,
                          RefundStrategySelector refundStrategySelector,
                          MongoEventLogger mongoEventLogger,
-                         MongoEventRepository mongoEventRepository) {
+                         MongoEventRepository mongoEventRepository,
+                         WalletAnalyticsCacheService walletAnalyticsCacheService) {
 
         this.payoutRepository = payoutRepository;
         this.promoCodeRepository = promoCodeRepository;
         this.refundStrategySelector = refundStrategySelector;
         this.mongoEventRepository = mongoEventRepository;
+        this.walletAnalyticsCacheService = walletAnalyticsCacheService;
         registerObserver(mongoEventLogger);
     }
     public void registerObserver(EntityObserver observer) {
@@ -424,23 +432,22 @@ public class PayoutService {
         notifyObservers("PAYOUT_AUDIT", eventPayload);
 
         return saved;    }
+
+
     @Transactional
     @CacheEvict(value = {
-            "wallet-service::payout",
-            "wallet-service::promo-code",
-            "wallet-service::payout-promo",
-            "wallet-service::S5-F1",
-            "wallet-service::S5-F3",
-            "wallet-service::S5-F6",
-            "wallet-service::S5-F8",
-            "wallet-service::S5-F9"
+            "wallet-service::S5-F10",
+            "wallet-service::S5-F11",
+            "wallet-service::payout"
     }, allEntries = true)
-    public RefundResult reversePayout(Long payoutId, String reversalScope) {
+    public Payout reversePayout(Long payoutId, String reversalScope, String reason) {
 
+        // 1. FIND
         Payout payout = payoutRepository.findById(payoutId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Payout not found"));
 
+        // 2. VALIDATE
         if (payout.getStatus() != PayoutStatus.COMPLETED) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -448,21 +455,85 @@ public class PayoutService {
             );
         }
 
-        RefundRequest request = new RefundRequest(reversalScope);
+        // 3. STRATEGY
+        com.team35.freelance.wallet.common.refund.RefundRequest internalRequest =
+                new com.team35.freelance.wallet.common.refund.RefundRequest(reversalScope);
 
-        RefundStrategy strategy = refundStrategySelector.select(payout, request);
+        RefundStrategy strategy = refundStrategySelector.select(payout, internalRequest);
+        RefundResult result = strategy.calculateRefund(payout, internalRequest);
 
-        RefundResult result = strategy.calculateRefund(payout, request);
+        String strategyName = strategy.getClass().getSimpleName();
 
-        Map<String, Object> eventPayload = new HashMap<>();
-        eventPayload.put("action", "PAYOUT_REVERSED");
-        eventPayload.put("payoutId", payout.getId());
-        eventPayload.put("amount", result.getAmount());
-        eventPayload.put("strategy", strategy.getClass().getSimpleName());
+        // 4. DENIED CASE
+        if (strategy instanceof NoReversalStrategy) {
 
-        notifyObservers("PAYOUT_AUDIT", eventPayload);
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("action", "REFUND_DENIED");
+            payload.put("payoutId", payout.getId());
+            payload.put("strategy", strategyName);
+            payload.put("reason", "reversal window expired");
 
-        return result;    }
+            notifyObservers("PAYOUT_AUDIT", payload);
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "reversal window expired"
+            );
+        }
+
+        // 5. SUCCESS
+        payout.setStatus(PayoutStatus.REFUNDED);
+
+        Map<String, Object> details = payout.getTransactionDetails();
+        if (details == null) details = new HashMap<>();
+
+        details.put("refundAmount", result.getAmount());
+        details.put("reversalScope", reversalScope);
+        details.put("refundReason", reason);
+        details.put("refundedAt", LocalDateTime.now().toString());
+
+        payout.setTransactionDetails(details);
+
+        Payout saved = payoutRepository.save(payout);
+
+        // 6. AUDIT EVENT (FULL REQUIRED DATA)
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "REFUNDED");
+        payload.put("payoutId", payout.getId());
+        payload.put("originalAmount", payout.getAmount());
+        payload.put("refundAmount", result.getAmount());
+        payload.put("reversalScope", reversalScope);
+        payload.put("strategy", strategyName);
+        payload.put("reason", reason);
+
+        notifyObservers("PAYOUT_AUDIT", payload);
+
+        return saved;
+    }
+
+    public List<CategoryRevenueDTO> getCategoryRevenueAnalytics(LocalDate startDate, LocalDate endDate) {
+
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate cannot be after endDate");
+        }
+
+        // ✅ ALWAYS runs
+        logAnalyticsViewedEvent(startDate, endDate);
+
+        // ✅ cached logic
+        return walletAnalyticsCacheService.getCategoryRevenueAnalyticsCached(startDate, endDate);
+    }
+    private void logAnalyticsViewedEvent(LocalDate startDate, LocalDate endDate) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "ANALYTICS_VIEWED");
+        payload.put("feature", "S5-F10");
+        payload.put("startDate", startDate.toString());
+        payload.put("endDate", endDate.toString());
+
+        notifyObservers("PAYOUT_AUDIT", payload);
+    }
+
+
     // S5-F11
     @Cacheable(value = "wallet-service::S5-F11", key = "#startDate + ':' + #endDate")
     public List<PayoutMethodDTO> getPayoutMethodBreakdown(LocalDate startDate, LocalDate endDate) {

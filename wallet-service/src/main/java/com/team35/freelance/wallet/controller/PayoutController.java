@@ -1,5 +1,6 @@
 package com.team35.freelance.wallet.controller;
 
+import com.team35.freelance.wallet.dto.*;
 import com.team35.freelance.wallet.model.Payout;
 import com.team35.freelance.wallet.model.PayoutStatus;
 
@@ -46,6 +47,21 @@ public class PayoutController {
         return ResponseEntity.ok(payoutService.getAllPayouts());
     }
 
+    // -------- S5-F10: PLATFORM FEE ANALYTICS BY CATEGORY --------
+    @GetMapping("/analytics/category")
+    public ResponseEntity<List<CategoryRevenueDTO>> getCategoryRevenueAnalytics(
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate startDate,
+
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate endDate
+    ) {
+        return ResponseEntity.ok(
+                payoutService.getCategoryRevenueAnalytics(startDate, endDate)
+        );
+    }
     @GetMapping("/{id}")
     public ResponseEntity<Payout> getPayoutById(@PathVariable Long id) {
         return ResponseEntity.ok(payoutService.getPayoutById(id));
@@ -176,4 +192,19 @@ public class PayoutController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return ResponseEntity.ok(payoutService.getPayoutMethodBreakdown(startDate, endDate));
     }
+
+    @PostMapping("/{id}/reverse-milestone")
+    public ResponseEntity<Payout> reverseMilestone(
+            @PathVariable Long id,
+            @RequestBody RefundRequest request
+    ) {
+        return ResponseEntity.ok(
+                payoutService.reversePayout(
+                        id,
+                        request.getReversalScope(),
+                        request.getReason()
+                )
+        );
+    }
+
 }

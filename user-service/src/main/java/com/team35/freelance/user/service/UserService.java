@@ -25,7 +25,16 @@ import java.util.Map;
 import jakarta.transaction.Transactional;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
-
+import com.team35.freelance.user.dto.RegisterRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import com.team35.freelance.user.dto.AuthRequest;
+import com.team35.freelance.user.dto.AuthResponse;
+import com.team35.freelance.user.security.JwtService;
+import com.team35.freelance.user.common.observer.EntityObserver;
+import com.team35.freelance.user.common.observer.MongoEventLogger;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import java.util.HashMap;
+import java.util.Map;
 @Service
 public class UserService {
 
@@ -33,17 +42,21 @@ public class UserService {
     private final UserSkillRepository userSkillRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final MongoEventLogger mongoEventLogger;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
 
     public UserService(UserRepository userRepository,
                        UserSkillRepository userSkillRepository,
-                       MongoEventLogger mongoEventLogger) {
-
+                       MongoEventLogger mongoEventLogger,
+                       PasswordEncoder passwordEncoder,
+                       JwtService jwtService) {
         this.userRepository = userRepository;
         this.userSkillRepository = userSkillRepository;
         this.mongoEventLogger = mongoEventLogger;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
 
-        // register observer
         this.observers.add(mongoEventLogger);
     }
 
@@ -528,5 +541,93 @@ public class UserService {
         notifyObservers("ROLE_CHANGED", payload);
 
         return saved;
+    }
+
+
+    public User registerUser(RegisterRequest request) {
+        if (request.getName() == null || request.getName().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name is required");
+        }
+
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email is required");
+        }
+
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password is required");
+        }
+
+        if (request.getPhone() == null || request.getPhone().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phone is required");
+        }
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        }
+
+        String phone = request.getPhone().trim();
+
+        if (userRepository.existsByPhone(phone)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone already exists");
+        }
+
+        User user = new User();
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setPhone(phone);
+
+        if (request.getRole() != null &&
+                (request.getRole() == Role.CLIENT || request.getRole() == Role.FREELANCER)) {
+            user.setRole(request.getRole());
+        } else {
+            user.setRole(Role.CLIENT);
+        }
+
+        user.setStatus(Status.ACTIVE);
+        user.setPreferences(request.getPreferences());
+
+        User savedUser = userRepository.save(user);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "REGISTERED");
+        payload.put("userId", savedUser.getId());
+        payload.put("email", savedUser.getEmail());
+
+        notifyObservers("REGISTERED", payload);
+
+        return savedUser;
+    }
+
+    public AuthResponse login(AuthRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Invalid email or password"
+                ));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Invalid email or password"
+            );
+        }
+
+        String token = jwtService.generateToken(user);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "LOGGED_IN");
+        payload.put("userId", user.getId());
+        payload.put("email", user.getEmail());
+
+        mongoEventLogger.onEvent("LOGGED_IN", payload);
+
+        return new AuthResponse(
+                token,
+                jwtService.getExpiration(),
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name()
+        );
     }
 }

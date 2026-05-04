@@ -1,9 +1,12 @@
 package com.team35.freelance.contract.service;
 
+import com.team35.freelance.contract.cassandra.ContractMilestoneEvent;
+import com.team35.freelance.contract.cassandra.ContractMilestoneEventRepository;
 import com.team35.freelance.contract.dto.BatchStatusUpdateDTO;
 import com.team35.freelance.contract.dto.ContractSummaryDTO;
 import com.team35.freelance.contract.dto.FreelancerPerformanceDTO;
 import com.team35.freelance.contract.dto.ContractAnalyticsDTO;
+import com.team35.freelance.contract.dto.MilestoneTrackRequestDTO;
 import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.model.ContractStatus;
@@ -32,13 +35,19 @@ public class ContractService {
 
     private final ContractRepository contractRepository;
     private final ContractAnalyticsRepository analyticsRepository;
+    private final ContractMilestoneEventRepository milestoneEventRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
+
+    private static final java.util.Set<String> ALLOWED_MILESTONE_STATUSES =
+            java.util.Set.of("PENDING", "IN_PROGRESS", "COMPLETED", "APPROVED");
 
     public ContractService(ContractRepository contractRepository,
                            ContractAnalyticsRepository analyticsRepository,
+                           ContractMilestoneEventRepository milestoneEventRepository,
                            MongoEventLogger mongoEventLogger) {
         this.contractRepository = contractRepository;
         this.analyticsRepository = analyticsRepository;
+        this.milestoneEventRepository = milestoneEventRepository;
         registerObserver(mongoEventLogger);
     }
 
@@ -364,6 +373,43 @@ public class ContractService {
             throw new IllegalArgumentException("Invalid operator: " + operator);
         }
     }
+    @CacheEvict(value = {
+            "contract-service::S4-F10",
+            "contract-service::S4-F12"
+    }, allEntries = true)
+    public ContractMilestoneEvent recordMilestoneEvent(Long contractId, MilestoneTrackRequestDTO request) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contract not found"));
+
+        if (request == null || request.getStatus() == null
+                || !ALLOWED_MILESTONE_STATUSES.contains(request.getStatus().toUpperCase())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Invalid status. Must be one of PENDING, IN_PROGRESS, COMPLETED, APPROVED");
+        }
+
+        ContractMilestoneEvent event = new ContractMilestoneEvent(
+                contract.getId(),
+                request.getMilestoneOrder(),
+                request.getStatus().toUpperCase(),
+                request.getRecordedBy(),
+                request.getNotes()
+        );
+
+        ContractMilestoneEvent saved = milestoneEventRepository.save(event);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "MILESTONE_TRACKED");
+        payload.put("contractId", contract.getId());
+        payload.put("milestoneOrder", request.getMilestoneOrder());
+        payload.put("status", request.getStatus().toUpperCase());
+        payload.put("recordedBy", request.getRecordedBy());
+        payload.put("notes", request.getNotes());
+
+        notifyObservers("CONTRACT", payload);
+
+        return saved;
+    }
+
     @Cacheable(value = "contract-service::S4-F10", key = "#startDate + ':' + #endDate")
     public ContractAnalyticsDTO getContractAnalytics(LocalDate startDate, LocalDate endDate) {
         LocalDateTime start = startDate.atStartOfDay();

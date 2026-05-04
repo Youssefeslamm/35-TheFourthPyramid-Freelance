@@ -2,32 +2,34 @@ package com.team35.freelance.job.service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.team35.freelance.job.dto.*;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import org.springframework.transaction.annotation.Transactional;
-
+import com.team35.freelance.job.common.observer.EntityObserver;
+import com.team35.freelance.job.common.observer.MongoEventLogger;
+import com.team35.freelance.job.dto.CloseJobRequest;
+import com.team35.freelance.job.dto.ContractLookupProjection;
+import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
+import com.team35.freelance.job.dto.JobDashboardDTO;
+import com.team35.freelance.job.dto.JobProposalSummaryDTO;
+import com.team35.freelance.job.dto.JobProposalSummaryDTOBuilder;
+import com.team35.freelance.job.dto.RateJobRequestDTO;
+import com.team35.freelance.job.dto.TopBudgetJobDTO;
 import com.team35.freelance.job.exception.BadRequestException;
 import com.team35.freelance.job.exception.ResourceNotFoundException;
 import com.team35.freelance.job.model.Job;
 import com.team35.freelance.job.model.JobAttachment;
 import com.team35.freelance.job.model.JobStatus;
 import com.team35.freelance.job.repository.JobAttachmentRepository;
-import com.team35.freelance.job.common.observer.EntityObserver;
-import com.team35.freelance.job.common.observer.MongoEventLogger;
 import com.team35.freelance.job.repository.JobRepository;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CacheEvict;
-
-
 
 @Service
 public class JobService {
@@ -35,16 +37,19 @@ public class JobService {
     private final JobRepository jobRepository;
     private final JobAttachmentRepository jobAttachmentRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
+    private final JobDashboardCacheService jobDashboardCacheService;
 
     public JobService(JobRepository jobRepository,
-                      JobAttachmentRepository jobAttachmentRepository,
-                      MongoEventLogger mongoEventLogger) {
+            JobAttachmentRepository jobAttachmentRepository,
+            MongoEventLogger mongoEventLogger, JobDashboardCacheService jobDashboardCacheService) {
 
         this.jobRepository = jobRepository;
         this.jobAttachmentRepository = jobAttachmentRepository;
+        this.jobDashboardCacheService = jobDashboardCacheService;
 
         this.observers.add(mongoEventLogger);
     }
+
     private void notifyObservers(String eventType, Object payload) {
         for (EntityObserver observer : observers) {
             observer.onEvent(eventType, payload);
@@ -58,7 +63,6 @@ public class JobService {
     public void unregisterObserver(EntityObserver observer) {
         observers.remove(observer);
     }
-
 
     @Cacheable(value = "job-service::S2-F3", key = "#id + ':' + #startDate + ':' + #endDate")
     public JobProposalSummaryDTO getProposalSummary(Long id, String startDate, String endDate) {
@@ -82,12 +86,13 @@ public class JobService {
     }
 
     @CacheEvict(value = {
-            "job-service::job",
-            "job-service::S2-F1",
-            "job-service::S2-F3",
-            "job-service::S2-F5",
-            "job-service::S2-F6",
-            "job-service::S2-F9"
+        "job-service::job",
+        "job-service::S2-F1",
+        "job-service::S2-F3",
+        "job-service::S2-F5",
+        "job-service::S2-F6",
+        "job-service::S2-F9",
+        "job-service::S2-F12"
     }, allEntries = true)
     public Job updateRequirements(Long id, Map<String, Object> incomingRequirements) {
         // 1. Find the job or throw 404
@@ -115,14 +120,14 @@ public class JobService {
         return saved;
     }
 
-
     @CacheEvict(value = {
-            "job-service::job",
-            "job-service::S2-F1",
-            "job-service::S2-F3",
-            "job-service::S2-F5",
-            "job-service::S2-F6",
-            "job-service::S2-F9"
+        "job-service::job",
+        "job-service::S2-F1",
+        "job-service::S2-F3",
+        "job-service::S2-F5",
+        "job-service::S2-F6",
+        "job-service::S2-F9",
+        "job-service::S2-F12"
     }, allEntries = true)
     public Job createJob(Job job) {
         validateJob(job);
@@ -145,7 +150,8 @@ public class JobService {
 
         notifyObservers("JOB_CREATED", payload);
 
-        return saved;    }
+        return saved;
+    }
 
     @Cacheable(value = "job-service::job", key = "#id")
     public Job getJobById(Long id) {
@@ -158,12 +164,13 @@ public class JobService {
     }
 
     @CacheEvict(value = {
-            "job-service::job",
-            "job-service::S2-F1",
-            "job-service::S2-F3",
-            "job-service::S2-F5",
-            "job-service::S2-F6",
-            "job-service::S2-F9"
+        "job-service::job",
+        "job-service::S2-F1",
+        "job-service::S2-F3",
+        "job-service::S2-F5",
+        "job-service::S2-F6",
+        "job-service::S2-F9",
+        "job-service::S2-F12"
     }, allEntries = true)
     public Job updateJob(Long id, Job updatedJob) {
         Job existing = getJobById(id);
@@ -196,15 +203,17 @@ public class JobService {
 
         notifyObservers("JOB_UPDATED", payload);
 
-        return saved;    }
+        return saved;
+    }
 
     @CacheEvict(value = {
-            "job-service::job",
-            "job-service::S2-F1",
-            "job-service::S2-F3",
-            "job-service::S2-F5",
-            "job-service::S2-F6",
-            "job-service::S2-F9"
+        "job-service::job",
+        "job-service::S2-F1",
+        "job-service::S2-F3",
+        "job-service::S2-F5",
+        "job-service::S2-F6",
+        "job-service::S2-F9",
+        "job-service::S2-F12"
     }, allEntries = true)
     public void deleteJob(Long id) {
         Job existing = getJobById(id);
@@ -237,7 +246,6 @@ public class JobService {
 
         return jobRepository.searchJobs(status, minBudget, maxBudget);
     }
-
 
     private void validateJob(Job job) {
         if (job == null) {
@@ -285,8 +293,8 @@ public class JobService {
             Job job = jobRepository.findByIdWithAttachments(row.getJobId())
                     .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
 
-            List<JobAttachment> expiredAttachments =
-                    jobAttachmentRepository.findByJobIdAndExpiryDateBefore(job.getId(), today);
+            List<JobAttachment> expiredAttachments
+                    = jobAttachmentRepository.findByJobIdAndExpiryDateBefore(job.getId(), today);
 
             if (!expiredAttachments.isEmpty()) {
                 alerts.add(
@@ -303,14 +311,16 @@ public class JobService {
 
         return alerts;
     }
+
     @Transactional
     @CacheEvict(value = {
-            "job-service::job",
-            "job-service::S2-F1",
-            "job-service::S2-F3",
-            "job-service::S2-F5",
-            "job-service::S2-F6",
-            "job-service::S2-F9"
+        "job-service::job",
+        "job-service::S2-F1",
+        "job-service::S2-F3",
+        "job-service::S2-F5",
+        "job-service::S2-F6",
+        "job-service::S2-F9",
+        "job-service::S2-F12"
     }, allEntries = true)
     public Job rateJob(Long jobId, RateJobRequestDTO request) {
         Job job = jobRepository.findById(jobId)
@@ -343,9 +353,9 @@ public class JobService {
         double currentRating = job.getRating() == null ? 0.0 : job.getRating();
         int totalRatings = job.getTotalRatings() == null ? 0 : job.getTotalRatings();
 
-        double newAverage =
-                ((currentRating * totalRatings) + request.getRating())
-                        / (totalRatings + 1);
+        double newAverage
+                = ((currentRating * totalRatings) + request.getRating())
+                / (totalRatings + 1);
 
         job.setRating(newAverage);
         job.setTotalRatings(totalRatings + 1);
@@ -360,14 +370,16 @@ public class JobService {
 
         return saved;
     }
+
     @Transactional
     @CacheEvict(value = {
-            "job-service::job",
-            "job-service::S2-F1",
-            "job-service::S2-F3",
-            "job-service::S2-F5",
-            "job-service::S2-F6",
-            "job-service::S2-F9"
+        "job-service::job",
+        "job-service::S2-F1",
+        "job-service::S2-F3",
+        "job-service::S2-F5",
+        "job-service::S2-F6",
+        "job-service::S2-F9",
+        "job-service::S2-F12"
     }, allEntries = true)
     public Job closeJob(Long id, CloseJobRequest request) {
         Job job = getJobById(id);
@@ -399,8 +411,7 @@ public class JobService {
         notifyObservers("JOB_CLOSED", payload);
 
         return saved; // 🔥 ALSO MISSING
-        }
-
+    }
 
     @Cacheable(value = "job-service::S2-F5", key = "#key + ':' + #value + ':' + #status")
     public List<Job> filterJobsByRequirement(String key, String value, String status) {
@@ -418,7 +429,6 @@ public class JobService {
                 status
         );
     }
-
 
     @Cacheable(value = "job-service::S2-F6", key = "#limit")
     public List<TopBudgetJobDTO> getTopBudgetJobs(Integer limit) {
@@ -441,5 +451,18 @@ public class JobService {
         return result;
     }
 
-}
+    public JobDashboardDTO getJobDashboard(Long id) {
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
 
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "DASHBOARD_VIEWED");
+        payload.put("jobId", job.getId());
+        payload.put("title", job.getTitle());
+
+        notifyObservers("JOB", payload);
+
+        return jobDashboardCacheService.getJobDashboard(id);
+    }
+
+}
