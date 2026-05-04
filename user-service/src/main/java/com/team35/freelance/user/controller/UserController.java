@@ -5,9 +5,12 @@ import com.team35.freelance.user.model.User;
 import com.team35.freelance.user.model.UserSkill;
 import com.team35.freelance.user.service.UserService;
 import com.team35.freelance.user.dto.TopFreelancerDTO;
+import com.team35.freelance.user.security.JwtService;
+import com.team35.freelance.user.dto.ActivityFeedResponseDTO;
 import org.springframework.web.bind.annotation.*;
 import com.team35.freelance.user.dto.UserProfileDTO;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -19,9 +22,11 @@ import com.team35.freelance.user.dto.UserContractSummaryDTO;
 public class UserController {
 
     private final UserService userService;
+    private final JwtService jwtService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, JwtService jwtService) {
         this.userService = userService;
+        this.jwtService = jwtService;
     }
 
 
@@ -166,5 +171,20 @@ public class UserController {
         return userService.updateUserRole(id, role);
     }
 
+    @GetMapping("/{id}/activity")
+    public ActivityFeedResponseDTO getUserActivityFeed(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            HttpServletRequest request) {
+
+        String authHeader = request.getHeader("Authorization");
+        String token = authHeader.substring(7);
+
+        Long callerUserId = jwtService.extractClaims(token).get("userId", Long.class);
+        String callerRole = jwtService.extractClaims(token).get("role", String.class);
+
+        return userService.getUserActivityFeed(id, callerUserId, callerRole, page, size);
+    }
 
 }

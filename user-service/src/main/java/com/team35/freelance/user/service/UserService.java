@@ -26,6 +26,12 @@ import jakarta.transaction.Transactional;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import com.team35.freelance.user.dto.RegisterRequest;
+import com.team35.freelance.user.dto.ActivityFeedResponseDTO;
+import com.team35.freelance.user.dto.ActivityFeedResponseDTO.ActivityEventDTO;
+import com.team35.freelance.user.repository.AuthEventRepository;
+import com.team35.freelance.user.common.event.AuthEvent;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.team35.freelance.user.dto.AuthRequest;
 import com.team35.freelance.user.dto.AuthResponse;
@@ -43,6 +49,7 @@ public class UserService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final MongoEventLogger mongoEventLogger;
     private final PasswordEncoder passwordEncoder;
+    private final AuthEventRepository authEventRepository;
     private final JwtService jwtService;
 
 
@@ -50,11 +57,14 @@ public class UserService {
                        UserSkillRepository userSkillRepository,
                        MongoEventLogger mongoEventLogger,
                        PasswordEncoder passwordEncoder,
+                       AuthEventRepository authEventRepository,
                        JwtService jwtService) {
+      
         this.userRepository = userRepository;
         this.userSkillRepository = userSkillRepository;
         this.mongoEventLogger = mongoEventLogger;
         this.passwordEncoder = passwordEncoder;
+        this.authEventRepository = authEventRepository;
         this.jwtService = jwtService;
 
         this.observers.add(mongoEventLogger);
@@ -513,7 +523,8 @@ public class UserService {
             "user-service::S1-F3",
             "user-service::S1-F5",
             "user-service::S1-F6",
-            "user-service::S1-F9"
+            "user-service::S1-F9",
+            "user-service::S1-F12"
     }, allEntries = true)
     public User updateUserRole(Long id, String role) {
         User user = userRepository.findById(id)
@@ -598,6 +609,33 @@ public class UserService {
 
         return savedUser;
     }
+
+    // ===================== S1-F12: USER ACTIVITY FEED =====================
+
+    @Cacheable(value = "user-service::S1-F12", key = "#userId + ':' + #page + ':' + #size")
+    public ActivityFeedResponseDTO getUserActivityFeed(Long userId, Long callerUserId, String callerRole,
+                                                       int page, int size) {
+        // Ownership check: caller must be the user themselves OR an ADMIN
+        if (!callerUserId.equals(userId) && !"ADMIN".equalsIgnoreCase(callerRole)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+
+        // Verify user exists in PostgreSQL
+        userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        // Cap size at 100
+        if (size > 100) size = 100;
+
+        // Query MongoDB for events sorted by timestamp descending
+        Page<AuthEvent> eventsPage = authEventRepository.findByUserIdOrderByTimestampDesc(
+                userId, PageRequest.of(page, size));
+
+        List<ActivityEventDTO> content = eventsPage.getContent().stream()
+                .map(e -> new ActivityEventDTO(e.getAction(), e.getTimestamp(), e.getDetails()))
+                .toList();
+
+        return new ActivityFeedResponseDTO(content, page, size, eventsPage.getTotalElements());
 
     public AuthResponse login(AuthRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
