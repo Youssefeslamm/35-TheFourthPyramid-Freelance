@@ -29,6 +29,7 @@ spring:
     port: ${SPRING_CASSANDRA_PORT:9042}
     keyspace-name: ${SPRING_CASSANDRA_KEYSPACE_NAME:freelanceks}
     local-datacenter: ${SPRING_CASSANDRA_LOCAL_DATACENTER:datacenter1}
+    schema-action: CREATE_IF_NOT_EXISTS
 
 server:
   port: 8080
@@ -42,4 +43,4 @@ jwt:
 cache:
   type: redis
   redis:
-  time-to-live: 600000  # 10 minutes in milliseconds
+    time-to-live: 600000  # 10 minutes in milliseconds

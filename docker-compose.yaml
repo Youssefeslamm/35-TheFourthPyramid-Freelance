@@ -100,6 +100,16 @@ services:
       retries: 15
       start_period: 60s
 
+  cassandra-init:
+    image: cassandra:latest
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    volumes:
+      - ./contract-service/docker/cassandra/init.cql:/init.cql
+    command: >
+      bash -c "cqlsh cassandra 9042 -f /init.cql"
+
   user-service:
     build: ./user-service
     ports:
@@ -178,7 +188,9 @@ services:
       redis:
         condition: service_started
       cassandra:
-        condition: service_started
+        condition: service_healthy
+      cassandra-init:
+        condition: service_completed_successfully
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freelancedb
       SPRING_DATASOURCE_USERNAME: postgres
@@ -192,6 +204,7 @@ services:
       SPRING_CASSANDRA_PORT: 9042
       SPRING_CASSANDRA_KEYSPACE_NAME: freelanceks
       SPRING_CASSANDRA_LOCAL_DATACENTER: datacenter1
+      SPRING_CASSANDRA_SCHEMA_ACTION: CREATE_IF_NOT_EXISTS
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000

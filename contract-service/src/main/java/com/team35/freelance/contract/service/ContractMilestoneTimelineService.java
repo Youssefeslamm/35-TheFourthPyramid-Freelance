@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.team35.freelance.contract.cassandra.ContractMilestoneEvent;
 import com.team35.freelance.contract.dto.ContractMilestoneDTO;
-import com.team35.freelance.contract.repository.ContractMilestoneEventRepository;
+import com.team35.freelance.contract.cassandra.ContractMilestoneEventRepository;
 import com.team35.freelance.contract.repository.ContractRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -53,7 +53,7 @@ public class ContractMilestoneTimelineService {
         Instant start = startTime == null ? null : startTime.atZone(ZoneId.systemDefault()).toInstant();
         Instant end = endTime == null ? null : endTime.atZone(ZoneId.systemDefault()).toInstant();
 
-        List<ContractMilestoneDTO> timeline = milestoneEventRepository.findByKeyContractId(contractId).stream()
+        List<ContractMilestoneDTO> timeline = milestoneEventRepository.findByContractId(contractId).stream()
                 .filter(event -> {
                     Instant ts = event.getTimestamp().atZone(java.time.ZoneId.systemDefault()).toInstant();
                     boolean afterStart = start == null || !ts.isBefore(start);
