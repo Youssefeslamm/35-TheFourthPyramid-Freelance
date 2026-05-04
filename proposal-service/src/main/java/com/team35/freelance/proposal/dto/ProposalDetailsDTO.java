@@ -2,10 +2,13 @@ package com.team35.freelance.proposal.dto;
 
 import com.team35.freelance.proposal.model.ProposalStatus;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
-public class ProposalDetailsDTO {
+public class ProposalDetailsDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private Long proposalId;
     private Long jobId;
