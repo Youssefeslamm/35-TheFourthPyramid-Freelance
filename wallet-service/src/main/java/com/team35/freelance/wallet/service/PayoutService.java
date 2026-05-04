@@ -17,7 +17,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
+import com.team35.freelance.wallet.dto.PayoutMethodDTO;
+import com.team35.freelance.wallet.common.event.PayoutAuditEvent;
+import com.team35.freelance.wallet.repository.MongoEventRepository;
+import java.time.LocalTime;
+import java.util.stream.Collectors;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,16 +33,19 @@ public class PayoutService {
     private final PayoutRepository payoutRepository;
     private final PromoCodeRepository promoCodeRepository;
     private final RefundStrategySelector refundStrategySelector;
+    private final MongoEventRepository mongoEventRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
 
     public PayoutService(PayoutRepository payoutRepository,
                          PromoCodeRepository promoCodeRepository,
                          RefundStrategySelector refundStrategySelector,
-                         MongoEventLogger mongoEventLogger) {
+                         MongoEventLogger mongoEventLogger,
+                         MongoEventRepository mongoEventRepository) {
 
         this.payoutRepository = payoutRepository;
         this.promoCodeRepository = promoCodeRepository;
         this.refundStrategySelector = refundStrategySelector;
+        this.mongoEventRepository = mongoEventRepository;
         registerObserver(mongoEventLogger);
     }
     public void registerObserver(EntityObserver observer) {
@@ -456,4 +463,37 @@ public class PayoutService {
         notifyObservers("PAYOUT_AUDIT", eventPayload);
 
         return result;    }
+    // S5-F11
+    @Cacheable(value = "wallet-service::S5-F11", key = "#startDate + ':' + #endDate")
+    public List<PayoutMethodDTO> getPayoutMethodBreakdown(LocalDate startDate, LocalDate endDate) {
+        if (startDate.isAfter(endDate))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must not be after endDate");
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(LocalTime.of(23, 59, 59, 999_000_000));
+
+        List<PayoutAuditEvent> events = mongoEventRepository
+                .findByActionInAndTimestampBetween(List.of("COMPLETED", "FAILED"), start, end);
+
+        Map<String, List<PayoutAuditEvent>> byMethod = events.stream()
+                .filter(e -> e.getMethod() != null && !e.getMethod().isBlank())
+                .collect(Collectors.groupingBy(PayoutAuditEvent::getMethod));
+
+        List<PayoutMethodDTO> result = new ArrayList<>();
+        for (Map.Entry<String, List<PayoutAuditEvent>> entry : byMethod.entrySet()) {
+            String method = entry.getKey();
+            List<PayoutAuditEvent> group = entry.getValue();
+            long successCount = group.stream().filter(e -> "COMPLETED".equals(e.getAction())).count();
+            long failureCount = group.stream().filter(e -> "FAILED".equals(e.getAction())).count();
+            long denominator = successCount + failureCount;
+            double successRate = denominator == 0 ? 0.0 : (double) successCount / denominator;
+            double totalAmount = group.stream()
+                    .filter(e -> "COMPLETED".equals(e.getAction()) && e.getAmount() != null)
+                    .mapToDouble(PayoutAuditEvent::getAmount).sum();
+            result.add(PayoutMethodDTO.builder()
+                    .method(method).successCount(successCount).failureCount(failureCount)
+                    .successRate(successRate).totalAmount(totalAmount).build());
+        }
+        return result;
+    }
 }
