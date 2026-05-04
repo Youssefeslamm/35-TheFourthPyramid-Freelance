@@ -1,6 +1,10 @@
 package com.team35.freelance.proposal.dto;
 
-public class ProposalAnalyticsDTO {
+import java.io.Serializable;
+
+public class ProposalAnalyticsDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private Long totalProposals;
     private Long acceptedProposals;
