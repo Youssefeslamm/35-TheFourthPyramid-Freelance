@@ -636,7 +636,7 @@ public class UserService {
                 .toList();
 
         return new ActivityFeedResponseDTO(content, page, size, eventsPage.getTotalElements());
-
+    }
     public AuthResponse login(AuthRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(
