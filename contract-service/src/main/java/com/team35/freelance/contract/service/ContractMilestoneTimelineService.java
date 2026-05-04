@@ -55,7 +55,7 @@ public class ContractMilestoneTimelineService {
 
         List<ContractMilestoneDTO> timeline = milestoneEventRepository.findByKeyContractId(contractId).stream()
                 .filter(event -> {
-                    Instant ts = event.getKey().getEventTime();
+                    Instant ts = event.getTimestamp().atZone(java.time.ZoneId.systemDefault()).toInstant();
                     boolean afterStart = start == null || !ts.isBefore(start);
                     boolean beforeEnd = end == null || !ts.isAfter(end);
                     return afterStart && beforeEnd;
@@ -71,7 +71,7 @@ public class ContractMilestoneTimelineService {
 
     private ContractMilestoneDTO toDto(ContractMilestoneEvent event) {
         return new ContractMilestoneDTO(
-                event.getKey().getEventTime(),
+                event.getTimestamp().atZone(java.time.ZoneId.systemDefault()).toInstant(),
                 event.getMilestoneOrder(),
                 event.getStatus(),
                 event.getRecordedBy(),
