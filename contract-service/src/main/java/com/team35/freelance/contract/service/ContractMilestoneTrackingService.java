@@ -1,7 +1,6 @@
 package com.team35.freelance.contract.service;
 
 import com.team35.freelance.contract.cassandra.ContractMilestoneEvent;
-import com.team35.freelance.contract.cassandra.ContractMilestoneEventKey;
 import com.team35.freelance.contract.dto.MilestoneTrackRequestDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.model.MilestoneTrackStatus;
@@ -12,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Service
 public class ContractMilestoneTrackingService {
@@ -35,7 +35,8 @@ public class ContractMilestoneTrackingService {
         MilestoneTrackStatus validatedStatus = parseStatus(request.getStatus());
 
         ContractMilestoneEvent event = new ContractMilestoneEvent();
-        event.setKey(new ContractMilestoneEventKey(contract.getId(), Instant.now()));
+        event.setContractId(contractId);
+        event.setTimestamp(LocalDateTime.now());
         event.setMilestoneOrder(request.getMilestoneOrder());
         event.setStatus(validatedStatus.name());
         event.setRecordedBy(request.getRecordedBy());

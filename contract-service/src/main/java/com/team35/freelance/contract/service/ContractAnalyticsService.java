@@ -55,13 +55,13 @@ public class ContractAnalyticsService {
             contractsByStatus.put((String) statusRow[0], ((Number) statusRow[1]).longValue());
         }
 
-        ContractAnalyticsDTO analytics = new ContractAnalyticsDTO(
-                totalContracts,
-                averageContractValue,
-                completionRate,
-                averageContractDurationDays,
-                contractsByStatus
-        );
+        ContractAnalyticsDTO analytics = ContractAnalyticsDTO.builder()
+                .totalContracts(totalContracts)
+                .averageContractValue(averageContractValue)
+                .completionRate(completionRate)
+                .averageContractDurationDays(averageContractDurationDays)
+                .contractsByStatus(contractsByStatus)
+                .build();
 
         setInCache(cacheKey, analytics);
         saveSnapshot(startDate, endDate, analytics);
