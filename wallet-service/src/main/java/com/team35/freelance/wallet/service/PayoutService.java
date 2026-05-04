@@ -192,6 +192,7 @@ public class PayoutService {
             "wallet-service::S5-F9"
     }, allEntries = true)
     public void processContractPayout(Long contractId, ProcessPayoutRequest request) {
+
         String contractStatus = payoutRepository.getContractStatus(contractId);
 
         if (contractStatus == null) {
@@ -217,14 +218,20 @@ public class PayoutService {
 
         Map<String, Object> details = new HashMap<>();
 
+        // existing fields
         if (request.getAccountLastFour() != null) {
             details.put("accountLastFour", request.getAccountLastFour());
         }
+
+        // ✅ NEW REQUIRED FIELD (Section 4.6)
+        double platformFee = payout.getAmount() * 0.10;
+        details.put("platformFee", platformFee);
 
         payout.setTransactionDetails(details);
 
         Payout saved = payoutRepository.save(payout);
 
+        // existing observer logic
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "PAYOUT_PROCESSED");
         payload.put("payoutId", saved.getId());
