@@ -422,47 +422,6 @@ public class PayoutService {
         notifyObservers("PAYOUT_AUDIT", eventPayload);
 
         return saved;    }
-    @Transactional
-    @CacheEvict(value = {
-            "wallet-service::payout",
-            "wallet-service::promo-code",
-            "wallet-service::payout-promo",
-            "wallet-service::S5-F1",
-            "wallet-service::S5-F3",
-            "wallet-service::S5-F6",
-            "wallet-service::S5-F8",
-            "wallet-service::S5-F9"
-    }, allEntries = true)
-    public RefundResult reversePayout(Long payoutId, String reversalScope) {
-
-        Payout payout = payoutRepository.findById(payoutId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Payout not found"));
-
-        if (payout.getStatus() != PayoutStatus.COMPLETED) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Only completed payouts can be reversed"
-            );
-        }
-
-        RefundRequest request = new RefundRequest(reversalScope);
-
-        RefundStrategy strategy = refundStrategySelector.select(payout, request);
-
-        RefundResult result = strategy.calculateRefund(payout, request);
-
-        Map<String, Object> eventPayload = new HashMap<>();
-        eventPayload.put("action", "PAYOUT_REVERSED");
-        eventPayload.put("payoutId", payout.getId());
-        eventPayload.put("amount", result.getAmount());
-        eventPayload.put("strategy", strategy.getClass().getSimpleName());
-
-        notifyObservers("PAYOUT_AUDIT", eventPayload);
-
-        return result;    }
-
-
 
 
     @Transactional
