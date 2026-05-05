@@ -3,45 +3,13 @@ package com.team35.freelance.job.common.adapter;
 import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
 import com.team35.freelance.job.dto.JobProposalSummaryDTO;
 import com.team35.freelance.job.dto.TopBudgetJobDTO;
-import com.team35.freelance.job.elasticsearch.JobSearchDocument;
-import com.team35.freelance.job.model.Job;
 import com.team35.freelance.job.model.JobAttachment;
-import com.team35.freelance.job.model.JobCategory;
 import com.team35.freelance.job.model.JobStatus;
-import org.springframework.data.elasticsearch.core.SearchHit;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-
-@Component
 public class ElasticsearchHitAdapter {
-    public Job adapt(SearchHit<JobSearchDocument> hit) {
-        if (hit == null || hit.getContent() == null) {
-            return null;
-        }
-
-        JobSearchDocument document = hit.getContent();
-        Job job = new Job();
-        job.setId(document.getId());
-        job.setTitle(document.getTitle());
-        job.setDescription(document.getDescription());
-        job.setBudgetMin(document.getBudgetMin());
-        job.setBudgetMax(document.getBudgetMax());
-        job.setRating(document.getRating());
-
-        if (document.getCategory() != null && !document.getCategory().isBlank()) {
-            job.setCategory(JobCategory.valueOf(document.getCategory()));
-        }
-
-        if (document.getStatus() != null && !document.getStatus().isBlank()) {
-            job.setStatus(JobStatus.valueOf(document.getStatus()));
-        }
-
-        return job;
-    }
-
 
     @SuppressWarnings("unchecked")
     public <T> T adapt(Object hit, Class<T> targetType) {
@@ -49,13 +17,9 @@ public class ElasticsearchHitAdapter {
             return null;
         }
 
-        if (targetType == Job.class && hit instanceof SearchHit<?> searchHit) {
-            return (T) adapt((SearchHit<JobSearchDocument>) searchHit);
-        }
-
         Map<String, Object> source = extractSource(hit);
         if (source == null) {
-            source = new HashMap<>();
+            source = new java.util.HashMap<>();
         }
 
         if (targetType == JobProposalSummaryDTO.class) {
@@ -154,7 +118,6 @@ public class ElasticsearchHitAdapter {
         return buildEmpty(targetType);
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> extractSource(Object hit) {
         if (hit instanceof Map<?, ?>) {
             return (Map<String, Object>) hit;
