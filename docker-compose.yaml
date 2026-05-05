@@ -142,7 +142,7 @@ services:
       redis:
         condition: service_started
       elasticsearch:
-        condition: service_started
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freelancedb
       SPRING_DATASOURCE_USERNAME: postgres
