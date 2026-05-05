@@ -123,6 +123,9 @@ public class ContractController {
         try {
             return ResponseEntity.ok(Map.of("updatedCount", contractService.batchUpdateStatus(updates)));
         } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                return ResponseEntity.notFound().build();
+            }
             return ResponseEntity.badRequest().build();
         }
     }
@@ -230,3 +233,4 @@ public class ContractController {
         return ResponseEntity.ok(contractMilestoneTimelineService.getTimeline(id, startTime, endTime));
     }
 }
+
