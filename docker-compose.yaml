@@ -61,8 +61,8 @@ services:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 30s
+      retries: 30
+      start_period: 90s
 
   neo4j:
     image: neo4j:latest
@@ -102,25 +102,27 @@ services:
 
   cassandra-init:
     image: cassandra:latest
+    restart: on-failure
     depends_on:
       cassandra:
         condition: service_healthy
     volumes:
       - ./contract-service/docker/cassandra/init.cql:/init.cql
     command: >
-      bash -c "cqlsh cassandra 9042 -f /init.cql"
+      bash -c "for i in {1..30}; do cqlsh cassandra 9042 -f /init.cql && exit 0; sleep 5; done; exit 1"
 
   user-service:
     build: ./user-service
+    restart: on-failure
     ports:
       - "8081:8080"
     depends_on:
       postgres:
         condition: service_healthy
       mongo:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freelancedb
       SPRING_DATASOURCE_USERNAME: postgres
@@ -132,15 +134,16 @@ services:
 
   job-service:
     build: ./job-service
+    restart: on-failure
     ports:
       - "8082:8080"
     depends_on:
       postgres:
         condition: service_healthy
       mongo:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       elasticsearch:
         condition: service_healthy
     environment:
@@ -158,17 +161,18 @@ services:
 
   proposal-service:
     build: ./proposal-service
+    restart: on-failure
     ports:
       - "8083:8080"
     depends_on:
       postgres:
         condition: service_healthy
       mongo:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       neo4j:
-        condition: service_started
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freelancedb
       SPRING_DATASOURCE_USERNAME: postgres
@@ -183,15 +187,16 @@ services:
 
   contract-service:
     build: ./contract-service
+    restart: on-failure
     ports:
       - "8084:8080"
     depends_on:
       postgres:
         condition: service_healthy
       mongo:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       cassandra:
         condition: service_healthy
       cassandra-init:
@@ -216,15 +221,16 @@ services:
 
   wallet-service:
     build: ./wallet-service
+    restart: on-failure
     ports:
       - "8085:8080"
     depends_on:
       postgres:
         condition: service_healthy
       mongo:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freelancedb
       SPRING_DATASOURCE_USERNAME: postgres
