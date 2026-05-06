@@ -40,19 +40,21 @@ public class ContractAnalyticsService {
         }
 
         List<Object[]> aggregateRows = contractRepository.getContractAnalytics(startDate, endDate);
-        Object[] row = aggregateRows.get(0);
+        Object[] row = aggregateRows == null || aggregateRows.isEmpty() ? null : aggregateRows.get(0);
 
-        long totalContracts = ((Number) row[0]).longValue();
-        double averageContractValue = ((Number) row[1]).doubleValue();
-        long completedContracts = ((Number) row[2]).longValue();
-        double averageContractDurationDays = ((Number) row[3]).doubleValue();
+        long totalContracts = numberAsLong(row, 0);
+        double averageContractValue = numberAsDouble(row, 1);
+        long completedContracts = numberAsLong(row, 2);
+        double averageContractDurationDays = numberAsDouble(row, 3);
 
         double completionRate = totalContracts > 0 ? ((double) completedContracts / totalContracts) : 0.0;
 
         Map<String, Long> contractsByStatus = new HashMap<>();
         List<Object[]> statusRows = contractRepository.countContractsByStatus(startDate, endDate);
         for (Object[] statusRow : statusRows) {
-            contractsByStatus.put((String) statusRow[0], ((Number) statusRow[1]).longValue());
+            if (statusRow != null && statusRow.length > 1 && statusRow[0] != null && statusRow[1] != null) {
+                contractsByStatus.put(String.valueOf(statusRow[0]), ((Number) statusRow[1]).longValue());
+            }
         }
 
         ContractAnalyticsDTO analytics = ContractAnalyticsDTO.builder()
@@ -70,12 +72,11 @@ public class ContractAnalyticsService {
     }
 
     private ContractAnalyticsDTO getFromCache(String cacheKey) {
-        String cachedJson = redisTemplate.opsForValue().get(cacheKey);
-        if (cachedJson == null || cachedJson.isBlank()) {
-            return null;
-        }
-
         try {
+            String cachedJson = redisTemplate.opsForValue().get(cacheKey);
+            if (cachedJson == null || cachedJson.isBlank()) {
+                return null;
+            }
             return objectMapper.readValue(cachedJson, ContractAnalyticsDTO.class);
         } catch (Exception e) {
             return null;
@@ -106,5 +107,19 @@ public class ContractAnalyticsService {
 
     private String buildCacheKey(LocalDateTime startDate, LocalDateTime endDate) {
         return "contract:analytics:" + startDate + ":" + endDate;
+    }
+
+    private long numberAsLong(Object[] row, int index) {
+        if (row == null || row.length <= index || row[index] == null) {
+            return 0L;
+        }
+        return ((Number) row[index]).longValue();
+    }
+
+    private double numberAsDouble(Object[] row, int index) {
+        if (row == null || row.length <= index || row[index] == null) {
+            return 0.0;
+        }
+        return ((Number) row[index]).doubleValue();
     }
 }

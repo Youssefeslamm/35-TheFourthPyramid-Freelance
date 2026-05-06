@@ -145,6 +145,27 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );
+
+    @Query(value = """
+    SELECT * FROM proposals p
+    WHERE (CAST(:status AS TEXT) IS NULL OR p.status = CAST(:status AS proposal_status_enum))
+      AND (CAST(:freelancerId AS BIGINT) IS NULL OR p.freelancer_id = :freelancerId)
+      AND (CAST(:jobId AS BIGINT) IS NULL OR p.job_id = :jobId)
+      AND (CAST(:minBid AS DOUBLE PRECISION) IS NULL OR p.bid_amount >= :minBid)
+      AND (CAST(:maxBid AS DOUBLE PRECISION) IS NULL OR p.bid_amount <= :maxBid)
+      AND (CAST(:startDate AS TIMESTAMP) IS NULL OR p.submitted_at >= :startDate)
+      AND (CAST(:endDate AS TIMESTAMP) IS NULL OR p.submitted_at <= :endDate)
+    ORDER BY p.submitted_at DESC
+    """, nativeQuery = true)
+    List<Proposal> searchProposals(
+            @Param("status") String status,
+            @Param("freelancerId") Long freelancerId,
+            @Param("jobId") Long jobId,
+            @Param("minBid") Double minBid,
+            @Param("maxBid") Double maxBid,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
     //S3-F10
     @Query(value = """
     SELECT 
@@ -162,6 +183,31 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     Object[] getProposalAnalytics(
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
+    );
+
+    @Query(value = """
+    SELECT
+        COUNT(*) as totalProposals,
+        COALESCE(AVG(bid_amount), 0) as averageBidAmount,
+        COALESCE(AVG(estimated_days), 0) as averageEstimatedDays,
+        COALESCE(SUM(CASE WHEN status = 'ACCEPTED' THEN 1 ELSE 0 END), 0) as acceptedCount,
+        COALESCE(SUM(CASE WHEN status = 'REJECTED' THEN 1 ELSE 0 END), 0) as rejectedCount,
+        COALESCE(SUM(CASE WHEN status = 'WITHDRAWN' THEN 1 ELSE 0 END), 0) as withdrawnCount,
+        COALESCE(SUM(CASE WHEN status = 'SUBMITTED' THEN 1 ELSE 0 END), 0) as submittedCount,
+        COALESCE(SUM(CASE WHEN status = 'SHORTLISTED' THEN 1 ELSE 0 END), 0) as shortlistedCount
+    FROM proposals p
+    WHERE (CAST(:startDate AS TIMESTAMP) IS NULL OR p.submitted_at >= :startDate)
+      AND (CAST(:endDate AS TIMESTAMP) IS NULL OR p.submitted_at <= :endDate)
+      AND (CAST(:freelancerId AS BIGINT) IS NULL OR p.freelancer_id = :freelancerId)
+      AND (CAST(:jobId AS BIGINT) IS NULL OR p.job_id = :jobId)
+      AND (CAST(:status AS TEXT) IS NULL OR p.status = CAST(:status AS proposal_status_enum))
+    """, nativeQuery = true)
+    Object[] getProposalAnalyticsFiltered(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("freelancerId") Long freelancerId,
+            @Param("jobId") Long jobId,
+            @Param("status") String status
     );
     // S3-F11: Get freelancer name
     @Query(value = "SELECT name FROM users WHERE id = :freelancerId", nativeQuery = true)

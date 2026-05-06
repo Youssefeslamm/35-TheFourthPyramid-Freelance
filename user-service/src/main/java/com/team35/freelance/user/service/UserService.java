@@ -118,7 +118,7 @@ public class UserService {
     @Cacheable(value = "user-service::user", key = "#id")
     public UserProfileDTO getUserById(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         return buildUserProfileDTO(user);
     }
 
@@ -137,7 +137,7 @@ public class UserService {
     }, allEntries = true)
     public User updateUser(Long id, User updatedUser) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         if (updatedUser.getName() != null && !updatedUser.getName().isBlank())
             user.setName(updatedUser.getName());
@@ -186,7 +186,7 @@ public class UserService {
     }, allEntries = true)
     public void deleteUser(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         userRepository.delete(user);
 
         Map<String, Object> payload = new HashMap<>();
@@ -357,7 +357,11 @@ public class UserService {
                         HttpStatus.NOT_FOUND, "User not found"
                 ));
 
-        Object[] row = ((Object[]) userRepository.getUserContractSummary(userId)[0]);
+        Object[] raw = userRepository.getUserContractSummary(userId);
+        Object[] row = unwrapSingleRow(raw);
+        if (row.length == 0) {
+            row = new Object[] {user.getId(), user.getName(), 0L, 0L, 0L, 0.0, 0.0};
+        }
         UserContractSummaryAdapter adapter = new UserContractSummaryAdapter();
         return adapter.adapt(row);
     }
@@ -487,13 +491,22 @@ public class UserService {
 
     @Cacheable(value = "user-service::S1-F6", key = "#startDate + ':' + #endDate + ':' + #limit")
     public List<TopFreelancerDTO> getTopFreelancersByEarnings(LocalDate startDate, LocalDate endDate, int limit) {
+        if (limit < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be greater than 0");
+        }
         if (startDate.isAfter(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must not be after endDate");
         }
         List<Object[]> rows = userRepository.findTopFreelancersByEarnings(
                 startDate.atStartOfDay(), endDate.atTime(23, 59, 59), limit);
         List<TopFreelancerDTO> result = new ArrayList<>();
+        if (rows == null) {
+            return result;
+        }
         for (Object[] row : rows) {
+            if (row == null || row.length < 4) {
+                continue;
+            }
             result.add(
                     TopFreelancerDTO.builder()
                             .userId(((Number) row[0]).longValue())
@@ -615,8 +628,15 @@ public class UserService {
     @Cacheable(value = "user-service::S1-F12", key = "#userId + ':' + #page + ':' + #size")
     public ActivityFeedResponseDTO getUserActivityFeed(Long userId, Long callerUserId, String callerRole,
                                                        int page, int size) {
+        if (page < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be greater than or equal to 0");
+        }
+        if (size <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be greater than 0");
+        }
+
         // Ownership check: caller must be the user themselves OR an ADMIN
-        if (!callerUserId.equals(userId) && !"ADMIN".equalsIgnoreCase(callerRole)) {
+        if ((callerUserId == null || !callerUserId.equals(userId)) && !"ADMIN".equalsIgnoreCase(callerRole)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
 
@@ -628,8 +648,13 @@ public class UserService {
         if (size > 100) size = 100;
 
         // Query MongoDB for events sorted by timestamp descending
-        Page<AuthEvent> eventsPage = authEventRepository.findByUserIdOrderByTimestampDesc(
-                userId, PageRequest.of(page, size));
+        Page<AuthEvent> eventsPage;
+        try {
+            eventsPage = authEventRepository.findByUserIdOrderByTimestampDesc(
+                    userId, PageRequest.of(page, size));
+        } catch (Exception ex) {
+            return new ActivityFeedResponseDTO(List.of(), page, size, 0);
+        }
 
         List<ActivityEventDTO> content = eventsPage.getContent().stream()
                 .map(e -> new ActivityEventDTO(e.getAction(), e.getTimestamp(), e.getDetails()))
@@ -657,8 +682,9 @@ public class UserService {
         payload.put("action", "LOGGED_IN");
         payload.put("userId", user.getId());
         payload.put("email", user.getEmail());
+        payload.put("timestamp", LocalDateTime.now().toString());
 
-        mongoEventLogger.onEvent("LOGGED_IN", payload);
+        notifyObservers("LOGGED_IN", payload);
 
         return new AuthResponse(
                 token,
@@ -667,5 +693,15 @@ public class UserService {
                 user.getEmail(),
                 user.getRole().name()
         );
+    }
+
+    private Object[] unwrapSingleRow(Object[] raw) {
+        if (raw == null || raw.length == 0) {
+            return new Object[0];
+        }
+        if (raw.length == 1 && raw[0] instanceof Object[] row) {
+            return row;
+        }
+        return raw;
     }
 }

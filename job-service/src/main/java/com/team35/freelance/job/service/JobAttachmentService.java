@@ -9,7 +9,6 @@ import java.util.Map;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 
-import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -19,6 +18,7 @@ import com.team35.freelance.job.common.observer.MongoEventLogger;
 import com.team35.freelance.job.dto.VerifyAttachmentRequestDTO;
 import com.team35.freelance.job.exception.BadRequestException;
 import com.team35.freelance.job.exception.ForbiddenException;
+import com.team35.freelance.job.exception.ResourceNotFoundException;
 import com.team35.freelance.job.model.Job;
 import com.team35.freelance.job.model.JobAttachment;
 import com.team35.freelance.job.repository.JobAttachmentRepository;

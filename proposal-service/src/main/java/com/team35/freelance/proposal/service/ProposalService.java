@@ -182,16 +182,16 @@ public class ProposalService {
 
         double feePercentage;
         if (similarCount <= 5) {
-            feePercentage = 20.0;
+            feePercentage = 0.20;
         } else if (similarCount <= 15) {
-            feePercentage = 15.0;
+            feePercentage = 0.15;
         } else {
-            feePercentage = 10.0;
+            feePercentage = 0.10;
         }
 
-        double platformFee = bidAmount * feePercentage / 100;
+        double platformFee = bidAmount * feePercentage;
         double freelancerPayout = bidAmount - platformFee;
-        double estimatedDailyRate = freelancerPayout / estimatedDays;
+        double estimatedDailyRate = bidAmount / estimatedDays;
 
         return FeeEstimateDTO.builder()
                 .bidAmount(bidAmount)
@@ -447,6 +447,7 @@ public class ProposalService {
     @Cacheable(value = "proposal-service::S3-F6", key = "#startDate + ':' + #endDate")
     public ProposalAnalyticsDTO getAnalytics(
             LocalDateTime startDate, LocalDateTime endDate) {
+        validateDateRange(startDate, endDate);
         List<Object[]> results = proposalRepository.getAnalytics(startDate, endDate);
         Object[] row = results.get(0);
 
@@ -464,6 +465,36 @@ public class ProposalService {
                 .rejectedProposals(rejected)
                 .totalBidValue(totalBid)
                 .averageBid(avgBid)
+                .acceptanceRate(rate)
+                .build();
+    }
+
+    public ProposalAnalyticsDTO getAnalytics(Map<String, String> params) {
+        LocalDateTime startDate = parseStartDate(firstNonBlank(params, "startDate", "from"));
+        LocalDateTime endDate = parseEndDate(firstNonBlank(params, "endDate", "to"));
+        validateDateRange(startDate, endDate);
+
+        String status = normalizeStatus(params.get("status"));
+        Long freelancerId = parseLong(params.get("freelancerId"), "freelancerId");
+        Long jobId = parseLong(params.get("jobId"), "jobId");
+
+        Object[] raw = proposalRepository.getProposalAnalyticsFiltered(
+                startDate, endDate, freelancerId, jobId, status);
+        Object[] row = unwrapSingleRow(raw);
+
+        long total = numberAsLong(row, 0);
+        long accepted = numberAsLong(row, 3);
+        long rejected = numberAsLong(row, 4);
+        double averageBid = numberAsDouble(row, 1);
+        double totalBidValue = total * averageBid;
+        double rate = total > 0 ? (double) accepted / total : 0.0;
+
+        return ProposalAnalyticsDTO.builder()
+                .totalProposals(total)
+                .acceptedProposals(accepted)
+                .rejectedProposals(rejected)
+                .totalBidValue(totalBidValue)
+                .averageBid(averageBid)
                 .acceptanceRate(rate)
                 .build();
     }
@@ -485,8 +516,28 @@ public class ProposalService {
         if (status != null && status.isBlank()) {
             status = null;
         }
+        validateDateRange(startDate, endDate);
         return proposalRepository.findByStatusAndDateRange(status, startDate, endDate);
     }
+
+    public List<Proposal> searchProposals(Map<String, String> params) {
+        String status = normalizeStatus(params.get("status"));
+        Long freelancerId = parseLong(params.get("freelancerId"), "freelancerId");
+        Long jobId = parseLong(params.get("jobId"), "jobId");
+        Double minBid = parseDouble(firstNonBlank(params, "minBid", "minAmount"), "minBid");
+        Double maxBid = parseDouble(firstNonBlank(params, "maxBid", "maxAmount"), "maxBid");
+        LocalDateTime startDate = parseStartDate(firstNonBlank(params, "startDate", "from"));
+        LocalDateTime endDate = parseEndDate(firstNonBlank(params, "endDate", "to"));
+
+        validateDateRange(startDate, endDate);
+        if (minBid != null && maxBid != null && minBid > maxBid) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minBid must not be greater than maxBid");
+        }
+
+        return proposalRepository.searchProposals(
+                status, freelancerId, jobId, minBid, maxBid, startDate, endDate);
+    }
+
     public ProposalAnalyticsDashboardDTO getAnalyticsDashboard(
             LocalDate startDate, LocalDate endDate) {
 
@@ -539,6 +590,46 @@ public class ProposalService {
         }
 
         // Build and return DTO
+        return ProposalAnalyticsDashboardDTO.builder()
+                .totalProposals(totalProposals)
+                .acceptanceRate(acceptanceRate)
+                .averageBidAmount(averageBidAmount)
+                .averageEstimatedDays(averageEstimatedDays)
+                .proposalsByStatus(proposalsByStatus)
+                .build();
+    }
+
+    public ProposalAnalyticsDashboardDTO getAnalyticsDashboard(Map<String, String> params) {
+        LocalDateTime startDate = parseStartDate(firstNonBlank(params, "startDate", "from"));
+        LocalDateTime endDate = parseEndDate(firstNonBlank(params, "endDate", "to"));
+        validateDateRange(startDate, endDate);
+
+        String status = normalizeStatus(params.get("status"));
+        Long freelancerId = parseLong(params.get("freelancerId"), "freelancerId");
+        Long jobId = parseLong(params.get("jobId"), "jobId");
+
+        Object[] raw = proposalRepository.getProposalAnalyticsFiltered(
+                startDate, endDate, freelancerId, jobId, status);
+        Object[] row = unwrapSingleRow(raw);
+
+        long totalProposals = numberAsLong(row, 0);
+        double averageBidAmount = numberAsDouble(row, 1);
+        double averageEstimatedDays = numberAsDouble(row, 2);
+        long acceptedCount = numberAsLong(row, 3);
+        long rejectedCount = numberAsLong(row, 4);
+        long withdrawnCount = numberAsLong(row, 5);
+        long submittedCount = numberAsLong(row, 6);
+        long shortlistedCount = numberAsLong(row, 7);
+
+        double acceptanceRate = totalProposals > 0 ? (double) acceptedCount / totalProposals : 0.0;
+
+        Map<String, Long> proposalsByStatus = new LinkedHashMap<>();
+        proposalsByStatus.put("ACCEPTED", acceptedCount);
+        proposalsByStatus.put("REJECTED", rejectedCount);
+        proposalsByStatus.put("WITHDRAWN", withdrawnCount);
+        proposalsByStatus.put("SUBMITTED", submittedCount);
+        proposalsByStatus.put("SHORTLISTED", shortlistedCount);
+
         return ProposalAnalyticsDashboardDTO.builder()
                 .totalProposals(totalProposals)
                 .acceptanceRate(acceptanceRate)
@@ -620,6 +711,10 @@ public class ProposalService {
     @Cacheable(value = "proposal-service::S3-F12", key = "#freelancerId + ':' + #limit")
     public List<JobRecommendationDTO> getRecommendedJobs(Long freelancerId, int limit,
                                                          Long callerUid, String callerRole) {
+        if (limit < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be greater than 0");
+        }
+
         // 1. Ownership check
         boolean isOwner = callerUid != null && callerUid.equals(freelancerId);
         boolean isAdmin = "ADMIN".equals(callerRole);
@@ -706,5 +801,105 @@ public class ProposalService {
                         .jobId(jid).title((String) detailsMap.get(jid)[1])
                         .category((String) detailsMap.get(jid)[2]).score(scores.get(jid)).build())
                 .collect(Collectors.toList());
+    }
+
+    private void validateDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+        if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must not be after endDate");
+        }
+    }
+
+    private String firstNonBlank(Map<String, String> params, String... names) {
+        for (String name : names) {
+            String value = params.get(name);
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        String normalized = status.trim().toUpperCase();
+        try {
+            ProposalStatus.valueOf(normalized);
+            return normalized;
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid proposal status");
+        }
+    }
+
+    private Long parseLong(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value.trim());
+        } catch (NumberFormatException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " must be a number");
+        }
+    }
+
+    private Double parseDouble(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Double.valueOf(value.trim());
+        } catch (NumberFormatException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " must be a number");
+        }
+    }
+
+    private LocalDateTime parseStartDate(String value) {
+        return parseDateTime(value, true);
+    }
+
+    private LocalDateTime parseEndDate(String value) {
+        return parseDateTime(value, false);
+    }
+
+    private LocalDateTime parseDateTime(String value, boolean startOfDay) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        try {
+            return LocalDateTime.parse(trimmed);
+        } catch (Exception ignored) {
+            try {
+                LocalDate date = LocalDate.parse(trimmed);
+                return startOfDay ? date.atStartOfDay() : date.atTime(23, 59, 59, 999000000);
+            } catch (Exception ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid date format");
+            }
+        }
+    }
+
+    private Object[] unwrapSingleRow(Object[] raw) {
+        if (raw == null || raw.length == 0) {
+            return new Object[0];
+        }
+        if (raw.length == 1 && raw[0] instanceof Object[] row) {
+            return row;
+        }
+        return raw;
+    }
+
+    private long numberAsLong(Object[] row, int index) {
+        if (row == null || index >= row.length || row[index] == null) {
+            return 0L;
+        }
+        return ((Number) row[index]).longValue();
+    }
+
+    private double numberAsDouble(Object[] row, int index) {
+        if (row == null || index >= row.length || row[index] == null) {
+            return 0.0;
+        }
+        return ((Number) row[index]).doubleValue();
     }
 }

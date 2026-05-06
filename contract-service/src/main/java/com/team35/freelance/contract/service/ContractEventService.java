@@ -1,27 +1,41 @@
 package com.team35.freelance.contract.service;
 
-import com.team35.freelance.contract.document.ContractEvent;
-import com.team35.freelance.contract.repository.ContractEventRepository;
+import com.team35.freelance.contract.common.event.EventFactory;
+import com.team35.freelance.contract.common.event.EventType;
+import com.team35.freelance.contract.common.event.MongoEvent;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class ContractEventService {
 
-    private final ContractEventRepository contractEventRepository;
+    private final EventFactory eventFactory;
+    private final MongoTemplate mongoTemplate;
 
-    public ContractEventService(ContractEventRepository contractEventRepository) {
-        this.contractEventRepository = contractEventRepository;
+    public ContractEventService(EventFactory eventFactory, MongoTemplate mongoTemplate) {
+        this.eventFactory = eventFactory;
+        this.mongoTemplate = mongoTemplate;
     }
 
     public void logAnalyticsViewed(LocalDateTime startDate, LocalDateTime endDate) {
-        ContractEvent event = new ContractEvent();
-        event.setEventType("ANALYTICS_VIEWED");
-        event.setOccurredAt(LocalDateTime.now());
-        event.setStartDate(startDate);
-        event.setEndDate(endDate);
-        contractEventRepository.save(event);
+        logAnalyticsViewed(startDate, endDate, null);
+    }
+
+    public void logAnalyticsViewed(LocalDateTime startDate, LocalDateTime endDate, Long userId) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "ANALYTICS_VIEWED");
+        payload.put("eventType", "ANALYTICS_VIEWED");
+        payload.put("timestamp", LocalDateTime.now());
+        payload.put("startDate", startDate);
+        payload.put("endDate", endDate);
+        if (userId != null) {
+            payload.put("userId", userId);
+        }
+        saveEvent(payload);
     }
 
     public void logMilestoneTracked(Long contractId,
@@ -29,13 +43,20 @@ public class ContractEventService {
                                     String status,
                                     String recordedBy,
                                     String notes) {
-        ContractEvent event = new ContractEvent();
-        event.setEventType("MILESTONE_TRACKED");
-        event.setOccurredAt(LocalDateTime.now());
-        event.setContractId(contractId);
-        event.setMilestoneOrder(milestoneOrder);
-        event.setStatus(status);
-        event.setDetails("recordedBy=" + recordedBy + ", notes=" + notes);
-        contractEventRepository.save(event);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "MILESTONE_TRACKED");
+        payload.put("eventType", "MILESTONE_TRACKED");
+        payload.put("timestamp", LocalDateTime.now());
+        payload.put("contractId", contractId);
+        payload.put("milestoneOrder", milestoneOrder);
+        payload.put("status", status);
+        payload.put("recordedBy", recordedBy);
+        payload.put("notes", notes);
+        saveEvent(payload);
+    }
+
+    private void saveEvent(Map<String, Object> payload) {
+        MongoEvent event = eventFactory.createEvent(EventType.CONTRACT, payload);
+        mongoTemplate.save(event);
     }
 }

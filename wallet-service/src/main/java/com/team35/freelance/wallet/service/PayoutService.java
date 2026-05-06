@@ -99,7 +99,7 @@ public class PayoutService {
     @Cacheable(value = "wallet-service::payout", key = "#id")
     public Payout getPayoutById(Long id) {
         return payoutRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Payout not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found"));
     }
 
     @CacheEvict(value = {
@@ -144,7 +144,7 @@ public class PayoutService {
     }, allEntries = true)
     public void deletePayout(Long id) {
         if (!payoutRepository.existsById(id)) {
-            throw new RuntimeException("Payout not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found");
         }
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "PAYOUT_DELETED");
@@ -157,15 +157,21 @@ public class PayoutService {
     @Cacheable(value = "wallet-service::S5-F3", key = "#freelancerId")
     public FreelancerPayoutSummaryDTO getFreelancerSummary(Long freelancerId) {
         List<Object[]> methodRows = payoutRepository.getFreelancerMethodBreakdown(freelancerId);
+        if (methodRows == null || methodRows.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found for freelancer");
+        }
 
         Map<String, Double> methodBreakdown = new HashMap<>();
         long totalPayouts = 0L;
         double totalAmount = 0.0;
 
         for (Object[] row : methodRows) {
+            if (row == null || row.length < 3) {
+                continue;
+            }
             String method = row[0].toString();
-            Long count = ((Number) row[1]).longValue();
-            Double amount = ((Number) row[2]).doubleValue();
+            Long count = numberAsLong(row, 1);
+            Double amount = numberAsDouble(row, 2);
 
             methodBreakdown.put(method, amount);
             totalPayouts += count;
@@ -264,9 +270,21 @@ public class PayoutService {
         }
 
         if (status == null) {
+            if (startDateTime == null) {
+                startDateTime = LocalDateTime.of(1970, 1, 1, 0, 0);
+            }
+            if (endDateTime == null) {
+                endDateTime = LocalDateTime.now().plusDays(1);
+            }
             return payoutRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(startDateTime, endDateTime);
         }
 
+        if (startDateTime == null) {
+            startDateTime = LocalDateTime.of(1970, 1, 1, 0, 0);
+        }
+        if (endDateTime == null) {
+            endDateTime = LocalDateTime.now().plusDays(1);
+        }
         return payoutRepository.findByStatusAndCreatedAtBetweenOrderByCreatedAtDesc(
                 status, startDateTime, endDateTime
         );
@@ -274,6 +292,8 @@ public class PayoutService {
 
     @Cacheable(value = "wallet-service::S5-F6", key = "#startDate + ':' + #endDate")
     public RevenueReportDTO getRevenueReport(LocalDate startDate, LocalDate endDate) {
+        startDate = startDate == null ? LocalDate.of(1970, 1, 1) : startDate;
+        endDate = endDate == null ? LocalDate.now().plusDays(1) : endDate;
         if (startDate.isAfter(endDate)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -285,12 +305,12 @@ public class PayoutService {
         LocalDateTime end = endDate.atTime(23, 59, 59);
 
         List<Object[]> rows = payoutRepository.getRevenueReport(start, end);
-        Object[] result = rows.get(0);
+        Object[] result = rows == null || rows.isEmpty() ? null : rows.get(0);
 
-        double totalRevenue = ((Number) result[0]).doubleValue();
-        long totalTransactions = ((Number) result[1]).longValue();
-        double refundedAmount = ((Number) result[2]).doubleValue();
-        long refundCount = ((Number) result[3]).longValue();
+        double totalRevenue = numberAsDouble(result, 0);
+        long totalTransactions = numberAsLong(result, 1);
+        double refundedAmount = numberAsDouble(result, 2);
+        long refundCount = numberAsLong(result, 3);
 
         double averagePayout =
                 totalTransactions == 0 ? 0 : totalRevenue / totalTransactions;
@@ -519,6 +539,8 @@ public class PayoutService {
     }
 
     public List<CategoryRevenueDTO> getCategoryRevenueAnalytics(LocalDate startDate, LocalDate endDate) {
+        startDate = startDate == null ? LocalDate.of(1970, 1, 1) : startDate;
+        endDate = endDate == null ? LocalDate.now().plusDays(1) : endDate;
 
         if (startDate.isAfter(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate cannot be after endDate");
@@ -544,34 +566,41 @@ public class PayoutService {
     // S5-F11
     @Cacheable(value = "wallet-service::S5-F11", key = "#startDate + ':' + #endDate")
     public List<PayoutMethodDTO> getPayoutMethodBreakdown(LocalDate startDate, LocalDate endDate) {
+        startDate = startDate == null ? LocalDate.of(1970, 1, 1) : startDate;
+        endDate = endDate == null ? LocalDate.now().plusDays(1) : endDate;
         if (startDate.isAfter(endDate))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must not be after endDate");
 
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(LocalTime.of(23, 59, 59, 999_000_000));
 
-        List<PayoutAuditEvent> events = mongoEventRepository
-                .findByActionInAndTimestampBetween(List.of("COMPLETED", "FAILED"), start, end);
-
-        Map<String, List<PayoutAuditEvent>> byMethod = events.stream()
-                .filter(e -> e.getMethod() != null && !e.getMethod().isBlank())
-                .collect(Collectors.groupingBy(PayoutAuditEvent::getMethod));
-
+        List<Object[]> rows = payoutRepository.getPayoutMethodBreakdown(start, end);
         List<PayoutMethodDTO> result = new ArrayList<>();
-        for (Map.Entry<String, List<PayoutAuditEvent>> entry : byMethod.entrySet()) {
-            String method = entry.getKey();
-            List<PayoutAuditEvent> group = entry.getValue();
-            long successCount = group.stream().filter(e -> "COMPLETED".equals(e.getAction())).count();
-            long failureCount = group.stream().filter(e -> "FAILED".equals(e.getAction())).count();
+        for (Object[] row : rows) {
+            String method = String.valueOf(row[0]);
+            long successCount = numberAsLong(row, 1);
+            long failureCount = numberAsLong(row, 2);
             long denominator = successCount + failureCount;
             double successRate = denominator == 0 ? 0.0 : (double) successCount / denominator;
-            double totalAmount = group.stream()
-                    .filter(e -> "COMPLETED".equals(e.getAction()) && e.getAmount() != null)
-                    .mapToDouble(PayoutAuditEvent::getAmount).sum();
+            double totalAmount = numberAsDouble(row, 3);
             result.add(PayoutMethodDTO.builder()
                     .method(method).successCount(successCount).failureCount(failureCount)
                     .successRate(successRate).totalAmount(totalAmount).build());
         }
         return result;
+    }
+
+    private long numberAsLong(Object[] row, int index) {
+        if (row == null || row.length <= index || row[index] == null) {
+            return 0L;
+        }
+        return ((Number) row[index]).longValue();
+    }
+
+    private double numberAsDouble(Object[] row, int index) {
+        if (row == null || row.length <= index || row[index] == null) {
+            return 0.0;
+        }
+        return ((Number) row[index]).doubleValue();
     }
 }

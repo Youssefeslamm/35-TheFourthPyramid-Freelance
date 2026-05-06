@@ -94,4 +94,21 @@ public interface PayoutRepository extends JpaRepository<Payout, Long> {
             @Param("endDateTime") LocalDateTime endDateTime
     );
 
+    @Query(value = """
+    SELECT
+        p.method,
+        SUM(CASE WHEN p.status = 'COMPLETED' THEN 1 ELSE 0 END) AS successCount,
+        SUM(CASE WHEN p.status = 'FAILED' THEN 1 ELSE 0 END) AS failureCount,
+        COALESCE(SUM(CASE WHEN p.status = 'COMPLETED' THEN p.amount ELSE 0 END), 0) AS totalAmount
+    FROM payouts p
+    WHERE p.created_at BETWEEN :startDateTime AND :endDateTime
+      AND p.method IS NOT NULL
+      AND p.status IN ('COMPLETED', 'FAILED')
+    GROUP BY p.method
+    """, nativeQuery = true)
+    List<Object[]> getPayoutMethodBreakdown(
+            @Param("startDateTime") LocalDateTime startDateTime,
+            @Param("endDateTime") LocalDateTime endDateTime
+    );
+
 }

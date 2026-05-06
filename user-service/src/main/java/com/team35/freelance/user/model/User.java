@@ -31,10 +31,12 @@ public class User implements Serializable {
     private String phone;
 
     @Column(nullable = false, columnDefinition = "user_role_enum")
+    @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private Role role;
 
     @Column(nullable = false, columnDefinition = "user_status_enum")
+    @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private Status status = Status.ACTIVE;
 

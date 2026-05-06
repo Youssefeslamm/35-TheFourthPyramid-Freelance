@@ -31,11 +31,12 @@ public class WalletAnalyticsCacheService {
             List<Object[]> rows = payoutRepository.getCategoryRevenueAnalytics(startDateTime, endDateTime);
 
             return rows.stream()
+                    .filter(row -> row != null && row.length >= 4)
                     .map(row -> {
                         String category = String.valueOf(row[0]);
-                        double platformFeeRevenue = ((Number) row[1]).doubleValue();
-                        double totalRevenue = ((Number) row[2]).doubleValue();
-                        long payoutCount = ((Number) row[3]).longValue();
+                        double platformFeeRevenue = row[1] == null ? 0.0 : ((Number) row[1]).doubleValue();
+                        double totalRevenue = row[2] == null ? 0.0 : ((Number) row[2]).doubleValue();
+                        long payoutCount = row[3] == null ? 0L : ((Number) row[3]).longValue();
 
                         return CategoryRevenueDTO.builder()
                                 .category(category)

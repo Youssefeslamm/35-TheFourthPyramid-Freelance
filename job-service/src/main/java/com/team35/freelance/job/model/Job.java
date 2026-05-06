@@ -16,6 +16,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -41,10 +43,12 @@ public class Job implements Serializable {
     private String description;
 
     @Column(nullable = false, columnDefinition = "job_category_enum")
+    @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private JobCategory category = JobCategory.DEVELOPMENT;
 
     @Column(nullable = false, columnDefinition = "job_status_enum")
+    @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private JobStatus status = JobStatus.OPEN;
 

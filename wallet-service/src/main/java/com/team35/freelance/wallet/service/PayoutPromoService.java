@@ -192,29 +192,34 @@ public class PayoutPromoService {
 
         for (PayoutPromo payoutPromo : payoutPromos) {
             PromoCode promoCode = payoutPromo.getPromoCode();
+            if (promoCode == null) {
+                continue;
+            }
+            double discountApplied = payoutPromo.getDiscountApplied() == null ? 0.0 : payoutPromo.getDiscountApplied();
 
             appliedPromoCodes.add(
                     PayoutDetailsDTO.AppliedPromoCodeDTO.builder()
                             .promoCode(promoCode.getCode())
-                            .discountType(promoCode.getDiscountType().name())
-                            .discountApplied(payoutPromo.getDiscountApplied())
+                            .discountType(promoCode.getDiscountType() == null ? null : promoCode.getDiscountType().name())
+                            .discountApplied(discountApplied)
                             .appliedAt(payoutPromo.getAppliedAt())
                             .build()
             );
 
-            totalDiscount += payoutPromo.getDiscountApplied();
+            totalDiscount += discountApplied;
         }
 
-        double finalAmount = payout.getAmount() - totalDiscount;
+        double originalAmount = payout.getAmount() == null ? 0.0 : payout.getAmount();
+        double finalAmount = Math.max(0.0, originalAmount - totalDiscount);
 
         return PayoutDetailsDTO.builder()
                 .payoutId(payout.getId())
                 .contractId(payout.getContractId())
                 .freelancerId(payout.getFreelancerId())
-                .originalAmount(payout.getAmount())
+                .originalAmount(originalAmount)
                 .method(payout.getMethod())
                 .status(payout.getStatus())
-                .transactionDetails(payout.getTransactionDetails())
+                .transactionDetails(payout.getTransactionDetails() == null ? java.util.Map.of() : payout.getTransactionDetails())
                 .appliedPromoCodes(appliedPromoCodes)
                 .totalDiscount(totalDiscount)
                 .finalAmount(finalAmount)

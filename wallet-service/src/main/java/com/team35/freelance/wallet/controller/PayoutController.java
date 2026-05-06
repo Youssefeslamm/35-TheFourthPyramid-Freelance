@@ -50,11 +50,11 @@ public class PayoutController {
     // -------- S5-F10: PLATFORM FEE ANALYTICS BY CATEGORY --------
     @GetMapping("/analytics/category")
     public ResponseEntity<List<CategoryRevenueDTO>> getCategoryRevenueAnalytics(
-            @RequestParam
+            @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate startDate,
 
-            @RequestParam
+            @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate endDate
     ) {
@@ -120,10 +120,10 @@ public class PayoutController {
 
     @GetMapping("/promos/top-used")
     public ResponseEntity<List<PromoCodeUsage>> getMostUsedPromoCodes(
-            @RequestParam int limit) {
+            @RequestParam(required = false) Integer limit) {
 
         return ResponseEntity.ok(
-                payoutService.getMostUsedPromoCodes(limit)
+                payoutService.getMostUsedPromoCodes(limit == null ? 10 : limit)
         );
     }
 
@@ -143,7 +143,7 @@ public class PayoutController {
                                                @RequestBody RefundRequest request) {
 
         return ResponseEntity.ok(
-                payoutService.processRefund(id, request.getReason())
+                payoutService.processRefund(id, request == null ? null : request.getReason())
         );
     }
 
@@ -173,11 +173,11 @@ public class PayoutController {
 
     @GetMapping("/reports/revenue")
     public ResponseEntity<RevenueReportDTO> getRevenueReport(
-            @RequestParam
+            @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate startDate,
 
-            @RequestParam
+            @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate endDate) {
 
@@ -188,8 +188,8 @@ public class PayoutController {
     // S5-F11
     @GetMapping("/analytics/methods")
     public ResponseEntity<List<PayoutMethodDTO>> getPayoutMethodBreakdown(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return ResponseEntity.ok(payoutService.getPayoutMethodBreakdown(startDate, endDate));
     }
 
@@ -201,8 +201,8 @@ public class PayoutController {
         return ResponseEntity.ok(
                 payoutService.reversePayout(
                         id,
-                        request.getReversalScope(),
-                        request.getReason()
+                        request == null ? null : request.getReversalScope(),
+                        request == null ? null : request.getReason()
                 )
         );
     }

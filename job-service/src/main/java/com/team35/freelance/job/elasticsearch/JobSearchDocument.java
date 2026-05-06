@@ -16,6 +16,9 @@ public class JobSearchDocument {
     private String title;
 
     @Field(type = FieldType.Text, analyzer = "standard")
+    private String name;
+
+    @Field(type = FieldType.Text, analyzer = "standard")
     private String description;
 
     @Field(type = FieldType.Keyword)
@@ -46,6 +49,7 @@ public class JobSearchDocument {
                              String status) {
         this.id = id;
         this.title = title;
+        this.name = title;
         this.description = description;
         this.category = category;
         this.budgetMin = budgetMin;
@@ -60,6 +64,10 @@ public class JobSearchDocument {
 
     public String getTitle() {
         return title;
+    }
+
+    public String getName() {
+        return name;
     }
 
     public String getDescription() {
@@ -92,6 +100,11 @@ public class JobSearchDocument {
 
     public void setTitle(String title) {
         this.title = title;
+        this.name = title;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public void setDescription(String description) {
