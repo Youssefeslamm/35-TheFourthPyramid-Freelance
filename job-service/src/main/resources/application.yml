@@ -36,8 +36,6 @@ spring:
   jackson:
     mapper:
       accept-case-insensitive-enums: true
-    serialization:
-      write-dates-as-timestamps: false
 
 server:
   port: 8080
