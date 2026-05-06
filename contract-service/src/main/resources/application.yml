@@ -25,17 +25,11 @@ spring:
       password: ${SPRING_REDIS_PASSWORD:redispass}
 
   cassandra:
-    startup-timeout: 10s
     contact-points: ${SPRING_CASSANDRA_CONTACT_POINTS:cassandra}
     port: ${SPRING_CASSANDRA_PORT:9042}
     keyspace-name: ${SPRING_CASSANDRA_KEYSPACE_NAME:freelanceks}
     local-datacenter: ${SPRING_CASSANDRA_LOCAL_DATACENTER:datacenter1}
-    request:
-      timeout: 10s
-    connection:
-      connect-timeout: 10s
-      init-query-timeout: 10s
-    schema-action: NONE
+    schema-action: CREATE_IF_NOT_EXISTS
 
 server:
   port: 8080
@@ -50,5 +44,3 @@ cache:
   type: redis
   redis:
     time-to-live: 600000  # 10 minutes in milliseconds
-
-
