@@ -165,7 +165,6 @@ public class JobService {
             "job-service::S2-F12"
     }, allEntries = true)
     public Job createJob(Job job) {
-        applyJobDefaults(job);
         validateJob(job);
 
         if (job.getStatus() == null) {
@@ -270,7 +269,15 @@ public class JobService {
 
     @Cacheable(value = "job-service::S2-F1", key = "#status + ':' + #minBudget + ':' + #maxBudget")
     public List<Job> searchJobs(String status, Double minBudget, Double maxBudget) {
-        if (minBudget != null && maxBudget != null && minBudget > maxBudget) {
+        if (minBudget == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minBudget is required");
+        }
+
+        if (maxBudget == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "maxBudget is required");
+        }
+
+        if (minBudget > maxBudget) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "minBudget cannot be greater than maxBudget"
@@ -677,6 +684,11 @@ public class JobService {
         if (job.getDescription() == null || job.getDescription().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "description is required");
         }
+
+        if (job.getCategory() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "category is required");
+        }
+
         if (job.getBudgetMin() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "budgetMin is required");
         }
@@ -690,28 +702,6 @@ public class JobService {
                     HttpStatus.BAD_REQUEST,
                     "budgetMin cannot be greater than budgetMax"
             );
-        }
-    }
-
-    private void applyJobDefaults(Job job) {
-        if (job == null) {
-            return;
-        }
-
-        if (job.getCategory() == null) {
-            job.setCategory(JobCategory.DEVELOPMENT);
-        }
-        if (job.getStatus() == null) {
-            job.setStatus(JobStatus.OPEN);
-        }
-        if (job.getRating() == null) {
-            job.setRating(0.0);
-        }
-        if (job.getTotalRatings() == null) {
-            job.setTotalRatings(0);
-        }
-        if (job.getRequirements() == null) {
-            job.setRequirements(new HashMap<>());
         }
     }
 
