@@ -1,6 +1,5 @@
 package com.team35.freelance.contract.service;
 
-import com.team35.freelance.contract.document.ContractEvent;
 import com.team35.freelance.contract.repository.ContractEventRepository;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +15,8 @@ public class ContractEventService {
     }
 
     public void logAnalyticsViewed(LocalDateTime startDate, LocalDateTime endDate) {
-        ContractEvent event = new ContractEvent();
+        com.team35.freelance.contract.document.ContractEvent event =
+                new com.team35.freelance.contract.document.ContractEvent();
         event.setEventType("ANALYTICS_VIEWED");
         event.setOccurredAt(LocalDateTime.now());
         event.setStartDate(startDate);
@@ -29,7 +29,8 @@ public class ContractEventService {
                                     String status,
                                     String recordedBy,
                                     String notes) {
-        ContractEvent event = new ContractEvent();
+        com.team35.freelance.contract.document.ContractEvent event =
+                new com.team35.freelance.contract.document.ContractEvent();
         event.setEventType("MILESTONE_TRACKED");
         event.setOccurredAt(LocalDateTime.now());
         event.setContractId(contractId);

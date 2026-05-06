@@ -1,0 +1,2512 @@
+{
+  "scannedPath" : "/repo",
+  "scannedAt" : "2026-05-05T19:45:13.645331054Z",
+  "basePackage" : "com.team35.freelance",
+  "entities" : [ {
+    "className" : "Contract",
+    "packageName" : "com.team35.freelance.contract.model",
+    "tableName" : "contracts",
+    "columns" : [ {
+      "fieldName" : "id",
+      "columnName" : "id",
+      "javaType" : "Long",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : true,
+      "isGenerated" : true,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "jobId",
+      "columnName" : "job_id",
+      "javaType" : "Long",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "freelancerId",
+      "columnName" : "freelancer_id",
+      "javaType" : "Long",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "clientId",
+      "columnName" : "client_id",
+      "javaType" : "Long",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "proposalId",
+      "columnName" : "proposal_id",
+      "javaType" : "Long",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "agreedAmount",
+      "columnName" : "agreed_amount",
+      "javaType" : "Double",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "status",
+      "columnName" : "status",
+      "javaType" : "ContractStatus",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "startDate",
+      "columnName" : "start_date",
+      "javaType" : "LocalDateTime",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "endDate",
+      "columnName" : "end_date",
+      "javaType" : "LocalDateTime",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "metadata",
+      "columnName" : "metadata",
+      "javaType" : "Map<String,Object>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "createdAt",
+      "columnName" : "created_at",
+      "javaType" : "LocalDateTime",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    } ]
+  }, {
+    "className" : "Proposal",
+    "packageName" : "com.team35.freelance.proposal.model",
+    "tableName" : "proposals",
+    "columns" : [ {
+      "fieldName" : "id",
+      "columnName" : "id",
+      "javaType" : "Long",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : true,
+      "isGenerated" : true,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "jobId",
+      "columnName" : "job_id",
+      "javaType" : "Long",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "freelancerId",
+      "columnName" : "freelancer_id",
+      "javaType" : "Long",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "coverLetter",
+      "columnName" : "cover_letter",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "bidAmount",
+      "columnName" : "bid_amount",
+      "javaType" : "Double",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "estimatedDays",
+      "columnName" : "estimated_days",
+      "javaType" : "Integer",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "status",
+      "columnName" : "status",
+      "javaType" : "ProposalStatus",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "metadata",
+      "columnName" : "metadata",
+      "javaType" : "Map<String,Object>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "submittedAt",
+      "columnName" : "submitted_at",
+      "javaType" : "LocalDateTime",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "acceptedAt",
+      "columnName" : "accepted_at",
+      "javaType" : "LocalDateTime",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "proposalMilestones",
+      "columnName" : "proposal_milestones",
+      "javaType" : "List<ProposalMilestone>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : "OneToMany"
+    } ]
+  }, {
+    "className" : "ProposalMilestone",
+    "packageName" : "com.team35.freelance.proposal.model",
+    "tableName" : "proposal_milestones",
+    "columns" : [ {
+      "fieldName" : "id",
+      "columnName" : "id",
+      "javaType" : "Long",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : true,
+      "isGenerated" : true,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "milestoneOrder",
+      "columnName" : "milestone_order",
+      "javaType" : "Integer",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "title",
+      "columnName" : "title",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "description",
+      "columnName" : "description",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "amount",
+      "columnName" : "amount",
+      "javaType" : "Double",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "status",
+      "columnName" : "status",
+      "javaType" : "MilestoneStatus",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "metadata",
+      "columnName" : "metadata",
+      "javaType" : "Map<String,Object>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "proposal",
+      "columnName" : "proposal",
+      "javaType" : "Proposal",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : "ManyToOne"
+    } ]
+  }, {
+    "className" : "PromoCode",
+    "packageName" : "com.team35.freelance.wallet.model",
+    "tableName" : "promo_codes",
+    "columns" : [ {
+      "fieldName" : "id",
+      "columnName" : "id",
+      "javaType" : "Long",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : true,
+      "isGenerated" : true,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "code",
+      "columnName" : "code",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : true,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "discountType",
+      "columnName" : "discount_type",
+      "javaType" : "DiscountType",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "discountValue",
+      "columnName" : "discount_value",
+      "javaType" : "Double",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "maxUses",
+      "columnName" : "max_uses",
+      "javaType" : "Integer",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "currentUses",
+      "columnName" : "current_uses",
+      "javaType" : "Integer",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "expiryDate",
+      "columnName" : "expiry_date",
+      "javaType" : "LocalDateTime",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "active",
+      "columnName" : "active",
+      "javaType" : "Boolean",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "metadata",
+      "columnName" : "metadata",
+      "javaType" : "Map<String,Object>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "payoutPromos",
+      "columnName" : "payout_promos",
+      "javaType" : "List<PayoutPromo>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : "OneToMany"
+    } ]
+  }, {
+    "className" : "PayoutPromo",
+    "packageName" : "com.team35.freelance.wallet.model",
+    "tableName" : "payout_promos",
+    "columns" : [ {
+      "fieldName" : "id",
+      "columnName" : "id",
+      "javaType" : "Long",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : true,
+      "isGenerated" : true,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "discountApplied",
+      "columnName" : "discount_applied",
+      "javaType" : "Double",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "appliedAt",
+      "columnName" : "applied_at",
+      "javaType" : "LocalDateTime",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "payout",
+      "columnName" : "payout",
+      "javaType" : "Payout",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : "ManyToOne"
+    }, {
+      "fieldName" : "promoCode",
+      "columnName" : "promo_code",
+      "javaType" : "PromoCode",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : "ManyToOne"
+    } ]
+  }, {
+    "className" : "Payout",
+    "packageName" : "com.team35.freelance.wallet.model",
+    "tableName" : "payouts",
+    "columns" : [ {
+      "fieldName" : "id",
+      "columnName" : "id",
+      "javaType" : "Long",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : true,
+      "isGenerated" : true,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "contractId",
+      "columnName" : "contract_id",
+      "javaType" : "Long",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "freelancerId",
+      "columnName" : "freelancer_id",
+      "javaType" : "Long",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "amount",
+      "columnName" : "amount",
+      "javaType" : "Double",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "method",
+      "columnName" : "method",
+      "javaType" : "PayoutMethod",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "status",
+      "columnName" : "status",
+      "javaType" : "PayoutStatus",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "transactionDetails",
+      "columnName" : "transaction_details",
+      "javaType" : "Map<String,Object>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "createdAt",
+      "columnName" : "created_at",
+      "javaType" : "LocalDateTime",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "payoutPromos",
+      "columnName" : "payout_promos",
+      "javaType" : "List<PayoutPromo>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : "OneToMany"
+    } ]
+  }, {
+    "className" : "Job",
+    "packageName" : "com.team35.freelance.job.model",
+    "tableName" : "jobs",
+    "columns" : [ {
+      "fieldName" : "id",
+      "columnName" : "id",
+      "javaType" : "Long",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : true,
+      "isGenerated" : true,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "clientId",
+      "columnName" : "client_id",
+      "javaType" : "Long",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "title",
+      "columnName" : "title",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "description",
+      "columnName" : "description",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "category",
+      "columnName" : "category",
+      "javaType" : "JobCategory",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "status",
+      "columnName" : "status",
+      "javaType" : "JobStatus",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "budgetMin",
+      "columnName" : "budget_min",
+      "javaType" : "Double",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "budgetMax",
+      "columnName" : "budget_max",
+      "javaType" : "Double",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "rating",
+      "columnName" : "rating",
+      "javaType" : "Double",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "totalRatings",
+      "columnName" : "total_ratings",
+      "javaType" : "Integer",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "requirements",
+      "columnName" : "requirements",
+      "javaType" : "Map<String,Object>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "createdAt",
+      "columnName" : "created_at",
+      "javaType" : "LocalDateTime",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "jobAttachments",
+      "columnName" : "job_attachments",
+      "javaType" : "List<JobAttachment>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : "OneToMany"
+    } ]
+  }, {
+    "className" : "JobAttachment",
+    "packageName" : "com.team35.freelance.job.model",
+    "tableName" : "job_attachments",
+    "columns" : [ {
+      "fieldName" : "id",
+      "columnName" : "id",
+      "javaType" : "Long",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : true,
+      "isGenerated" : true,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "type",
+      "columnName" : "type",
+      "javaType" : "JobAttachmentType",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "fileUrl",
+      "columnName" : "file_url",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "expiryDate",
+      "columnName" : "expiry_date",
+      "javaType" : "LocalDate",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "verified",
+      "columnName" : "verified",
+      "javaType" : "Boolean",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "metadata",
+      "columnName" : "metadata",
+      "javaType" : "Map<String,Object>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "uploadedAt",
+      "columnName" : "uploaded_at",
+      "javaType" : "LocalDateTime",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "job",
+      "columnName" : "job",
+      "javaType" : "Job",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : "ManyToOne"
+    } ]
+  }, {
+    "className" : "UserSkill",
+    "packageName" : "com.team35.freelance.user.model",
+    "tableName" : "user_skills",
+    "columns" : [ {
+      "fieldName" : "id",
+      "columnName" : "id",
+      "javaType" : "Long",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : true,
+      "isGenerated" : true,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "skillName",
+      "columnName" : "skill_name",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "category",
+      "columnName" : "category",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "yearsOfExperience",
+      "columnName" : "years_of_experience",
+      "javaType" : "Integer",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "proficiencyLevel",
+      "columnName" : "proficiency_level",
+      "javaType" : "ProficiencyLevel",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "isPrimary",
+      "columnName" : "is_primary",
+      "javaType" : "Boolean",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "metadata",
+      "columnName" : "metadata",
+      "javaType" : "Map<String,Object>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "createdAt",
+      "columnName" : "created_at",
+      "javaType" : "LocalDateTime",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "user",
+      "columnName" : "user",
+      "javaType" : "User",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : "ManyToOne"
+    } ]
+  }, {
+    "className" : "User",
+    "packageName" : "com.team35.freelance.user.model",
+    "tableName" : "users",
+    "columns" : [ {
+      "fieldName" : "id",
+      "columnName" : "id",
+      "javaType" : "Long",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : true,
+      "isGenerated" : true,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "name",
+      "columnName" : "name",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "email",
+      "columnName" : "email",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : true,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "password",
+      "columnName" : "password",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "phone",
+      "columnName" : "phone",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : true,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "role",
+      "columnName" : "role",
+      "javaType" : "Role",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "status",
+      "columnName" : "status",
+      "javaType" : "Status",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "preferences",
+      "columnName" : "preferences",
+      "javaType" : "Map<String,Object>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "createdAt",
+      "columnName" : "created_at",
+      "javaType" : "LocalDateTime",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "userSkills",
+      "columnName" : "user_skills",
+      "javaType" : "List<UserSkill>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : "OneToMany"
+    } ]
+  } ],
+  "enums" : [ {
+    "enumName" : "EventType",
+    "packageName" : "com.team35.freelance.contract.common.event",
+    "values" : [ "CONTRACT" ]
+  }, {
+    "enumName" : "MilestoneTrackStatus",
+    "packageName" : "com.team35.freelance.contract.model",
+    "values" : [ "PENDING", "IN_PROGRESS", "COMPLETED", "APPROVED" ]
+  }, {
+    "enumName" : "ContractStatus",
+    "packageName" : "com.team35.freelance.contract.model",
+    "values" : [ "ACTIVE", "COMPLETED", "TERMINATED", "DISPUTED" ]
+  }, {
+    "enumName" : "EventType",
+    "packageName" : "com.team35.freelance.proposal.common.event",
+    "values" : [ "PROPOSAL" ]
+  }, {
+    "enumName" : "ProposalStatus",
+    "packageName" : "com.team35.freelance.proposal.model",
+    "values" : [ "SUBMITTED", "SHORTLISTED", "ACCEPTED", "REJECTED", "WITHDRAWN" ]
+  }, {
+    "enumName" : "MilestoneStatus",
+    "packageName" : "com.team35.freelance.proposal.model",
+    "values" : [ "PENDING", "IN_PROGRESS", "COMPLETED", "APPROVED" ]
+  }, {
+    "enumName" : "EventType",
+    "packageName" : "com.team35.freelance.wallet.common.event",
+    "values" : [ "PAYOUT_AUDIT" ]
+  }, {
+    "enumName" : "DiscountType",
+    "packageName" : "com.team35.freelance.wallet.model",
+    "values" : [ "PERCENTAGE", "FIXED" ]
+  }, {
+    "enumName" : "PayoutMethod",
+    "packageName" : "com.team35.freelance.wallet.model",
+    "values" : [ "BANK_TRANSFER", "PAYPAL", "CRYPTO" ]
+  }, {
+    "enumName" : "PayoutStatus",
+    "packageName" : "com.team35.freelance.wallet.model",
+    "values" : [ "PENDING", "COMPLETED", "FAILED", "REFUNDED" ]
+  }, {
+    "enumName" : "EventType",
+    "packageName" : "com.team35.freelance.job.common.event",
+    "values" : [ "JOB" ]
+  }, {
+    "enumName" : "JobCategory",
+    "packageName" : "com.team35.freelance.job.model",
+    "values" : [ "WEB_DEV", "WRITING", "DESIGN", "MOBILE", "DEVELOPMENT" ]
+  }, {
+    "enumName" : "JobAttachmentType",
+    "packageName" : "com.team35.freelance.job.model",
+    "values" : [ "BRIEF", "MOCKUP", "REFERENCE", "CONTRACT_TEMPLATE" ]
+  }, {
+    "enumName" : "JobStatus",
+    "packageName" : "com.team35.freelance.job.model",
+    "values" : [ "OPEN", "IN_PROGRESS", "CLOSED" ]
+  }, {
+    "enumName" : "EventType",
+    "packageName" : "com.team35.freelance.user.common.event",
+    "values" : [ "AUTH", "JOB", "PROPOSAL", "CONTRACT", "PAYOUT_AUDIT" ]
+  }, {
+    "enumName" : "Status",
+    "packageName" : "com.team35.freelance.user.model",
+    "values" : [ "ACTIVE", "DEACTIVATED" ]
+  }, {
+    "enumName" : "Role",
+    "packageName" : "com.team35.freelance.user.model",
+    "values" : [ "FREELANCER", "CLIENT", "ADMIN" ]
+  }, {
+    "enumName" : "ProficiencyLevel",
+    "packageName" : "com.team35.freelance.user.model",
+    "values" : [ "BEGINNER", "INTERMEDIATE", "EXPERT" ]
+  } ],
+  "controllers" : [ {
+    "className" : "ContractHealthController",
+    "packageName" : "com.team35.freelance.contract.controller",
+    "basePaths" : [ "" ],
+    "endpoints" : [ {
+      "verb" : "GET",
+      "path" : "/api/contracts/health",
+      "methodName" : "health",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "String"
+    } ]
+  }, {
+    "className" : "ContractController",
+    "packageName" : "com.team35.freelance.contract.controller",
+    "basePaths" : [ "/api/contracts" ],
+    "endpoints" : [ {
+      "verb" : "POST",
+      "path" : "/api/contracts",
+      "methodName" : "create",
+      "pathVariables" : [ ],
+      "requestBodyType" : "Contract",
+      "responseType" : "ResponseEntity<Contract>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/contracts/search",
+      "methodName" : "searchByBudgetRange",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<ContractSummaryDTO>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/contracts/{id}",
+      "methodName" : "getById",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Contract>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/contracts",
+      "methodName" : "getAll",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<Contract>>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/contracts/{id}",
+      "methodName" : "update",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "Contract",
+      "responseType" : "ResponseEntity<Contract>"
+    }, {
+      "verb" : "DELETE",
+      "path" : "/api/contracts/{id}",
+      "methodName" : "delete",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Void>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/contracts/user/{userId}/active",
+      "methodName" : "getActiveContractForUser",
+      "pathVariables" : [ "userId" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Contract>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/contracts/{contractId}/progress",
+      "methodName" : "updateProgress",
+      "pathVariables" : [ "contractId" ],
+      "requestBodyType" : "Map<String,Object>",
+      "responseType" : "ResponseEntity<Contract>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/contracts/history",
+      "methodName" : "getContractsInDateRange",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<Contract>>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/contracts/batch-status",
+      "methodName" : "batchUpdateStatus",
+      "pathVariables" : [ ],
+      "requestBodyType" : "List<BatchStatusUpdateDTO>",
+      "responseType" : "ResponseEntity<Map<String,Integer>>"
+    }, {
+      "verb" : "DELETE",
+      "path" : "/api/contracts/purge",
+      "methodName" : "purgeOldContracts",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Map<String,Integer>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/contracts/freelancer/{freelancerId}/summary",
+      "methodName" : "getFreelancerSummary",
+      "pathVariables" : [ "freelancerId" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<FreelancerPerformanceDTO>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/contracts/stalled",
+      "methodName" : "getStalledContracts",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<StalledContractDTO>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/contracts/metadata/search",
+      "methodName" : "searchContractsByMetadata",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<Contract>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/contracts/analytics",
+      "methodName" : "getContractAnalytics",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<ContractAnalyticsDTO>"
+    }, {
+      "verb" : "POST",
+      "path" : "/api/contracts/{id}/milestones/track",
+      "methodName" : "trackMilestone",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "MilestoneTrackRequestDTO",
+      "responseType" : "ResponseEntity<Void>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/contracts/{id}/milestones/timeline",
+      "methodName" : "getMilestoneTimeline",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<ContractMilestoneDTO>>"
+    } ]
+  }, {
+    "className" : "ProposalController",
+    "packageName" : "com.team35.freelance.proposal.controller",
+    "basePaths" : [ "/api/proposals" ],
+    "endpoints" : [ {
+      "verb" : "POST",
+      "path" : "/api/proposals",
+      "methodName" : "create",
+      "pathVariables" : [ ],
+      "requestBodyType" : "Proposal",
+      "responseType" : "ResponseEntity<Proposal>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/proposals/{id}",
+      "methodName" : "getById",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Proposal>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/proposals",
+      "methodName" : "getAll",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<Proposal>>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/proposals/{id}",
+      "methodName" : "update",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "Proposal",
+      "responseType" : "ResponseEntity<Proposal>"
+    }, {
+      "verb" : "DELETE",
+      "path" : "/api/proposals/{id}",
+      "methodName" : "delete",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Void>"
+    }, {
+      "verb" : "POST",
+      "path" : "/api/proposals/estimate",
+      "methodName" : "estimateFee",
+      "pathVariables" : [ ],
+      "requestBodyType" : "FeeEstimateRequest",
+      "responseType" : "ResponseEntity<FeeEstimateDTO>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/proposals/{id}/withdraw",
+      "methodName" : "withdrawProposal",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Proposal>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/proposals/{proposalId}/details",
+      "methodName" : "getProposalDetails",
+      "pathVariables" : [ "proposalId" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<ProposalDetailsDTO>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/proposals/{proposalId}/accept",
+      "methodName" : "acceptProposal",
+      "pathVariables" : [ "proposalId" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Proposal>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/proposals/{id}/complete",
+      "methodName" : "completeProposal",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Proposal>"
+    }, {
+      "verb" : "POST",
+      "path" : "/api/proposals/{proposalId}/milestones",
+      "methodName" : "addMilestones",
+      "pathVariables" : [ "proposalId" ],
+      "requestBodyType" : "List<MilestoneRequest>",
+      "responseType" : "ResponseEntity<Proposal>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/proposals/analytics",
+      "methodName" : "getAnalytics",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<ProposalAnalyticsDTO>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/proposals/metadata/search",
+      "methodName" : "searchByMetadata",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<Proposal>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/proposals/search",
+      "methodName" : "search",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<Proposal>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/proposals/analytics/dashboard",
+      "methodName" : "getAnalyticsDashboard",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<ProposalAnalyticsDashboardDTO>"
+    }, {
+      "verb" : "POST",
+      "path" : "/api/proposals/{proposalId}/record-interaction",
+      "methodName" : "recordInteraction",
+      "pathVariables" : [ "proposalId" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Map<String,String>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/proposals/recommendations",
+      "methodName" : "getRecommendations",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<JobRecommendationDTO>>"
+    } ]
+  }, {
+    "className" : "ProposalHealthController",
+    "packageName" : "com.team35.freelance.proposal.controller",
+    "basePaths" : [ "" ],
+    "endpoints" : [ {
+      "verb" : "GET",
+      "path" : "/api/proposals/health",
+      "methodName" : "health",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "String"
+    } ]
+  }, {
+    "className" : "ProposalMilestoneController",
+    "packageName" : "com.team35.freelance.proposal.controller",
+    "basePaths" : [ "/api/milestones" ],
+    "endpoints" : [ {
+      "verb" : "POST",
+      "path" : "/api/milestones/proposal/{proposalId}",
+      "methodName" : "create",
+      "pathVariables" : [ "proposalId" ],
+      "requestBodyType" : "ProposalMilestone",
+      "responseType" : "ResponseEntity<ProposalMilestone>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/milestones/{id}",
+      "methodName" : "getById",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<ProposalMilestone>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/milestones",
+      "methodName" : "getAll",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<ProposalMilestone>>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/milestones/{id}",
+      "methodName" : "update",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "ProposalMilestone",
+      "responseType" : "ResponseEntity<ProposalMilestone>"
+    }, {
+      "verb" : "DELETE",
+      "path" : "/api/milestones/{id}",
+      "methodName" : "delete",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Void>"
+    } ]
+  }, {
+    "className" : "WalletHealthController",
+    "packageName" : "com.team35.freelance.wallet.controller",
+    "basePaths" : [ "" ],
+    "endpoints" : [ {
+      "verb" : "GET",
+      "path" : "/api/payouts/health",
+      "methodName" : "health",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "String"
+    } ]
+  }, {
+    "className" : "PayoutPromoController",
+    "packageName" : "com.team35.freelance.wallet.controller",
+    "basePaths" : [ "/api/payout-promos" ],
+    "endpoints" : [ {
+      "verb" : "GET",
+      "path" : "/api/payout-promos",
+      "methodName" : "getAll",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<PayoutPromo>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/payout-promos/{id}",
+      "methodName" : "getById",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<PayoutPromo>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/payout-promos/payout/{payoutId}",
+      "methodName" : "getByPayoutId",
+      "pathVariables" : [ "payoutId" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<PayoutPromo>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/payout-promos/promo-code/{promoCodeId}",
+      "methodName" : "getByPromoCodeId",
+      "pathVariables" : [ "promoCodeId" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<PayoutPromo>>"
+    }, {
+      "verb" : "POST",
+      "path" : "/api/payout-promos",
+      "methodName" : "create",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<PayoutPromo>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/payout-promos/{id}",
+      "methodName" : "update",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<PayoutPromo>"
+    }, {
+      "verb" : "DELETE",
+      "path" : "/api/payout-promos/{id}",
+      "methodName" : "delete",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Void>"
+    } ]
+  }, {
+    "className" : "PromoCodeController",
+    "packageName" : "com.team35.freelance.wallet.controller",
+    "basePaths" : [ "/api/promocodes" ],
+    "endpoints" : [ {
+      "verb" : "POST",
+      "path" : "/api/promocodes",
+      "methodName" : "createPromoCode",
+      "pathVariables" : [ ],
+      "requestBodyType" : "PromoCode",
+      "responseType" : "ResponseEntity<PromoCode>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/promocodes",
+      "methodName" : "getAllPromoCodes",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<PromoCode>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/promocodes/{id}",
+      "methodName" : "getPromoCodeById",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<PromoCode>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/promocodes/{id}",
+      "methodName" : "updatePromoCode",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "PromoCode",
+      "responseType" : "ResponseEntity<PromoCode>"
+    }, {
+      "verb" : "DELETE",
+      "path" : "/api/promocodes/{id}",
+      "methodName" : "deletePromoCode",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<String>"
+    } ]
+  }, {
+    "className" : "PayoutController",
+    "packageName" : "com.team35.freelance.wallet.controller",
+    "basePaths" : [ "/api/payouts" ],
+    "endpoints" : [ {
+      "verb" : "POST",
+      "path" : "/api/payouts",
+      "methodName" : "createPayout",
+      "pathVariables" : [ ],
+      "requestBodyType" : "Payout",
+      "responseType" : "ResponseEntity<Payout>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/payouts",
+      "methodName" : "getAllPayouts",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<Payout>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/payouts/analytics/category",
+      "methodName" : "getCategoryRevenueAnalytics",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<CategoryRevenueDTO>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/payouts/{id}",
+      "methodName" : "getPayoutById",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Payout>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/payouts/{id}",
+      "methodName" : "updatePayout",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "Payout",
+      "responseType" : "ResponseEntity<Payout>"
+    }, {
+      "verb" : "DELETE",
+      "path" : "/api/payouts/{id}",
+      "methodName" : "deletePayout",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<String>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/payouts/freelancer/{freelancerId}/summary",
+      "methodName" : "getFreelancerSummary",
+      "pathVariables" : [ "freelancerId" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<FreelancerPayoutSummaryDTO>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/payouts/search",
+      "methodName" : "searchPayouts",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<Payout>>"
+    }, {
+      "verb" : "POST",
+      "path" : "/api/payouts/{payoutId}/promos/{promoCodeId}",
+      "methodName" : "applyPromoCodeToPayout",
+      "pathVariables" : [ "payoutId", "promoCodeId" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Payout>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/payouts/promos/top-used",
+      "methodName" : "getMostUsedPromoCodes",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<PromoCodeUsage>>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/payouts/{id}/retry",
+      "methodName" : "retryPayout",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Payout>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/payouts/{id}/refund",
+      "methodName" : "refundPayout",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "RefundRequest",
+      "responseType" : "ResponseEntity<Payout>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/payouts/{payoutId}/details",
+      "methodName" : "getPayoutDetails",
+      "pathVariables" : [ "payoutId" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<PayoutDetailsDTO>"
+    }, {
+      "verb" : "POST",
+      "path" : "/api/payouts/contract/{contractId}",
+      "methodName" : "processContractPayout",
+      "pathVariables" : [ "contractId" ],
+      "requestBodyType" : "ProcessPayoutRequest",
+      "responseType" : "ResponseEntity<Void>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/payouts/reports/revenue",
+      "methodName" : "getRevenueReport",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<RevenueReportDTO>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/payouts/analytics/methods",
+      "methodName" : "getPayoutMethodBreakdown",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<PayoutMethodDTO>>"
+    }, {
+      "verb" : "POST",
+      "path" : "/api/payouts/{id}/reverse-milestone",
+      "methodName" : "reverseMilestone",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "RefundRequest",
+      "responseType" : "ResponseEntity<Payout>"
+    } ]
+  }, {
+    "className" : "JobAttachmentController",
+    "packageName" : "com.team35.freelance.job.controller",
+    "basePaths" : [ "/api/jobs/{jobId}/attachments" ],
+    "endpoints" : [ {
+      "verb" : "POST",
+      "path" : "/api/jobs/{jobId}/attachments",
+      "methodName" : "createAttachment",
+      "pathVariables" : [ "jobId" ],
+      "requestBodyType" : "JobAttachmentRequestDTO",
+      "responseType" : "ResponseEntity<JobAttachment>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/jobs/{jobId}/attachments",
+      "methodName" : "getAttachmentsByJob",
+      "pathVariables" : [ "jobId" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<JobAttachment>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/jobs/{jobId}/attachments/{attachmentId}",
+      "methodName" : "getAttachmentById",
+      "pathVariables" : [ "jobId", "attachmentId" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<JobAttachment>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/jobs/{jobId}/attachments/{attachmentId}",
+      "methodName" : "updateAttachment",
+      "pathVariables" : [ "jobId", "attachmentId" ],
+      "requestBodyType" : "JobAttachmentRequestDTO",
+      "responseType" : "ResponseEntity<JobAttachment>"
+    }, {
+      "verb" : "DELETE",
+      "path" : "/api/jobs/{jobId}/attachments/{attachmentId}",
+      "methodName" : "deleteAttachment",
+      "pathVariables" : [ "jobId", "attachmentId" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Void>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/jobs/{jobId}/attachments/{attachmentId}/verify",
+      "methodName" : "verifyAttachment",
+      "pathVariables" : [ "jobId", "attachmentId" ],
+      "requestBodyType" : "VerifyAttachmentRequestDTO",
+      "responseType" : "ResponseEntity<Job>"
+    } ]
+  }, {
+    "className" : "JobController",
+    "packageName" : "com.team35.freelance.job.controller",
+    "basePaths" : [ "/api/jobs" ],
+    "endpoints" : [ {
+      "verb" : "GET",
+      "path" : "/api/jobs/{id}/proposal-summary",
+      "methodName" : "getProposalSummary",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<JobProposalSummaryDTO>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/jobs/search/full-text",
+      "methodName" : "fullTextSearchJobs",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<Job>>"
+    }, {
+      "verb" : "POST",
+      "path" : "/api/jobs/{id}/index",
+      "methodName" : "indexJobForSearch",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Map<String,Object>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/jobs/search",
+      "methodName" : "searchJobs",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<Job>>"
+    }, {
+      "verb" : "POST",
+      "path" : "/api/jobs",
+      "methodName" : "createJob",
+      "pathVariables" : [ ],
+      "requestBodyType" : "Job",
+      "responseType" : "ResponseEntity<Job>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/jobs",
+      "methodName" : "getAllJobs",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<Job>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/jobs/{id}",
+      "methodName" : "getJobById",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Job>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/jobs/{id}",
+      "methodName" : "updateJob",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "Job",
+      "responseType" : "ResponseEntity<Job>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/jobs/{id}/requirements",
+      "methodName" : "updateJobRequirements",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "Map<String,Object>",
+      "responseType" : "ResponseEntity<Job>"
+    }, {
+      "verb" : "DELETE",
+      "path" : "/api/jobs/{id}",
+      "methodName" : "deleteJob",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<Void>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/jobs/attachments/expired",
+      "methodName" : "getJobsWithExpiredAttachments",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<JobAttachmentAlertDTO>>"
+    }, {
+      "verb" : "POST",
+      "path" : "/api/jobs/{id}/rate",
+      "methodName" : "rateJob",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "RateJobRequestDTO",
+      "responseType" : "ResponseEntity<Job>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/jobs/{id}/close",
+      "methodName" : "closeJob",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "CloseJobRequest",
+      "responseType" : "ResponseEntity<Job>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/jobs/requirements/search",
+      "methodName" : "filterJobsByRequirement",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<Job>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/jobs/reports/top-budget",
+      "methodName" : "getTopBudgetJobs",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<List<TopBudgetJobDTO>>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/jobs/{id}/dashboard",
+      "methodName" : "getJobDashboard",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ResponseEntity<JobDashboardDTO>"
+    } ]
+  }, {
+    "className" : "JobHealthController",
+    "packageName" : "com.team35.freelance.job.controller",
+    "basePaths" : [ "" ],
+    "endpoints" : [ {
+      "verb" : "GET",
+      "path" : "/api/jobs/health",
+      "methodName" : "health",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "String"
+    } ]
+  }, {
+    "className" : "AuthController",
+    "packageName" : "com.team35.freelance.user.controller",
+    "basePaths" : [ "/api/auth" ],
+    "endpoints" : [ {
+      "verb" : "POST",
+      "path" : "/api/auth/register",
+      "methodName" : "register",
+      "pathVariables" : [ ],
+      "requestBodyType" : "RegisterRequest",
+      "responseType" : "ResponseEntity<?>"
+    }, {
+      "verb" : "POST",
+      "path" : "/api/auth/login",
+      "methodName" : "login",
+      "pathVariables" : [ ],
+      "requestBodyType" : "AuthRequest",
+      "responseType" : "ResponseEntity<AuthResponse>"
+    } ]
+  }, {
+    "className" : "UserHealthController",
+    "packageName" : "com.team35.freelance.user.controller",
+    "basePaths" : [ "" ],
+    "endpoints" : [ {
+      "verb" : "GET",
+      "path" : "/api/users/health",
+      "methodName" : "health",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "String"
+    } ]
+  }, {
+    "className" : "UserController",
+    "packageName" : "com.team35.freelance.user.controller",
+    "basePaths" : [ "/api/users" ],
+    "endpoints" : [ {
+      "verb" : "POST",
+      "path" : "/api/users",
+      "methodName" : "createUser",
+      "pathVariables" : [ ],
+      "requestBodyType" : "User",
+      "responseType" : "User"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/users/{id}",
+      "methodName" : "getUserById",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "UserProfileDTO"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/users",
+      "methodName" : "getAllUsers",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "List<User>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/users/{id}",
+      "methodName" : "updateUser",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "User",
+      "responseType" : "User"
+    }, {
+      "verb" : "DELETE",
+      "path" : "/api/users/{id}",
+      "methodName" : "deleteUser",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "void"
+    }, {
+      "verb" : "POST",
+      "path" : "/api/users/{userId}/skills",
+      "methodName" : "addSkill",
+      "pathVariables" : [ "userId" ],
+      "requestBodyType" : "UserSkill",
+      "responseType" : "UserSkill"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/users/{userId}/skills",
+      "methodName" : "getSkills",
+      "pathVariables" : [ "userId" ],
+      "requestBodyType" : null,
+      "responseType" : "List<UserSkill>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/users/skills/{skillId}",
+      "methodName" : "updateSkill",
+      "pathVariables" : [ "skillId" ],
+      "requestBodyType" : "UserSkill",
+      "responseType" : "UserSkill"
+    }, {
+      "verb" : "DELETE",
+      "path" : "/api/users/skills/{skillId}",
+      "methodName" : "deleteSkill",
+      "pathVariables" : [ "skillId" ],
+      "requestBodyType" : null,
+      "responseType" : "void"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/users/search",
+      "methodName" : "searchUsers",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "List<User>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/users/{id}/preferences",
+      "methodName" : "updatePreferences",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "Map<String,Object>",
+      "responseType" : "User"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/users/preferences/search",
+      "methodName" : "searchByPreference",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "List<User>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/users/{id}/contract-summary",
+      "methodName" : "getUserContractSummary",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "UserContractSummaryDTO"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/users/{userId}/skills/{skillId}/primary",
+      "methodName" : "setPrimarySkill",
+      "pathVariables" : [ "userId", "skillId" ],
+      "requestBodyType" : null,
+      "responseType" : "User"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/users/{id}/profile",
+      "methodName" : "getUserProfile",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "UserProfileDTO"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/users/{id}/deactivate",
+      "methodName" : "deactivateUser",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "User"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/users/reports/top-freelancers",
+      "methodName" : "getTopFreelancers",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "List<TopFreelancerDTO>"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/users/preferences/language",
+      "methodName" : "getUsersByLanguageAndContracts",
+      "pathVariables" : [ ],
+      "requestBodyType" : null,
+      "responseType" : "List<User>"
+    }, {
+      "verb" : "PUT",
+      "path" : "/api/users/{id}/role",
+      "methodName" : "updateUserRole",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : "Map<String,String>",
+      "responseType" : "User"
+    }, {
+      "verb" : "GET",
+      "path" : "/api/users/{id}/activity",
+      "methodName" : "getUserActivityFeed",
+      "pathVariables" : [ "id" ],
+      "requestBodyType" : null,
+      "responseType" : "ActivityFeedResponseDTO"
+    } ]
+  } ],
+  "mongoCollections" : [ {
+    "className" : "ContractAnalyticsSnapshot",
+    "packageName" : "com.team35.freelance.contract.document",
+    "collectionName" : "contract_analytics_snapshots",
+    "fields" : [ {
+      "fieldName" : "id",
+      "javaType" : "String",
+      "isId" : true
+    }, {
+      "fieldName" : "startDate",
+      "javaType" : "LocalDateTime",
+      "isId" : false
+    }, {
+      "fieldName" : "endDate",
+      "javaType" : "LocalDateTime",
+      "isId" : false
+    }, {
+      "fieldName" : "generatedAt",
+      "javaType" : "LocalDateTime",
+      "isId" : false
+    }, {
+      "fieldName" : "analytics",
+      "javaType" : "ContractAnalyticsDTO",
+      "isId" : false
+    } ]
+  }, {
+    "className" : "ContractEvent",
+    "packageName" : "com.team35.freelance.contract.document",
+    "collectionName" : "contract_events",
+    "fields" : [ {
+      "fieldName" : "id",
+      "javaType" : "String",
+      "isId" : true
+    }, {
+      "fieldName" : "eventType",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "occurredAt",
+      "javaType" : "LocalDateTime",
+      "isId" : false
+    }, {
+      "fieldName" : "startDate",
+      "javaType" : "LocalDateTime",
+      "isId" : false
+    }, {
+      "fieldName" : "endDate",
+      "javaType" : "LocalDateTime",
+      "isId" : false
+    }, {
+      "fieldName" : "contractId",
+      "javaType" : "Long",
+      "isId" : false
+    }, {
+      "fieldName" : "milestoneOrder",
+      "javaType" : "Integer",
+      "isId" : false
+    }, {
+      "fieldName" : "status",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "details",
+      "javaType" : "String",
+      "isId" : false
+    } ]
+  }, {
+    "className" : "ContractEvent",
+    "packageName" : "com.team35.freelance.contract.common.event",
+    "collectionName" : "contract_events",
+    "fields" : [ {
+      "fieldName" : "id",
+      "javaType" : "String",
+      "isId" : true
+    }, {
+      "fieldName" : "timestamp",
+      "javaType" : "LocalDateTime",
+      "isId" : false
+    }, {
+      "fieldName" : "action",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "details",
+      "javaType" : "Map<String,Object>",
+      "isId" : false
+    } ]
+  }, {
+    "className" : "ProposalEvent",
+    "packageName" : "com.team35.freelance.proposal.common.event",
+    "collectionName" : "proposal_events",
+    "fields" : [ {
+      "fieldName" : "id",
+      "javaType" : "String",
+      "isId" : true
+    }, {
+      "fieldName" : "proposalId",
+      "javaType" : "Long",
+      "isId" : false
+    }, {
+      "fieldName" : "action",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "timestamp",
+      "javaType" : "Instant",
+      "isId" : false
+    }, {
+      "fieldName" : "details",
+      "javaType" : "Map<String,Object>",
+      "isId" : false
+    } ]
+  }, {
+    "className" : "PayoutAuditEvent",
+    "packageName" : "com.team35.freelance.wallet.common.event",
+    "collectionName" : "payout_audit_trail",
+    "fields" : [ {
+      "fieldName" : "id",
+      "javaType" : "String",
+      "isId" : true
+    }, {
+      "fieldName" : "timestamp",
+      "javaType" : "LocalDateTime",
+      "isId" : false
+    }, {
+      "fieldName" : "action",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "details",
+      "javaType" : "Map<String,Object>",
+      "isId" : false
+    }, {
+      "fieldName" : "method",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "amount",
+      "javaType" : "Double",
+      "isId" : false
+    } ]
+  }, {
+    "className" : "JobEvent",
+    "packageName" : "com.team35.freelance.job.common.event",
+    "collectionName" : "job_events",
+    "fields" : [ {
+      "fieldName" : "id",
+      "javaType" : "String",
+      "isId" : true
+    }, {
+      "fieldName" : "jobId",
+      "javaType" : "Long",
+      "isId" : false
+    }, {
+      "fieldName" : "timestamp",
+      "javaType" : "LocalDateTime",
+      "isId" : false
+    }, {
+      "fieldName" : "action",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "details",
+      "javaType" : "Map<String,Object>",
+      "isId" : false
+    } ]
+  }, {
+    "className" : "AuthEvent",
+    "packageName" : "com.team35.freelance.user.common.event",
+    "collectionName" : "auth_events",
+    "fields" : [ {
+      "fieldName" : "id",
+      "javaType" : "String",
+      "isId" : true
+    }, {
+      "fieldName" : "userId",
+      "javaType" : "Long",
+      "isId" : false
+    }, {
+      "fieldName" : "timestamp",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "action",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "details",
+      "javaType" : "Map<String,Object>",
+      "isId" : false
+    } ]
+  } ],
+  "esIndices" : [ {
+    "className" : "JobSearchDocument",
+    "packageName" : "com.team35.freelance.job.elasticsearch",
+    "indexName" : "jobs",
+    "fields" : [ {
+      "fieldName" : "id",
+      "javaType" : "Long",
+      "isId" : true
+    }, {
+      "fieldName" : "title",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "description",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "category",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "budgetMin",
+      "javaType" : "Double",
+      "isId" : false
+    }, {
+      "fieldName" : "budgetMax",
+      "javaType" : "Double",
+      "isId" : false
+    }, {
+      "fieldName" : "rating",
+      "javaType" : "Double",
+      "isId" : false
+    }, {
+      "fieldName" : "status",
+      "javaType" : "String",
+      "isId" : false
+    } ]
+  } ],
+  "neo4jNodes" : [ {
+    "className" : "FreelancerNode",
+    "packageName" : "com.team35.freelance.proposal.model.neo4j",
+    "label" : "Freelancer",
+    "fields" : [ {
+      "fieldName" : "userId",
+      "javaType" : "Long",
+      "isId" : true
+    }, {
+      "fieldName" : "name",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "proposedTo",
+      "javaType" : "List<ProposedToRelationship>",
+      "isId" : false
+    } ]
+  }, {
+    "className" : "JobNode",
+    "packageName" : "com.team35.freelance.proposal.model.neo4j",
+    "label" : "Job",
+    "fields" : [ {
+      "fieldName" : "jobId",
+      "javaType" : "Long",
+      "isId" : true
+    }, {
+      "fieldName" : "title",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "category",
+      "javaType" : "String",
+      "isId" : false
+    } ]
+  } ],
+  "neo4jRelationships" : [ {
+    "className" : "ProposedToRelationship",
+    "packageName" : "com.team35.freelance.proposal.model.neo4j",
+    "fields" : [ {
+      "fieldName" : "id",
+      "javaType" : "Long",
+      "isId" : true
+    }, {
+      "fieldName" : "proposalCount",
+      "javaType" : "Integer",
+      "isId" : false
+    }, {
+      "fieldName" : "lastProposalDate",
+      "javaType" : "LocalDateTime",
+      "isId" : false
+    }, {
+      "fieldName" : "recordedProposalIdsStr",
+      "javaType" : "String",
+      "isId" : false
+    }, {
+      "fieldName" : "job",
+      "javaType" : "JobNode",
+      "isId" : false
+    } ]
+  } ],
+  "cassandraTables" : [ {
+    "className" : "ContractMilestoneEvent",
+    "packageName" : "com.team35.freelance.contract.cassandra",
+    "tableName" : "contract_milestone_events",
+    "columns" : [ {
+      "fieldName" : "contractId",
+      "columnName" : "contract_id",
+      "javaType" : "Long",
+      "isPartitionKey" : false,
+      "isClusteringKey" : false
+    }, {
+      "fieldName" : "timestamp",
+      "columnName" : "timestamp",
+      "javaType" : "LocalDateTime",
+      "isPartitionKey" : false,
+      "isClusteringKey" : false
+    }, {
+      "fieldName" : "milestoneOrder",
+      "columnName" : "milestone_order",
+      "javaType" : "Integer",
+      "isPartitionKey" : false,
+      "isClusteringKey" : false
+    }, {
+      "fieldName" : "status",
+      "columnName" : "status",
+      "javaType" : "String",
+      "isPartitionKey" : false,
+      "isClusteringKey" : false
+    }, {
+      "fieldName" : "recordedBy",
+      "columnName" : "recorded_by",
+      "javaType" : "String",
+      "isPartitionKey" : false,
+      "isClusteringKey" : false
+    }, {
+      "fieldName" : "notes",
+      "columnName" : "notes",
+      "javaType" : "String",
+      "isPartitionKey" : false,
+      "isClusteringKey" : false
+    } ]
+  } ],
+  "auth" : {
+    "userTable" : "users",
+    "userColumns" : [ {
+      "fieldName" : "id",
+      "columnName" : "id",
+      "javaType" : "Long",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : true,
+      "isGenerated" : true,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "name",
+      "columnName" : "name",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "email",
+      "columnName" : "email",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : true,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "password",
+      "columnName" : "password",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "phone",
+      "columnName" : "phone",
+      "javaType" : "String",
+      "nullable" : false,
+      "unique" : true,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "role",
+      "columnName" : "role",
+      "javaType" : "Role",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "status",
+      "columnName" : "status",
+      "javaType" : "Status",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "preferences",
+      "columnName" : "preferences",
+      "javaType" : "Map<String,Object>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "createdAt",
+      "columnName" : "created_at",
+      "javaType" : "LocalDateTime",
+      "nullable" : false,
+      "unique" : false,
+      "required" : true,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : null
+    }, {
+      "fieldName" : "userSkills",
+      "columnName" : "user_skills",
+      "javaType" : "List<UserSkill>",
+      "nullable" : true,
+      "unique" : false,
+      "required" : false,
+      "isId" : false,
+      "isGenerated" : false,
+      "isEnum" : false,
+      "relationKind" : "OneToMany"
+    } ],
+    "roleColumn" : null,
+    "roleEnumJavaType" : null,
+    "roleEnumValues" : [ ],
+    "adminLabel" : null,
+    "emailColumn" : "email",
+    "passwordColumn" : "password",
+    "loginPath" : "/api/auth/register",
+    "loginVerb" : "POST"
+  }
+}
