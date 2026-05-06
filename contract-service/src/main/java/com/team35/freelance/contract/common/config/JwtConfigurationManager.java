@@ -8,7 +8,7 @@ public class JwtConfigurationManager {
     private final long expirationMs;
 
     private JwtConfigurationManager() {
-        this.secret = System.getenv().getOrDefault("JWT_SECRET", "default-secret");
+        this.secret = System.getenv().getOrDefault("JWT_SECRET", "0123456789abcdef0123456789abcdef01234567");
         this.expirationMs = Long.parseLong(
                 System.getenv().getOrDefault("JWT_EXPIRATION_MS", "86400000")
         );

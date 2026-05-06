@@ -8,14 +8,174 @@ services:
       POSTGRES_DB: freelancedb
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      POSTGRES_INIT_SQL: |
+        CREATE TYPE user_role_enum AS ENUM ('ADMIN', 'CLIENT', 'FREELANCER');
+        CREATE TYPE user_status_enum AS ENUM ('ACTIVE', 'DEACTIVATED');
+        CREATE TYPE proficiency_level_enum AS ENUM ('BEGINNER', 'INTERMEDIATE', 'EXPERT');
+
+        CREATE TYPE proposal_status_enum AS ENUM ('SUBMITTED', 'SHORTLISTED', 'ACCEPTED', 'REJECTED', 'WITHDRAWN');
+        CREATE TYPE milestone_status_enum AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'APPROVED');
+
+        CREATE TYPE payout_method_enum AS ENUM (
+            'BANK_TRANSFER',
+            'PAYPAL',
+            'CRYPTO'
+        );
+        CREATE TYPE payout_status_enum AS ENUM (
+            'PENDING',
+            'COMPLETED',
+            'FAILED',
+            'REFUNDED'
+        );
+        CREATE TYPE discount_type_enum AS ENUM (
+            'PERCENTAGE',
+            'FIXED'
+        );
+        CREATE TYPE contract_status_enum AS ENUM (
+            'ACTIVE', 'COMPLETED', 'TERMINATED', 'DISPUTED'
+        );
+
+        CREATE TYPE job_status_enum AS ENUM ('OPEN', 'IN_PROGRESS', 'CLOSED');
+        CREATE TYPE job_category_enum AS ENUM ('WEB_DEV', 'WRITING', 'DESIGN', 'MOBILE', 'DEVELOPMENT');
+        CREATE TYPE job_attachment_type_enum AS ENUM ('BRIEF', 'MOCKUP', 'REFERENCE', 'CONTRACT_TEMPLATE');
+
+        CREATE TABLE IF NOT EXISTS users (
+            id BIGSERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            password VARCHAR(255) NOT NULL,
+            phone VARCHAR(255) NOT NULL UNIQUE,
+            role user_role_enum NOT NULL,
+            status user_status_enum NOT NULL,
+            preferences JSONB,
+            created_at TIMESTAMP NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS user_skills (
+            id BIGSERIAL PRIMARY KEY,
+            skill_name VARCHAR(255) NOT NULL,
+            category VARCHAR(255) NOT NULL,
+            years_of_experience INTEGER NOT NULL,
+            proficiency_level proficiency_level_enum NOT NULL,
+            is_primary BOOLEAN,
+            metadata JSONB,
+            created_at TIMESTAMP NOT NULL,
+            user_id BIGINT NOT NULL,
+            CONSTRAINT fk_user_skills_user FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS jobs (
+            id BIGSERIAL PRIMARY KEY,
+            client_id BIGINT NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT NOT NULL,
+            category job_category_enum NOT NULL,
+            status job_status_enum NOT NULL,
+            budget_min DOUBLE PRECISION NOT NULL,
+            budget_max DOUBLE PRECISION NOT NULL,
+            rating DOUBLE PRECISION NOT NULL,
+            total_ratings INTEGER NOT NULL,
+            requirements JSONB,
+            created_at TIMESTAMP NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS job_attachments (
+            id BIGSERIAL PRIMARY KEY,
+            type job_attachment_type_enum NOT NULL,
+            file_url VARCHAR(255) NOT NULL,
+            expiry_date DATE NOT NULL,
+            verified BOOLEAN NOT NULL,
+            metadata JSONB,
+            uploaded_at TIMESTAMP NOT NULL,
+            job_id BIGINT NOT NULL,
+            CONSTRAINT fk_job_attachments_job FOREIGN KEY (job_id) REFERENCES jobs(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS proposals (
+            id BIGSERIAL PRIMARY KEY,
+            job_id BIGINT NOT NULL,
+            freelancer_id BIGINT NOT NULL,
+            cover_letter TEXT NOT NULL,
+            bid_amount DOUBLE PRECISION NOT NULL,
+            estimated_days INTEGER NOT NULL,
+            status proposal_status_enum NOT NULL,
+            metadata JSONB,
+            submitted_at TIMESTAMP NOT NULL,
+            accepted_at TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS proposal_milestones (
+            id BIGSERIAL PRIMARY KEY,
+            milestone_order INTEGER NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT NOT NULL,
+            amount DOUBLE PRECISION NOT NULL,
+            status milestone_status_enum NOT NULL,
+            metadata JSONB,
+            proposal_id BIGINT NOT NULL,
+            CONSTRAINT fk_proposal_milestones_proposal FOREIGN KEY (proposal_id) REFERENCES proposals(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS contracts (
+            id BIGSERIAL PRIMARY KEY,
+            job_id BIGINT NOT NULL,
+            freelancer_id BIGINT NOT NULL,
+            client_id BIGINT NOT NULL,
+            proposal_id BIGINT NOT NULL,
+            agreed_amount DOUBLE PRECISION NOT NULL,
+            status contract_status_enum NOT NULL,
+            start_date TIMESTAMP NOT NULL,
+            end_date TIMESTAMP,
+            metadata JSONB,
+            created_at TIMESTAMP NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS payouts (
+            id BIGSERIAL PRIMARY KEY,
+            contract_id BIGINT NOT NULL,
+            freelancer_id BIGINT NOT NULL,
+            amount DOUBLE PRECISION NOT NULL,
+            method payout_method_enum NOT NULL,
+            status payout_status_enum NOT NULL,
+            transaction_details JSONB,
+            created_at TIMESTAMP NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS promo_codes (
+            id BIGSERIAL PRIMARY KEY,
+            code VARCHAR(255) NOT NULL UNIQUE,
+            discount_type discount_type_enum NOT NULL,
+            discount_value DOUBLE PRECISION NOT NULL,
+            max_uses INTEGER NOT NULL,
+            current_uses INTEGER NOT NULL,
+            expiry_date TIMESTAMP NOT NULL,
+            active BOOLEAN NOT NULL,
+            metadata JSONB
+        );
+
+        CREATE TABLE IF NOT EXISTS payout_promos (
+            id BIGSERIAL PRIMARY KEY,
+            discount_applied DOUBLE PRECISION NOT NULL,
+            applied_at TIMESTAMP NOT NULL,
+            payout_id BIGINT NOT NULL,
+            promo_code_id BIGINT NOT NULL,
+            CONSTRAINT fk_payout_promos_payout FOREIGN KEY (payout_id) REFERENCES payouts(id),
+            CONSTRAINT fk_payout_promos_promo_code FOREIGN KEY (promo_code_id) REFERENCES promo_codes(id)
+        );
+    entrypoint:
+      - bash
+      - -c
+      - |
+        printenv POSTGRES_INIT_SQL > /docker-entrypoint-initdb.d/init.sql
+        exec docker-entrypoint.sh postgres
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d freelancedb"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 20
+      start_period: 60s
 
   mongo:
     image: mongo:latest
@@ -61,8 +221,8 @@ services:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 30
-      start_period: 90s
+      retries: 20
+      start_period: 60s
 
   neo4j:
     image: neo4j:latest
@@ -91,6 +251,7 @@ services:
     environment:
       MAX_HEAP_SIZE: 512M
       HEAP_NEWSIZE: 128M
+      JVM_OPTS: "-Xms512m -Xmx512m -XX:MaxDirectMemorySize=512m"
     volumes:
       - cassandra-data:/var/lib/cassandra
     healthcheck:
@@ -101,28 +262,26 @@ services:
       start_period: 60s
 
   cassandra-init:
-    image: cassandra:latest
-    restart: on-failure
+    image: cassandra:4.1
     depends_on:
       cassandra:
         condition: service_healthy
     volumes:
       - ./contract-service/docker/cassandra/init.cql:/init.cql
     command: >
-      bash -c "for i in {1..30}; do cqlsh cassandra 9042 -f /init.cql && exit 0; sleep 5; done; exit 1"
+      bash -c "cqlsh cassandra 9042 -f /init.cql"
 
   user-service:
     build: ./user-service
-    restart: on-failure
     ports:
       - "8081:8080"
     depends_on:
       postgres:
         condition: service_healthy
       mongo:
-        condition: service_healthy
+        condition: service_started
       redis:
-        condition: service_healthy
+        condition: service_started
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freelancedb
       SPRING_DATASOURCE_USERNAME: postgres
@@ -134,45 +293,38 @@ services:
 
   job-service:
     build: ./job-service
-    restart: on-failure
     ports:
       - "8082:8080"
     depends_on:
       postgres:
         condition: service_healthy
       mongo:
-        condition: service_healthy
+        condition: service_started
       redis:
-        condition: service_healthy
+        condition: service_started
       elasticsearch:
         condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freelancedb
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_DATA_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
-      SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-      SPRING_REDIS_PASSWORD: redispass
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000
 
   proposal-service:
     build: ./proposal-service
-    restart: on-failure
     ports:
       - "8083:8080"
     depends_on:
       postgres:
         condition: service_healthy
       mongo:
-        condition: service_healthy
+        condition: service_started
       redis:
-        condition: service_healthy
+        condition: service_started
       neo4j:
-        condition: service_healthy
+        condition: service_started
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freelancedb
       SPRING_DATASOURCE_USERNAME: postgres
@@ -187,20 +339,17 @@ services:
 
   contract-service:
     build: ./contract-service
-    restart: on-failure
     ports:
       - "8084:8080"
     depends_on:
       postgres:
         condition: service_healthy
       mongo:
-        condition: service_healthy
+        condition: service_started
       redis:
-        condition: service_healthy
+        condition: service_started
       cassandra:
         condition: service_healthy
-      cassandra-init:
-        condition: service_completed_successfully
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freelancedb
       SPRING_DATASOURCE_USERNAME: postgres
@@ -214,6 +363,7 @@ services:
       SPRING_CASSANDRA_PORT: 9042
       SPRING_CASSANDRA_KEYSPACE_NAME: freelanceks
       SPRING_CASSANDRA_LOCAL_DATACENTER: datacenter1
+      SPRING_CASSANDRA_REQUEST_TIMEOUT: 30s
       SPRING_CASSANDRA_SCHEMA_ACTION: CREATE_IF_NOT_EXISTS
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
@@ -221,25 +371,19 @@ services:
 
   wallet-service:
     build: ./wallet-service
-    restart: on-failure
     ports:
       - "8085:8080"
     depends_on:
       postgres:
         condition: service_healthy
       mongo:
-        condition: service_healthy
+        condition: service_started
       redis:
-        condition: service_healthy
+        condition: service_started
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freelancedb
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_DATA_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
-      SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-      SPRING_REDIS_PASSWORD: redispass
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000

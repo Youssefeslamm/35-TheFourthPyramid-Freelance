@@ -17,11 +17,12 @@ public class ContractAnalyticsRepository {
     private EntityManager entityManager;
 
     public long countContractsInRange(LocalDateTime start, LocalDateTime end) {
-        return (long) entityManager.createNativeQuery(
+        Object result = entityManager.createNativeQuery(
             "SELECT COUNT(*) FROM contracts WHERE start_date BETWEEN :start AND :end")
             .setParameter("start", start)
             .setParameter("end", end)
             .getSingleResult();
+        return ((Number) result).longValue();
     }
 
     public double avgContractValue(LocalDateTime start, LocalDateTime end) {
@@ -34,11 +35,12 @@ public class ContractAnalyticsRepository {
     }
 
     public long countCompletedInRange(LocalDateTime start, LocalDateTime end) {
-        return (long) entityManager.createNativeQuery(
+        Object result = entityManager.createNativeQuery(
             "SELECT COUNT(*) FROM contracts WHERE start_date BETWEEN :start AND :end AND status = 'COMPLETED'")
             .setParameter("start", start)
             .setParameter("end", end)
             .getSingleResult();
+        return ((Number) result).longValue();
     }
 
     public double avgDurationDays(LocalDateTime start, LocalDateTime end) {
@@ -59,7 +61,7 @@ public class ContractAnalyticsRepository {
             .getResultList();
         Map<String, Long> map = new HashMap<>();
         for (Object[] row : rows) {
-            map.put((String) row[0], ((Number) row[1]).longValue());
+            map.put(String.valueOf(row[0]), ((Number) row[1]).longValue());
         }
         return map;
     }

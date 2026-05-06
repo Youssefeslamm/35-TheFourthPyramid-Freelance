@@ -24,18 +24,20 @@ public class RefundStrategySelector {
 
     public RefundStrategy select(Payout payout, RefundRequest request) {
 
-        boolean expired = payout.getCreatedAt()
-                .isBefore(LocalDateTime.now().minusDays(30));
+        boolean expired = payout.getCreatedAt() != null
+                && payout.getCreatedAt().isBefore(LocalDateTime.now().minusDays(30));
 
         if (expired) {
             return noReversalStrategy;
         }
 
-        if ("FULL".equalsIgnoreCase(request.getReversalScope())) {
+        String reversalScope = request == null ? null : request.getReversalScope();
+
+        if ("FULL".equalsIgnoreCase(reversalScope)) {
             return fullStrategy;
         }
 
-        if ("MILESTONE_ONLY".equalsIgnoreCase(request.getReversalScope())) {
+        if ("MILESTONE_ONLY".equalsIgnoreCase(reversalScope)) {
             return milestoneStrategy;
         }
 

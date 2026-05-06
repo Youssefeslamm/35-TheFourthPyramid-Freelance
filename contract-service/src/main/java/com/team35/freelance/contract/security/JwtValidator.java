@@ -2,7 +2,7 @@ package com.team35.freelance.contract.security;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
+import com.team35.freelance.contract.common.config.JwtConfigurationManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,11 +18,9 @@ import java.util.Base64;
 public class JwtValidator {
 
     private final ObjectMapper objectMapper;
-    private final byte[] jwtSecretBytes;
 
-    public JwtValidator(ObjectMapper objectMapper, @Value("${jwt.secret}") String jwtSecret) {
+    public JwtValidator(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
-        this.jwtSecretBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
     }
 
     public void validateAuthorizationHeader(String authorizationHeader) {
@@ -42,7 +40,10 @@ public class JwtValidator {
             }
 
             String signingInput = parts[0] + "." + parts[1];
-            byte[] expectedSignature = hmacSha256(signingInput.getBytes(StandardCharsets.UTF_8), jwtSecretBytes);
+            byte[] expectedSignature = hmacSha256(
+                    signingInput.getBytes(StandardCharsets.UTF_8),
+                    JwtConfigurationManager.getInstance().getSecret().getBytes(StandardCharsets.UTF_8)
+            );
             byte[] actualSignature = Base64.getUrlDecoder().decode(parts[2]);
             if (!MessageDigest.isEqual(expectedSignature, actualSignature)) {
                 throw unauthorized();

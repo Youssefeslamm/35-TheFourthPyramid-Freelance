@@ -10,12 +10,14 @@ import java.util.Map;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -32,7 +34,6 @@ public class Job implements Serializable {
     private Long id;
 
     @Column(name = "client_id", nullable = false)
-    @JsonAlias("client")
     private Long clientId;
 
     @Column(nullable = false)
@@ -42,10 +43,12 @@ public class Job implements Serializable {
     private String description;
 
     @Column(nullable = false, columnDefinition = "job_category_enum")
+    @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    private JobCategory category;
+    private JobCategory category = JobCategory.DEVELOPMENT;
 
     @Column(nullable = false, columnDefinition = "job_status_enum")
+    @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private JobStatus status = JobStatus.OPEN;
 
@@ -67,6 +70,7 @@ public class Job implements Serializable {
     private Map<String, Object> requirements = new HashMap<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -81,6 +85,9 @@ public class Job implements Serializable {
         this.createdAt = LocalDateTime.now();
         if (this.status == null) {
             this.status = JobStatus.OPEN;
+        }
+        if (this.category == null) {
+            this.category = JobCategory.DEVELOPMENT;
         }
         if (this.rating == null) {
             this.rating = 0.0;

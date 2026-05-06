@@ -88,14 +88,8 @@ public class ProposalController {
     }
     // S3-F6
     @GetMapping("/analytics")
-    public ResponseEntity<ProposalAnalyticsDTO> getAnalytics(
-            @RequestParam
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime startDate,
-            @RequestParam
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime endDate) {
-        return ResponseEntity.ok(proposalService.getAnalytics(startDate, endDate));
+    public ResponseEntity<ProposalAnalyticsDTO> getAnalytics(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(proposalService.getAnalytics(params));
     }
     // S3-F5
     @GetMapping("/metadata/search")
@@ -106,24 +100,14 @@ public class ProposalController {
     }
     // S3-F1
     @GetMapping("/search")
-    public ResponseEntity<List<Proposal>> search(
-            @RequestParam(required = false) String status,
-            @RequestParam
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime startDate,
-            @RequestParam
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime endDate) {
-        return ResponseEntity.ok(
-                proposalService.getProposalsByStatusAndDateRange(status, startDate, endDate));
+    public ResponseEntity<List<Proposal>> search(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(proposalService.searchProposals(params));
     }
     // S3-F10
     @GetMapping("/analytics/dashboard")
     public ResponseEntity<ProposalAnalyticsDashboardDTO> getAnalyticsDashboard(
-            @RequestParam LocalDate startDate,
-            @RequestParam LocalDate endDate) {
-        return ResponseEntity.ok(
-                proposalService.getAnalyticsDashboard(startDate, endDate));
+            @RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(proposalService.getAnalyticsDashboard(params));
     }
     // S3-F11: Record Freelancer-Job Interaction
     @PostMapping("/{proposalId}/record-interaction")

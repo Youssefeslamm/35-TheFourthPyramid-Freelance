@@ -56,7 +56,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Set Spring Security context
         Claims claims = jwtService.extractClaims(ctx.getToken());
         String email = claims.getSubject();
-        String role = claims.get("role", String.class);
+        String role = normalizeRole(claims.get("role", String.class));
 
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
@@ -67,5 +67,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         filterChain.doFilter(request, response);
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null || role.isBlank()) {
+            return "USER";
+        }
+        String normalized = role.trim().toUpperCase();
+        return normalized.startsWith("ROLE_") ? normalized.substring(5) : normalized;
     }
 }

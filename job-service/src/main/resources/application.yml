@@ -33,6 +33,10 @@ spring:
     redis:
       time-to-live: 600000
 
+  jackson:
+    mapper:
+      accept-case-insensitive-enums: true
+
 server:
   port: 8080
 

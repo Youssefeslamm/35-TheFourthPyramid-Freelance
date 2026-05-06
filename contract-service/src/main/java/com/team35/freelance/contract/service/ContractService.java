@@ -205,11 +205,10 @@ public class ContractService {
 
     @Cacheable(value = "contract-service::S4-F3", key = "#minAmount + ':' + #maxAmount + ':' + #status")
     public List<ContractSummaryDTO> searchByBudgetRange(Double minAmount, Double maxAmount, String status) {
-        if (minAmount == null || maxAmount == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minAmount and maxAmount are required");
-        }
+        double effectiveMin = minAmount == null ? 0.0 : minAmount;
+        double effectiveMax = maxAmount == null ? 1_000_000_000_000.0 : maxAmount;
 
-        if (minAmount > maxAmount) {
+        if (effectiveMin > effectiveMax) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minAmount must be less than or equal to maxAmount");
         }
 
@@ -217,7 +216,7 @@ public class ContractService {
                 ? null
                 : status.trim().toUpperCase();
 
-        List<Object[]> rows = contractRepository.searchContractsByBudgetRange(minAmount, maxAmount, statusFilter);
+        List<Object[]> rows = contractRepository.searchContractsByBudgetRange(effectiveMin, effectiveMax, statusFilter);
 
         return rows.stream()
                 .map(this::toContractSummaryDTO)
@@ -246,6 +245,10 @@ public class ContractService {
             "contract-service::S4-F9"
     }, allEntries = true)
     public int batchUpdateStatus(List<BatchStatusUpdateDTO> updates) {
+        if (updates == null || updates.isEmpty()) {
+            return 0;
+        }
+
         List<Long> ids = updates.stream()
                 .map(BatchStatusUpdateDTO::getContractId)
                 .collect(Collectors.toList());
@@ -253,7 +256,7 @@ public class ContractService {
         List<Contract> contracts = contractRepository.findAllById(ids);
 
         if (contracts.size() != ids.size()) {
-            throw new RuntimeException("One or more contracts not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "One or more contracts not found");
         }
 
         for (BatchStatusUpdateDTO update : updates) {
@@ -267,11 +270,11 @@ public class ContractService {
             try {
                 newStatus = ContractStatus.valueOf(update.getStatus().toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid status: " + update.getStatus());
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status: " + update.getStatus());
             }
 
             if (contract.getStatus() != ContractStatus.ACTIVE) {
-                throw new RuntimeException("Contract is not ACTIVE");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contract is not ACTIVE");
             }
 
             if (newStatus == ContractStatus.COMPLETED && contract.getEndDate() == null) {
@@ -318,18 +321,14 @@ public class ContractService {
     public FreelancerPerformanceDTO getFreelancerPerformance(Long freelancerId,
                                                              LocalDateTime startDate,
                                                              LocalDateTime endDate) {
-        if (contractRepository.checkUserExists(freelancerId) == 0) {
-            throw new RuntimeException("Freelancer not found");
-        }
-
         List<Object[]> results = contractRepository.getFreelancerPerformanceAggregates(freelancerId, startDate, endDate);
-        Object[] row = results.get(0);
+        Object[] row = results == null || results.isEmpty() ? null : results.get(0);
 
-        Integer totalContracts = ((Number) row[0]).intValue();
-        Integer completedContracts = ((Number) row[1]).intValue();
-        Double totalAmount = ((Number) row[2]).doubleValue();
-        Double totalEarnings = ((Number) row[3]).doubleValue();
-        Double avgDuration = row[4] != null ? ((Number) row[4]).doubleValue() : 0.0;
+        Integer totalContracts = numberAsInt(row, 0);
+        Integer completedContracts = numberAsInt(row, 1);
+        Double totalAmount = numberAsDouble(row, 2);
+        Double totalEarnings = numberAsDouble(row, 3);
+        Double avgDuration = numberAsDouble(row, 4);
 
         Double averageContractValue = totalContracts > 0 ? totalAmount / totalContracts : 0.0;
         Double completionRate = totalContracts > 0 ? ((double) completedContracts / totalContracts) * 100 : 0.0;
@@ -359,6 +358,20 @@ public class ContractService {
                         .build()
                 )
                 .collect(Collectors.toList());
+    }
+
+    private Integer numberAsInt(Object[] row, int index) {
+        if (row == null || row.length <= index || row[index] == null) {
+            return 0;
+        }
+        return ((Number) row[index]).intValue();
+    }
+
+    private Double numberAsDouble(Object[] row, int index) {
+        if (row == null || row.length <= index || row[index] == null) {
+            return 0.0;
+        }
+        return ((Number) row[index]).doubleValue();
     }
 
     @Cacheable(value = "contract-service::S4-F5", key = "#key + ':' + #operator + ':' + #value")

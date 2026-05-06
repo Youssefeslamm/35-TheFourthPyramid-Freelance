@@ -9,7 +9,7 @@ public class FullPayoutReversalStrategy implements RefundStrategy {
     @Override
     public RefundResult calculateRefund(Payout payout, RefundRequest request) {
         return new RefundResult(
-                payout.getAmount(),
+                payout.getAmount() == null ? 0.0 : payout.getAmount(),
                 "FULL_REVERSAL"
         );
     }

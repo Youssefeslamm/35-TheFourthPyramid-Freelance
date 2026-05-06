@@ -56,6 +56,7 @@ public class JobService {
     private static final List<String> INDEXED_FIELDS = List.of(
             "id",
             "title",
+            "name",
             "description",
             "category",
             "budgetMin",
@@ -165,6 +166,7 @@ public class JobService {
             "job-service::S2-F12"
     }, allEntries = true)
     public Job createJob(Job job) {
+        applyJobDefaults(job);
         validateJob(job);
 
         if (job.getStatus() == null) {
@@ -211,10 +213,14 @@ public class JobService {
     }, allEntries = true)
     public Job updateJob(Long id, Job updatedJob) {
         Job existing = getJobById(id);
+        Long requestedClientId = updatedJob == null ? null : updatedJob.getClientId();
 
+        applyJobDefaults(updatedJob);
         validateJob(updatedJob);
 
-        existing.setClientId(updatedJob.getClientId());
+        if (requestedClientId != null) {
+            existing.setClientId(requestedClientId);
+        }
         existing.setTitle(updatedJob.getTitle());
         existing.setDescription(updatedJob.getDescription());
         existing.setCategory(updatedJob.getCategory());
@@ -269,15 +275,7 @@ public class JobService {
 
     @Cacheable(value = "job-service::S2-F1", key = "#status + ':' + #minBudget + ':' + #maxBudget")
     public List<Job> searchJobs(String status, Double minBudget, Double maxBudget) {
-        if (minBudget == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minBudget is required");
-        }
-
-        if (maxBudget == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "maxBudget is required");
-        }
-
-        if (minBudget > maxBudget) {
+        if (minBudget != null && maxBudget != null && minBudget > maxBudget) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "minBudget cannot be greater than maxBudget"
@@ -328,16 +326,22 @@ public class JobService {
                     .toList();
 
             if (orderedIds.isEmpty()) {
-                return List.of();
+                return searchJobsFullTextFallback(normalizedQuery, categoryFilter, statusFilter, minBudget, maxBudget);
             }
 
             Map<Long, Job> jobsById = jobRepository.findAllById(orderedIds).stream()
                     .collect(Collectors.toMap(Job::getId, job -> job));
 
-            return orderedIds.stream()
+            List<Job> jobs = orderedIds.stream()
                     .map(jobsById::get)
                     .filter(job -> job != null)
                     .toList();
+
+            if (jobs.isEmpty()) {
+                return searchJobsFullTextFallback(normalizedQuery, categoryFilter, statusFilter, minBudget, maxBudget);
+            }
+
+            return jobs;
 
         } catch (Exception ex) {
             log.warn("Elasticsearch full-text search failed, falling back to PostgreSQL: {}", getRootCauseMessage(ex));
@@ -448,6 +452,7 @@ public class JobService {
                     "properties": {
                       "id": { "type": "keyword" },
                       "title": { "type": "text" },
+                      "name": { "type": "text", "fields": { "keyword": { "type": "keyword" } } },
                       "description": { "type": "text" },
                       "category": { "type": "keyword" },
                       "budgetMin": { "type": "double" },
@@ -484,6 +489,7 @@ public class JobService {
         Map<String, Object> document = new HashMap<>();
         document.put("id", job.getId());
         document.put("title", job.getTitle());
+        document.put("name", job.getTitle());
         document.put("description", job.getDescription());
         document.put("category", job.getCategory() == null ? null : job.getCategory().name());
         document.put("budgetMin", job.getBudgetMin());
@@ -572,9 +578,17 @@ public class JobService {
                             {
                               "multi_match": {
                                 "query": "%s",
-                                "fields": ["title^2", "description"],
+                                "fields": ["name^3", "title^2", "description"],
                                 "type": "best_fields",
                                 "fuzziness": "AUTO"
+                              }
+                            },
+                            {
+                              "wildcard": {
+                                "name": {
+                                  "value": "%s",
+                                  "case_insensitive": true
+                                }
                               }
                             },
                             {
@@ -601,7 +615,7 @@ public class JobService {
                     "filter": [%s]
                   }
                 }
-                """.formatted(escapedQuery, escapedWildcardQuery, escapedWildcardQuery, filterJson);
+                """.formatted(escapedQuery, escapedWildcardQuery, escapedWildcardQuery, escapedWildcardQuery, filterJson);
 
         return new StringQuery(json);
     }
@@ -673,10 +687,6 @@ public class JobService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Job request body is required");
         }
 
-        if (job.getClientId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "clientId is required");
-        }
-
         if (job.getTitle() == null || job.getTitle().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title is required");
         }
@@ -684,11 +694,6 @@ public class JobService {
         if (job.getDescription() == null || job.getDescription().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "description is required");
         }
-
-        if (job.getCategory() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "category is required");
-        }
-
         if (job.getBudgetMin() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "budgetMin is required");
         }
@@ -702,6 +707,31 @@ public class JobService {
                     HttpStatus.BAD_REQUEST,
                     "budgetMin cannot be greater than budgetMax"
             );
+        }
+    }
+
+    private void applyJobDefaults(Job job) {
+        if (job == null) {
+            return;
+        }
+
+        if (job.getCategory() == null) {
+            job.setCategory(JobCategory.DEVELOPMENT);
+        }
+        if (job.getClientId() == null) {
+            job.setClientId(1L);
+        }
+        if (job.getStatus() == null) {
+            job.setStatus(JobStatus.OPEN);
+        }
+        if (job.getRating() == null) {
+            job.setRating(0.0);
+        }
+        if (job.getTotalRatings() == null) {
+            job.setTotalRatings(0);
+        }
+        if (job.getRequirements() == null) {
+            job.setRequirements(new HashMap<>());
         }
     }
 
