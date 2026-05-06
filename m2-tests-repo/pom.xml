@@ -79,4 +79,28 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <environmentVariables>
+                        <REPO_PATH>${project.basedir}/..</REPO_PATH>
+                        <SPRING_DATASOURCE_URL>jdbc:postgresql://localhost:5432/freelancedb</SPRING_DATASOURCE_URL>
+                        <SPRING_DATASOURCE_USERNAME>postgres</SPRING_DATASOURCE_USERNAME>
+                        <SPRING_DATASOURCE_PASSWORD>postgres</SPRING_DATASOURCE_PASSWORD>
+                        <SPRING_DATA_MONGODB_URI>mongodb://root:rootpass@localhost:27017/freelancemongo?authSource=admin</SPRING_DATA_MONGODB_URI>
+                        <SPRING_DATA_MONGODB_DATABASE>freelancemongo</SPRING_DATA_MONGODB_DATABASE>
+                        <SPRING_DATA_REDIS_HOST>localhost</SPRING_DATA_REDIS_HOST>
+                        <SPRING_DATA_REDIS_PORT>6379</SPRING_DATA_REDIS_PORT>
+                        <SPRING_DATA_REDIS_PASSWORD>redispass</SPRING_DATA_REDIS_PASSWORD>
+                        <SPRING_CASSANDRA_CONTACT_POINTS>localhost:9042</SPRING_CASSANDRA_CONTACT_POINTS>
+                        <SPRING_CASSANDRA_KEYSPACE_NAME>freelanceks</SPRING_CASSANDRA_KEYSPACE_NAME>
+                    </environmentVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

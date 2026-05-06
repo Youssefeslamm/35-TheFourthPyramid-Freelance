@@ -658,7 +658,7 @@ public class UserService {
         payload.put("userId", user.getId());
         payload.put("email", user.getEmail());
 
-        mongoEventLogger.onEvent("LOGGED_IN", payload);
+        notifyObservers("LOGGED_IN", payload);
 
         return new AuthResponse(
                 token,
