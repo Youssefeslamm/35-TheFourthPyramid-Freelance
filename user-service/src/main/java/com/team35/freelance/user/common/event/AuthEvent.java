@@ -2,10 +2,10 @@ package com.team35.freelance.user.common.event;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.bson.types.ObjectId;
 
 import java.time.Instant;
 import java.util.Map;
-import java.util.UUID;
 
 @Document(collection = "auth_events")
 public class AuthEvent implements MongoEvent {
@@ -19,7 +19,7 @@ public class AuthEvent implements MongoEvent {
     private Map<String, Object> details;
 
     public AuthEvent(Map<String, Object> params) {
-        this.id = UUID.randomUUID().toString();
+        this.id = ObjectId.get().toHexString();
         this.timestamp = Instant.now().toString();
         this.action = (String) params.get("action");
         this.details = params;
