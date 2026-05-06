@@ -21,6 +21,41 @@ public class FreelancerPayoutSummaryDTO implements Serializable {
         this.methodBreakdown = methodBreakdown;
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private Long freelancerId;
+        private Long totalPayouts;
+        private Double totalAmount;
+        private Map<String, Double> methodBreakdown;
+
+        public Builder freelancerId(Long freelancerId) {
+            this.freelancerId = freelancerId;
+            return this;
+        }
+
+        public Builder totalPayouts(Long totalPayouts) {
+            this.totalPayouts = totalPayouts;
+            return this;
+        }
+
+        public Builder totalAmount(Double totalAmount) {
+            this.totalAmount = totalAmount;
+            return this;
+        }
+
+        public Builder methodBreakdown(Map<String, Double> methodBreakdown) {
+            this.methodBreakdown = methodBreakdown;
+            return this;
+        }
+
+        public FreelancerPayoutSummaryDTO build() {
+            return new FreelancerPayoutSummaryDTO(freelancerId, totalPayouts, totalAmount, methodBreakdown);
+        }
+    }
+
     // Getters
     public Long getFreelancerId() {
         return freelancerId;

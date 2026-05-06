@@ -31,7 +31,6 @@ import com.team35.freelance.proposal.dto.ProposalAnalyticsDTO;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import com.team35.freelance.proposal.dto.ProposalAnalyticsDashboardDTO;
-import com.team35.freelance.proposal.common.event.ProposalEvent;
 import com.team35.freelance.proposal.repository.ProposalEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -525,7 +524,8 @@ public class ProposalService {
 
         // Log ANALYTICS_VIEWED to MongoDB
         try {
-            ProposalEvent event = new ProposalEvent(
+            com.team35.freelance.proposal.common.event.ProposalEvent event =
+                    new com.team35.freelance.proposal.common.event.ProposalEvent(
                     null,
                     "ANALYTICS_VIEWED",
                     Map.of(

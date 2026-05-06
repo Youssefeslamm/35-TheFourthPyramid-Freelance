@@ -10,6 +10,7 @@ import java.util.Map;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.CascadeType;
@@ -31,6 +32,7 @@ public class Job implements Serializable {
     private Long id;
 
     @Column(name = "client_id", nullable = false)
+    @JsonAlias("client")
     private Long clientId;
 
     @Column(nullable = false)
