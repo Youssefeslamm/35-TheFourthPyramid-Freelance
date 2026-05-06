@@ -43,7 +43,7 @@ public class Job implements Serializable {
 
     @Column(nullable = false, columnDefinition = "job_category_enum")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    private JobCategory category;
+    private JobCategory category = JobCategory.DEVELOPMENT;
 
     @Column(nullable = false, columnDefinition = "job_status_enum")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
@@ -81,6 +81,9 @@ public class Job implements Serializable {
         this.createdAt = LocalDateTime.now();
         if (this.status == null) {
             this.status = JobStatus.OPEN;
+        }
+        if (this.category == null) {
+            this.category = JobCategory.DEVELOPMENT;
         }
         if (this.rating == null) {
             this.rating = 0.0;
