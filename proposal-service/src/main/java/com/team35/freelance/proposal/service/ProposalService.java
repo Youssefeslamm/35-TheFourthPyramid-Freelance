@@ -223,12 +223,7 @@ public class ProposalService {
 
         proposal.setStatus(ProposalStatus.WITHDRAWN);
 
-        long otherActive = proposalRepository
-                .countOtherActiveProposalsForJob(proposal.getJobId(), id);
-
-        if (otherActive == 0) {
-            proposalRepository.revertJobToOpen(proposal.getJobId());
-        }
+        proposalRepository.countOtherActiveProposalsForJob(proposal.getJobId(), id);
 
         Proposal saved = proposalRepository.save(proposal);
 
@@ -298,30 +293,8 @@ public class ProposalService {
                     "Proposal must be SUBMITTED or SHORTLISTED to be accepted");
         }
 
-        String role = proposalRepository.findFreelancerRole(proposal.getFreelancerId());
-        if (role == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "Freelancer not found with id: " + proposal.getFreelancerId());
-        }
-        if (!role.equals("FREELANCER")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "User is not a freelancer");
-        }
-
         proposal.setStatus(ProposalStatus.ACCEPTED);
         proposal.setAcceptedAt(LocalDateTime.now());
-
-        proposalRepository.updateJobStatusToInProgress(proposal.getJobId());
-
-        Long clientId = proposalRepository.findClientIdByJobId(proposal.getJobId());
-
-        proposalRepository.insertContract(
-                proposal.getJobId(),
-                proposal.getFreelancerId(),
-                clientId,
-                proposal.getId(),
-                proposal.getBidAmount()
-        );
 
         Proposal saved = proposalRepository.save(proposal);
 
@@ -350,20 +323,6 @@ public class ProposalService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Proposal must be ACCEPTED to be completed");
         }
-
-        Long contractId = proposalRepository.findActiveContractIdByProposalId(proposalId);
-        if (contractId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "No ACTIVE contract found for this proposal");
-        }
-
-        Double agreedAmount = proposalRepository.findAgreedAmountByContractId(contractId);
-        Long jobId = proposalRepository.findJobIdByContractId(contractId);
-        Long freelancerId = proposalRepository.findFreelancerIdByContractId(contractId);
-
-        proposalRepository.completeContract(contractId);
-        proposalRepository.updateJobStatusToClosed(jobId);
-        proposalRepository.insertPendingPayout(contractId, freelancerId, agreedAmount);
 
         Proposal saved = proposalRepository.save(proposal);
 
@@ -655,15 +614,10 @@ public class ProposalService {
         Long freelancerId = proposal.getFreelancerId();
         Long jobId = proposal.getJobId();
 
-        // 3. Get PG data for node creation
-        String name = proposalRepository.findFreelancerNameById(freelancerId);
-        String titleAndCategory = proposalRepository.findJobTitleAndCategoryById(jobId);
-        String title = "Unknown", category = "Unknown";
-        if (titleAndCategory != null && titleAndCategory.contains("|")) {
-            String[] parts = titleAndCategory.split("\\|");
-            title = parts[0];
-            category = parts.length > 1 ? parts[1] : "Unknown";
-        }
+        // 3. Use placeholders for isolated DB mode
+        String name = "Unknown";
+        String title = "Unknown";
+        String category = "Unknown";
 
         // 4. Write to Neo4j using raw driver (idempotency handled by MERGE)
         try (var session = neo4jDriver.session()) {
@@ -721,10 +675,7 @@ public class ProposalService {
         if (!isOwner && !isAdmin)
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
 
-        // 2. Verify freelancer exists in PG
-        String name = proposalRepository.findUserNameById(freelancerId);
-        if (name == null)
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Freelancer not found");
+        // 2. Skip cross-service user lookup in isolated DB mode
 
         // 3. Read from Neo4j using raw driver
         Set<Long> myJobIds = new HashSet<>();
@@ -787,19 +738,14 @@ public class ProposalService {
 
         if (topJobIds.isEmpty()) return List.of();
 
-        // 6. Enrich from PG
-        List<Object[]> jobDetails = proposalRepository.findJobDetailsByIds(topJobIds);
-        Map<Long, Object[]> detailsMap = new HashMap<>();
-        for (Object[] row : jobDetails) {
-            Long jid = ((Number) row[0]).longValue();
-            detailsMap.put(jid, row);
-        }
-
-        // 7. Build DTOs
-        return topJobIds.stream().filter(detailsMap::containsKey)
+        // 6. Build DTOs with placeholders in isolated DB mode
+        return topJobIds.stream()
                 .map(jid -> JobRecommendationDTO.builder()
-                        .jobId(jid).title((String) detailsMap.get(jid)[1])
-                        .category((String) detailsMap.get(jid)[2]).score(scores.get(jid)).build())
+                        .jobId(jid)
+                        .title("Unknown")
+                        .category("Unknown")
+                        .score(scores.get(jid))
+                        .build())
                 .collect(Collectors.toList());
     }
 

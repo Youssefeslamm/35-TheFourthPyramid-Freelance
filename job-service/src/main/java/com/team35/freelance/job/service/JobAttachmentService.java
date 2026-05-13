@@ -177,12 +177,6 @@ public class JobAttachmentService {
             throw new BadRequestException("Attachment is expired and cannot be verified");
         }
 
-        String role = jobRepository.findUserRoleById(request.getVerifiedBy())
-                .orElseThrow(() -> new ResourceNotFoundException("Verifier user not found"));
-
-        if (!"ADMIN".equalsIgnoreCase(role)) {
-            throw new ForbiddenException("Only ADMIN users can verify job attachments");
-        }
 
         attachment.setVerified(true);
 

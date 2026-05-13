@@ -112,15 +112,16 @@ public class JobService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found");
         }
 
-        Map<String, Object> result = jobRepository.getProposalSummaryRaw(id, startDate, endDate);
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found"));
 
         return new JobProposalSummaryDTOBuilder()
-                .jobId(((Number) result.get("jobid")).longValue())
-                .title((String) result.get("title"))
-                .totalProposals(((Number) result.get("totalproposals")).longValue())
-                .averageBidAmount(((Number) result.get("averagebidamount")).doubleValue())
-                .lowestBid(((Number) result.get("lowestbid")).doubleValue())
-                .highestBid(((Number) result.get("highestbid")).doubleValue())
+                .jobId(job.getId())
+                .title(job.getTitle())
+                .totalProposals(0L)
+                .averageBidAmount(0.0)
+                .lowestBid(0.0)
+                .highestBid(0.0)
                 .build();
     }
 
@@ -791,17 +792,6 @@ public class JobService {
             throw new BadRequestException("rating must be between 1 and 5 inclusive");
         }
 
-        ContractLookupProjection contract = jobRepository.findContractById(request.getContractId())
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
-
-        if (!jobId.equals(contract.getJobId())) {
-            throw new BadRequestException("Contract does not belong to this job");
-        }
-
-        if (!"COMPLETED".equalsIgnoreCase(contract.getStatus())) {
-            throw new BadRequestException("Contract must be COMPLETED before rating");
-        }
-
         double currentRating = job.getRating() == null ? 0.0 : job.getRating();
         int totalRatings = job.getTotalRatings() == null ? 0 : job.getTotalRatings();
 
@@ -846,15 +836,7 @@ public class JobService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status must be CLOSED");
         }
 
-        if (jobRepository.existsActiveContractForJob(id)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Cannot close job while an active contract exists"
-            );
-        }
-
         job.setStatus(JobStatus.CLOSED);
-        jobRepository.rejectSubmittedProposalsForJob(id);
 
         Job saved = jobRepository.save(job);
         indexJobForSearchSafely(saved, "auto_crud_update");

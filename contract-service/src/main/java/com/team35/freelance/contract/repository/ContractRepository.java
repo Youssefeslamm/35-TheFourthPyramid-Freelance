@@ -18,9 +18,6 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     @Query(value = "SELECT * FROM contracts WHERE freelancer_id = :userId AND status = 'ACTIVE' ORDER BY created_at DESC LIMIT 1", nativeQuery = true)
     Optional<Contract> findMostRecentActiveContractByUserId(@Param("userId") Long userId);
 
-    @Query(value = "SELECT COUNT(*) FROM users WHERE id = :userId", nativeQuery = true)
-    int checkUserExists(@Param("userId") Long userId);
-
     @Query(value = "SELECT * FROM contracts WHERE created_at BETWEEN :startDate AND :endDate " +
            "AND (:status IS NULL OR status::text = :status) ORDER BY created_at ASC", nativeQuery = true)
     List<Contract> findContractsInDateRange(@Param("startDate") LocalDateTime startDate,
@@ -47,11 +44,9 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     List<Object[]> countContractsByStatus(@Param("startDate") LocalDateTime startDate,
                                           @Param("endDate") LocalDateTime endDate);
 
-    @Query(value = "SELECT c.id, u.name, j.title, c.agreed_amount, c.status, " +
+    @Query(value = "SELECT c.id, 'Unknown', 'Unknown', c.agreed_amount, c.status, " +
            "EXTRACT(EPOCH FROM (COALESCE(c.end_date, CURRENT_TIMESTAMP) - c.start_date)) / 86400 " +
            "FROM contracts c " +
-           "INNER JOIN users u ON u.id = c.freelancer_id " +
-           "INNER JOIN jobs j ON j.id = c.job_id " +
            "WHERE c.agreed_amount BETWEEN :minAmount AND :maxAmount " +
            "AND (:status IS NULL OR c.status::text = :status) " +
            "ORDER BY c.agreed_amount DESC", nativeQuery = true)
@@ -81,14 +76,12 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     // --- S4-F9: Find Stalled Contracts ---
     @Query(value = "SELECT " +
            "c.id, " +
-           "u.name, " +
-           "j.title, " +
+           "'Unknown', " +
+           "'Unknown', " +
            "c.agreed_amount, " +
            "CAST(c.metadata->>'progressPercentage' AS numeric), " +
            "CAST(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(CAST(c.metadata->>'lastActivityDate' AS TIMESTAMP), c.created_at))) / 86400 AS INTEGER) " +
            "FROM contracts c " +
-           "JOIN users u ON c.freelancer_id = u.id " +
-           "JOIN jobs j ON c.job_id = j.id " +
            "WHERE c.status = 'ACTIVE' " +
            "AND CAST(c.metadata->>'progressPercentage' AS numeric) <= :maxProgress " +
            "AND CAST(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(CAST(c.metadata->>'lastActivityDate' AS TIMESTAMP), c.created_at))) / 86400 AS INTEGER) > :stalledDays", nativeQuery = true)

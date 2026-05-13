@@ -153,9 +153,6 @@ public class ContractService {
 
     @Cacheable(value = "contract-service::S4-F1", key = "#userId")
     public Contract getActiveContractForUser(Long userId) {
-        if (contractRepository.checkUserExists(userId) == 0) {
-            throw new RuntimeException("User not found");
-        }
 
         return contractRepository.findMostRecentActiveContractByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("No active contract found for this user"));

@@ -39,9 +39,6 @@ public interface PayoutRepository extends JpaRepository<Payout, Long> {
     // ---------- EXISTING METHODS ----------
     Payout findByContractId(Long contractId);
 
-    @Query(value = "SELECT status FROM contracts WHERE id = :contractId", nativeQuery = true)
-    String getContractStatus(@Param("contractId") Long contractId);
-
     List<Payout> findByStatusOrderByCreatedAtDesc(PayoutStatus status);
 
     List<Payout> findByCreatedAtBetweenOrderByCreatedAtDesc(
@@ -69,29 +66,6 @@ public interface PayoutRepository extends JpaRepository<Payout, Long> {
     List<Object[]> getRevenueReport(
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
-    );
-    // ---------- S5-F10: PLATFORM FEE ANALYTICS BY JOB CATEGORY ----------
-    @Query(value = """
-    SELECT
-        j.category AS category,
-        COALESCE(SUM(
-            COALESCE(
-                NULLIF(p.transaction_details ->> 'platformFee', '')::numeric,
-                p.amount * 0.10
-            )
-        ), 0) AS platformFeeRevenue,
-        COALESCE(SUM(p.amount), 0) AS totalRevenue,
-        COUNT(DISTINCT p.id) AS payoutCount
-    FROM payouts p
-    JOIN contracts c ON c.id = p.contract_id
-    JOIN jobs j ON j.id = c.job_id
-    WHERE p.status = 'COMPLETED'
-      AND p.created_at BETWEEN :startDateTime AND :endDateTime
-    GROUP BY j.category
-    """, nativeQuery = true)
-    List<Object[]> getCategoryRevenueAnalytics(
-            @Param("startDateTime") LocalDateTime startDateTime,
-            @Param("endDateTime") LocalDateTime endDateTime
     );
 
     @Query(value = """
