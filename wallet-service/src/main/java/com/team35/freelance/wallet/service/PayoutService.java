@@ -199,16 +199,6 @@ public class PayoutService {
     }, allEntries = true)
     public void processContractPayout(Long contractId, ProcessPayoutRequest request) {
 
-        String contractStatus = payoutRepository.getContractStatus(contractId);
-
-        if (contractStatus == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Contract not found");
-        }
-
-        if (!"COMPLETED".equals(contractStatus)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contract is not completed");
-        }
-
         Payout payout = payoutRepository.findByContractId(contractId);
 
         if (payout == null) {

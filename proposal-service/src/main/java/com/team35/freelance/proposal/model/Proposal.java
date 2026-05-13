@@ -25,11 +25,6 @@ public class Proposal implements Serializable {
     @Column(name = "job_id", nullable = false)
     private Long jobId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "job_id", insertable = false, updatable = false)
-    @JsonIgnore
-    private Job job;
-
     @Column(name = "freelancer_id", nullable = false)
     private Long freelancerId;
 
@@ -74,9 +69,6 @@ public class Proposal implements Serializable {
 
     public Long getJobId() { return jobId; }
     public void setJobId(Long jobId) { this.jobId = jobId; }
-
-    public Job getJob() { return job; }
-    public void setJob(Job job) { this.job = job; }
 
     public Long getFreelancerId() { return freelancerId; }
     public void setFreelancerId(Long freelancerId) { this.freelancerId = freelancerId; }

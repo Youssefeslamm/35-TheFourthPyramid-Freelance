@@ -357,11 +357,7 @@ public class UserService {
                         HttpStatus.NOT_FOUND, "User not found"
                 ));
 
-        Object[] raw = userRepository.getUserContractSummary(userId);
-        Object[] row = unwrapSingleRow(raw);
-        if (row.length == 0) {
-            row = new Object[] {user.getId(), user.getName(), 0L, 0L, 0L, 0.0, 0.0};
-        }
+        Object[] row = new Object[] {user.getId(), user.getName(), 0L, 0L, 0L, 0.0, 0.0};
         UserContractSummaryAdapter adapter = new UserContractSummaryAdapter();
         return adapter.adapt(row);
     }
@@ -468,14 +464,7 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        Long activeContracts = userRepository.countActiveContractsForUser(id);
-        if (activeContracts != null && activeContracts > 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Cannot deactivate: user has active contracts");
-        }
-
         user.setStatus(Status.DEACTIVATED);
-        userRepository.withdrawSubmittedProposalsForUser(id);
         User saved = userRepository.save(user);
 
         Map<String, Object> payload = new HashMap<>();
@@ -497,26 +486,7 @@ public class UserService {
         if (startDate.isAfter(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must not be after endDate");
         }
-        List<Object[]> rows = userRepository.findTopFreelancersByEarnings(
-                startDate.atStartOfDay(), endDate.atTime(23, 59, 59), limit);
-        List<TopFreelancerDTO> result = new ArrayList<>();
-        if (rows == null) {
-            return result;
-        }
-        for (Object[] row : rows) {
-            if (row == null || row.length < 4) {
-                continue;
-            }
-            result.add(
-                    TopFreelancerDTO.builder()
-                            .userId(((Number) row[0]).longValue())
-                            .name((String) row[1])
-                            .totalEarnings(((Number) row[2]).doubleValue())
-                            .contractCount(((Number) row[3]).longValue())
-                            .build()
-            );
-        }
-        return result;
+        return new ArrayList<>();
     }
 
     // ===================== USERS BY LANGUAGE + MIN COMPLETED CONTRACTS =====================
@@ -526,7 +496,7 @@ public class UserService {
         if (lang == null || lang.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "lang must not be blank");
         }
-        return userRepository.findUsersByLanguageAndMinContracts(lang, minContracts);
+        return userRepository.findUsersByPreference("language", lang);
     }
 
 
