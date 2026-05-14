@@ -16,3 +16,4 @@ resources:
   - observability/prometheus.yaml
   - observability/grafana.yaml
   - observability/loki.yaml
+  - observability/neo4j.yaml
