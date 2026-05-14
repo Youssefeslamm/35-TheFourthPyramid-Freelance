@@ -14,6 +14,10 @@ import com.team35.freelance.contract.repository.ContractAnalyticsRepository;
 import com.team35.freelance.contract.repository.ContractRepository;
 import com.team35.freelance.contract.common.observer.EntityObserver;
 import com.team35.freelance.contract.common.observer.MongoEventLogger;
+import com.team35.freelance.contract.messaging.publisher.ContractEventPublisher;
+import com.team35.freelance.contracts.events.ContractCreatedEvent;
+import com.team35.freelance.contracts.events.ContractStatusChangedEvent;
+import java.math.BigDecimal;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
@@ -36,6 +40,7 @@ public class ContractService {
     private final ContractRepository contractRepository;
     private final ContractAnalyticsRepository analyticsRepository;
     private final ContractMilestoneEventRepository milestoneEventRepository;
+    private final ContractEventPublisher contractEventPublisher;
     private final List<EntityObserver> observers = new ArrayList<>();
 
     private static final java.util.Set<String> ALLOWED_MILESTONE_STATUSES =
@@ -44,10 +49,12 @@ public class ContractService {
     public ContractService(ContractRepository contractRepository,
                            ContractAnalyticsRepository analyticsRepository,
                            ContractMilestoneEventRepository milestoneEventRepository,
-                           MongoEventLogger mongoEventLogger) {
+                           MongoEventLogger mongoEventLogger,
+                           ContractEventPublisher contractEventPublisher) {
         this.contractRepository = contractRepository;
         this.analyticsRepository = analyticsRepository;
         this.milestoneEventRepository = milestoneEventRepository;
+        this.contractEventPublisher = contractEventPublisher;
         registerObserver(mongoEventLogger);
     }
 
@@ -76,6 +83,16 @@ public class ContractService {
     }, allEntries = true)
     public Contract create(Contract contract) {
         Contract saved = contractRepository.save(contract);
+
+        contractEventPublisher.publishCreated(
+                new ContractCreatedEvent(
+                        saved.getId(),
+                        saved.getProposalId(),
+                        saved.getJobId(),
+                        saved.getFreelancerId(),
+                        BigDecimal.valueOf(saved.getAgreedAmount())
+                )
+        );
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "CREATED");
@@ -109,6 +126,8 @@ public class ContractService {
         Contract existing = contractRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Contract not found"));
 
+        ContractStatus oldStatus = existing.getStatus();
+
         existing.setFreelancerId(updatedContract.getFreelancerId());
         existing.setClientId(updatedContract.getClientId());
         existing.setAgreedAmount(updatedContract.getAgreedAmount());
@@ -118,6 +137,12 @@ public class ContractService {
         existing.setMetadata(updatedContract.getMetadata());
 
         Contract saved = contractRepository.save(existing);
+
+        if (oldStatus != null && saved.getStatus() != null && oldStatus != saved.getStatus()) {
+            contractEventPublisher.publishStatusChanged(
+                    new ContractStatusChangedEvent(saved.getId(), oldStatus.name(), saved.getStatus().name())
+            );
+        }
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "UPDATED");
@@ -256,6 +281,11 @@ public class ContractService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "One or more contracts not found");
         }
 
+        Map<Long, ContractStatus> oldStatusById = new HashMap<>();
+        for (Contract contract : contracts) {
+            oldStatusById.put(contract.getId(), contract.getStatus());
+        }
+
         for (BatchStatusUpdateDTO update : updates) {
             Contract contract = contracts.stream()
                     .filter(c -> c.getId().equals(update.getContractId()))
@@ -282,6 +312,16 @@ public class ContractService {
         }
 
         contractRepository.saveAll(contracts);
+
+        for (Contract contract : contracts) {
+            ContractStatus oldStatus = oldStatusById.get(contract.getId());
+            if (oldStatus != null && contract.getStatus() != null && oldStatus != contract.getStatus()) {
+                contractEventPublisher.publishStatusChanged(
+                        new ContractStatusChangedEvent(contract.getId(), oldStatus.name(), contract.getStatus().name())
+                );
+            }
+        }
+
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "BATCH_STATUS_UPDATED");
         payload.put("count", contracts.size());
@@ -447,6 +487,4 @@ public class ContractService {
                 .build();
     }
 }
-
-
 

@@ -41,6 +41,9 @@ import com.team35.freelance.user.common.observer.MongoEventLogger;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.HashMap;
 import java.util.Map;
+import com.team35.freelance.user.messaging.publisher.UserEventPublisher;
+import com.team35.freelance.contracts.events.UserDeactivatedEvent;
+import com.team35.freelance.contracts.events.UserRegisteredEvent;
 @Service
 public class UserService {
 
@@ -51,6 +54,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final AuthEventRepository authEventRepository;
     private final JwtService jwtService;
+    private final UserEventPublisher userEventPublisher;
 
 
     public UserService(UserRepository userRepository,
@@ -58,14 +62,16 @@ public class UserService {
                        MongoEventLogger mongoEventLogger,
                        PasswordEncoder passwordEncoder,
                        AuthEventRepository authEventRepository,
-                       JwtService jwtService) {
-      
+                       JwtService jwtService,
+                       UserEventPublisher userEventPublisher) {
+
         this.userRepository = userRepository;
         this.userSkillRepository = userSkillRepository;
         this.mongoEventLogger = mongoEventLogger;
         this.passwordEncoder = passwordEncoder;
         this.authEventRepository = authEventRepository;
         this.jwtService = jwtService;
+        this.userEventPublisher = userEventPublisher;
 
         this.observers.add(mongoEventLogger);
     }
@@ -467,6 +473,8 @@ public class UserService {
         user.setStatus(Status.DEACTIVATED);
         User saved = userRepository.save(user);
 
+        userEventPublisher.publishUserDeactivated(new UserDeactivatedEvent(saved.getId()));
+
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "USER_DEACTIVATED");
         payload.put("userId", saved.getId());
@@ -582,6 +590,10 @@ public class UserService {
         user.setPreferences(request.getPreferences());
 
         User savedUser = userRepository.save(user);
+
+        userEventPublisher.publishUserRegistered(
+                new UserRegisteredEvent(savedUser.getId(), savedUser.getEmail(), savedUser.getRole().name())
+        );
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "REGISTERED");
