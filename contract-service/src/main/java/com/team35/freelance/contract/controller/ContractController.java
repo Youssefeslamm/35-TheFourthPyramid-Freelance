@@ -16,7 +16,6 @@ import com.team35.freelance.contract.service.ContractEventService;
 import com.team35.freelance.contract.service.ContractMilestoneTrackingService;
 import com.team35.freelance.contract.service.ContractMilestoneTimelineService;
 import com.team35.freelance.contract.service.ContractService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,26 +31,29 @@ import java.util.Map;
 @RequestMapping("/api/contracts")
 public class ContractController {
 
-    @Autowired
-    private ContractService contractService;
+    private final ContractService contractService;
+    private final ContractAnalyticsService contractAnalyticsService;
+    private final ContractEventService contractEventService;
+    private final ContractMilestoneTrackingService contractMilestoneTrackingService;
+    private final ContractMilestoneTimelineService contractMilestoneTimelineService;
+    private final JwtValidator jwtValidator;
+    private final JwtService jwtService;
 
-    @Autowired
-    private ContractAnalyticsService contractAnalyticsService;
-
-    @Autowired
-    private ContractEventService contractEventService;
-
-    @Autowired
-    private ContractMilestoneTrackingService contractMilestoneTrackingService;
-
-    @Autowired
-    private ContractMilestoneTimelineService contractMilestoneTimelineService;
-
-    @Autowired
-    private JwtValidator jwtValidator;
-
-    @Autowired
-    private JwtService jwtService;
+    public ContractController(ContractService contractService,
+                              ContractAnalyticsService contractAnalyticsService,
+                              ContractEventService contractEventService,
+                              ContractMilestoneTrackingService contractMilestoneTrackingService,
+                              ContractMilestoneTimelineService contractMilestoneTimelineService,
+                              JwtValidator jwtValidator,
+                              JwtService jwtService) {
+        this.contractService = contractService;
+        this.contractAnalyticsService = contractAnalyticsService;
+        this.contractEventService = contractEventService;
+        this.contractMilestoneTrackingService = contractMilestoneTrackingService;
+        this.contractMilestoneTimelineService = contractMilestoneTimelineService;
+        this.jwtValidator = jwtValidator;
+        this.jwtService = jwtService;
+    }
 
     @PostMapping
     public ResponseEntity<Contract> create(@RequestBody Contract contract) {
