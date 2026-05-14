@@ -1,6 +1,7 @@
 package com.team35.freelance.contract.repository;
 
 import com.team35.freelance.contract.model.Contract;
+import com.team35.freelance.contract.model.ContractStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -17,6 +18,38 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
 
     @Query(value = "SELECT * FROM contracts WHERE freelancer_id = :userId AND status = 'ACTIVE' ORDER BY created_at DESC LIMIT 1", nativeQuery = true)
     Optional<Contract> findMostRecentActiveContractByUserId(@Param("userId") Long userId);
+
+    // --- M3 §6: Feign read APIs (S1 / S2 / S3) ---
+    // kam contract ACTIVE 3and el freelancer — S1-F4 lama y7sal deactivate w yeshof law lsa 3ndo active
+    @Query(value = "SELECT CAST(COUNT(*) AS integer) FROM contracts WHERE freelancer_id = :userId AND status = 'ACTIVE'", nativeQuery = true)
+    int countActiveByFreelancerId(@Param("userId") Long userId);
+
+    // kam contract COMPLETED 3and el freelancer — S1-F9 language filter b min contracts
+    @Query(value = "SELECT COUNT(*) FROM contracts WHERE freelancer_id = :userId AND status = 'COMPLETED'", nativeQuery = true)
+    long countCompletedByFreelancerId(@Param("userId") Long userId);
+
+    // kam contract ACTIVE 3ala el job — S2-F4 close job law mafish active contracts
+    @Query(value = "SELECT CAST(COUNT(*) AS integer) FROM contracts WHERE job_id = :jobId AND status = 'ACTIVE'", nativeQuery = true)
+    int countActiveByJobId(@Param("jobId") Long jobId);
+
+    // aggregation wa7da — ta3mel user contract summary Feign response:
+    // el user = freelancer_id (S1-F3: el freelancer fl hwar). totalContracts = COUNT(*) 3ala kol el statuses.
+    // totalEarnings = sum agreed_amount bas 3ala COMPLETED; averageContractValue = nafs el sum / adad el COMPLETED (mesh 3ala totalContracts) — zay el worked example: 3000 / 3 = 1000.
+    @Query(value = "SELECT " +
+           "CAST(COUNT(*) AS bigint), " +
+           "CAST(COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS bigint), " +
+           "CAST(COALESCE(SUM(CASE WHEN status = 'TERMINATED' THEN 1 ELSE 0 END), 0) AS bigint), " +
+           "COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN agreed_amount ELSE 0 END), 0.0), " +
+           "COALESCE( " +
+           "CASE WHEN COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END), 0) > 0 " +
+           "THEN SUM(CASE WHEN status = 'COMPLETED' THEN agreed_amount ELSE 0 END) / SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) " +
+           "ELSE 0.0 END, " +
+           "0.0) " +
+           "FROM contracts WHERE freelancer_id = :userId", nativeQuery = true)
+    List<Object[]> getUserContractSummaryAggregates(@Param("userId") Long userId);
+
+    // awel contract ACTIVE bel proposal id (el a7'yar) — S3-F4 saga pre-check 2abl ma ycomplete
+    Optional<Contract> findFirstByProposalIdAndStatusOrderByCreatedAtDesc(Long proposalId, ContractStatus status);
 
     @Query(value = "SELECT * FROM contracts WHERE created_at BETWEEN :startDate AND :endDate " +
            "AND (:status IS NULL OR status::text = :status) ORDER BY created_at ASC", nativeQuery = true)

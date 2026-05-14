@@ -9,6 +9,7 @@ import com.team35.freelance.contract.dto.MilestoneTrackRequestDTO;
 import com.team35.freelance.contract.dto.StalledContractDTO;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.model.ContractStatus;
+import com.team35.freelance.contract.mapper.ContractDtoMapper;
 import com.team35.freelance.contract.security.JwtService;
 import com.team35.freelance.contract.security.JwtValidator;
 import com.team35.freelance.contract.service.ContractAnalyticsService;
@@ -16,6 +17,8 @@ import com.team35.freelance.contract.service.ContractEventService;
 import com.team35.freelance.contract.service.ContractMilestoneTrackingService;
 import com.team35.freelance.contract.service.ContractMilestoneTimelineService;
 import com.team35.freelance.contract.service.ContractService;
+import com.team35.freelance.contracts.dto.ContractDTO;
+import com.team35.freelance.contracts.dto.UserContractSummaryDTO;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -102,6 +105,35 @@ public class ContractController {
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    // M3 §6 read-DB — Feign S1/S2/S3 (service: repository bas, ma3ndnash Feign hina)
+    @GetMapping("/user/{userId}/summary")
+    public ResponseEntity<UserContractSummaryDTO> getUserContractSummary(@PathVariable Long userId) {
+        return ResponseEntity.ok(contractService.getUserContractSummaryForFreelancer(userId));
+    }
+
+    @GetMapping("/user/{userId}/active-count")
+    public ResponseEntity<Integer> getActiveContractCount(@PathVariable Long userId) {
+        return ResponseEntity.ok(contractService.getActiveContractCountForFreelancer(userId));
+    }
+
+    @GetMapping("/user/{userId}/completed-count")
+    public ResponseEntity<Long> getCompletedContractCount(@PathVariable Long userId) {
+        return ResponseEntity.ok(contractService.getCompletedContractCountForFreelancer(userId));
+    }
+
+    @GetMapping("/job/{jobId}/active-count")
+    public ResponseEntity<Integer> getActiveContractCountForJob(@PathVariable Long jobId) {
+        return ResponseEntity.ok(contractService.getActiveContractCountForJob(jobId));
+    }
+
+    @GetMapping("/proposal/{proposalId}/active")
+    public ResponseEntity<ContractDTO> getActiveContractForProposal(@PathVariable Long proposalId) {
+        return contractService.findActiveContractForProposal(proposalId)
+                .map(ContractDtoMapper::toDto)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{contractId}/progress")

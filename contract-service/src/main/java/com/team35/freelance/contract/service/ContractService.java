@@ -15,6 +15,7 @@ import com.team35.freelance.contract.repository.ContractRepository;
 import com.team35.freelance.contract.common.observer.EntityObserver;
 import com.team35.freelance.contract.common.observer.MongoEventLogger;
 import com.team35.freelance.contract.messaging.publisher.ContractEventPublisher;
+import com.team35.freelance.contracts.dto.UserContractSummaryDTO;
 import com.team35.freelance.contracts.events.ContractCreatedEvent;
 import com.team35.freelance.contracts.events.ContractStatusChangedEvent;
 import java.math.BigDecimal;
@@ -181,6 +182,45 @@ public class ContractService {
 
         return contractRepository.findMostRecentActiveContractByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("No active contract found for this user"));
+    }
+
+    // S1-F3 semantics: el userId da howa el freelancer (freelancer_id). totalEarnings w average 3ala COMPLETED bas; totalContracts 3ala kol el statuses — zay el worked example (3000 / 3 = 1000). el name yigi men user-service law el caller 3ayezo.
+    public UserContractSummaryDTO getUserContractSummaryForFreelancer(Long userId) {
+        List<Object[]> rows = contractRepository.getUserContractSummaryAggregates(userId);
+        if (rows == null || rows.isEmpty()) {
+            return new UserContractSummaryDTO(userId, null, 0L, 0L, 0L, 0.0, 0.0);
+        }
+        Object[] r = rows.get(0);
+        if (r == null || r.length < 5) {
+            return new UserContractSummaryDTO(userId, null, 0L, 0L, 0L, 0.0, 0.0);
+        }
+        long total = r[0] == null ? 0L : ((Number) r[0]).longValue();
+        long completed = r[1] == null ? 0L : ((Number) r[1]).longValue();
+        long terminated = r[2] == null ? 0L : ((Number) r[2]).longValue();
+        double totalEarnings = r[3] == null ? 0.0 : ((Number) r[3]).doubleValue();
+        double average = r[4] == null ? 0.0 : ((Number) r[4]).doubleValue();
+        return new UserContractSummaryDTO(userId, null, total, completed, terminated, totalEarnings, average);
+    }
+
+    // M3 §6 pure DB bas (mafeesh Feign hina) — S1-F4: kam contract ACTIVE 3and el freelancer
+    public int getActiveContractCountForFreelancer(Long userId) {
+        return contractRepository.countActiveByFreelancerId(userId);
+    }
+
+    // M3 §6 pure DB bas — S1-F9: kam contract COMPLETED (language filter / min contracts)
+    public long getCompletedContractCountForFreelancer(Long userId) {
+        return contractRepository.countCompletedByFreelancerId(userId);
+    }
+
+    // M3 §6 pure DB bas — S2-F4: kam contract ACTIVE 3ala el job (close job pre-check)
+    public int getActiveContractCountForJob(Long jobId) {
+        return contractRepository.countActiveByJobId(jobId);
+    }
+
+    // M3 §6 pure DB bas — S3-F4: awel contract ACTIVE bel proposal (el a7'yar) — optional 404 law mafish
+    public Optional<Contract> findActiveContractForProposal(Long proposalId) {
+        return contractRepository.findFirstByProposalIdAndStatusOrderByCreatedAtDesc(
+                proposalId, ContractStatus.ACTIVE);
     }
 
     @CacheEvict(value = {
