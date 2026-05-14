@@ -66,6 +66,7 @@ feign.proposal-service.url: http://proposal-service:8080
 feign.contract-service.url: http://contract-service:8080
 feign.wallet-service.url: http://wallet-service:8080
 
+
 ---
 spring:
   config:
@@ -73,6 +74,9 @@ spring:
       on-profile: local
   datasource:
     url: jdbc:postgresql://localhost:5432/freelancedb-proposals
+  jpa:
+    hibernate:
+      ddl-auto: update
   data:
     neo4j:
       uri: bolt://localhost:7687

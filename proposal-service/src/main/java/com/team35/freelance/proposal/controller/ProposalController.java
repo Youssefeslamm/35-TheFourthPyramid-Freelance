@@ -133,4 +133,13 @@ public class ProposalController {
         return ResponseEntity.ok(
                 proposalService.getRecommendedJobs(freelancerId, limit, callerUid, callerRole));
     }
+
+    // S3-READ-DB: Get Job Proposal Summary
+    @GetMapping("/job/{jobId}/summary")
+    public ResponseEntity<com.team35.freelance.contracts.dto.JobProposalSummaryDTO> getJobProposalSummary(
+            @PathVariable Long jobId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        return ResponseEntity.ok(proposalService.getJobProposalSummary(jobId, startDate, endDate));
+    }
 }
