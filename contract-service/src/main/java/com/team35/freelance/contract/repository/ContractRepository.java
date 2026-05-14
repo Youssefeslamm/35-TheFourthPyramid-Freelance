@@ -16,25 +16,22 @@ import java.util.Optional;
 @Repository
 public interface ContractRepository extends JpaRepository<Contract, Long> {
 
+    // S4-EVENTS: find contract by proposalId for completed/cancelled consumers
+    Optional<Contract> findByProposalId(Long proposalId);
+
     @Query(value = "SELECT * FROM contracts WHERE freelancer_id = :userId AND status = 'ACTIVE' ORDER BY created_at DESC LIMIT 1", nativeQuery = true)
     Optional<Contract> findMostRecentActiveContractByUserId(@Param("userId") Long userId);
 
     // --- M3 §6: Feign read APIs (S1 / S2 / S3) ---
-    // kam contract ACTIVE 3and el freelancer — S1-F4 lama y7sal deactivate w yeshof law lsa 3ndo active
     @Query(value = "SELECT CAST(COUNT(*) AS integer) FROM contracts WHERE freelancer_id = :userId AND status = 'ACTIVE'", nativeQuery = true)
     int countActiveByFreelancerId(@Param("userId") Long userId);
 
-    // kam contract COMPLETED 3and el freelancer — S1-F9 language filter b min contracts
     @Query(value = "SELECT COUNT(*) FROM contracts WHERE freelancer_id = :userId AND status = 'COMPLETED'", nativeQuery = true)
     long countCompletedByFreelancerId(@Param("userId") Long userId);
 
-    // kam contract ACTIVE 3ala el job — S2-F4 close job law mafish active contracts
     @Query(value = "SELECT CAST(COUNT(*) AS integer) FROM contracts WHERE job_id = :jobId AND status = 'ACTIVE'", nativeQuery = true)
     int countActiveByJobId(@Param("jobId") Long jobId);
 
-    // aggregation wa7da — ta3mel user contract summary Feign response:
-    // el user = freelancer_id (S1-F3: el freelancer fl hwar). totalContracts = COUNT(*) 3ala kol el statuses.
-    // totalEarnings = sum agreed_amount bas 3ala COMPLETED; averageContractValue = nafs el sum / adad el COMPLETED (mesh 3ala totalContracts) — zay el worked example: 3000 / 3 = 1000.
     @Query(value = "SELECT " +
            "CAST(COUNT(*) AS bigint), " +
            "CAST(COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS bigint), " +
@@ -48,7 +45,6 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
            "FROM contracts WHERE freelancer_id = :userId", nativeQuery = true)
     List<Object[]> getUserContractSummaryAggregates(@Param("userId") Long userId);
 
-    // awel contract ACTIVE bel proposal id (el a7'yar) — S3-F4 saga pre-check 2abl ma ycomplete
     Optional<Contract> findFirstByProposalIdAndStatusOrderByCreatedAtDesc(Long proposalId, ContractStatus status);
 
     @Query(value = "SELECT * FROM contracts WHERE created_at BETWEEN :startDate AND :endDate " +
@@ -77,7 +73,8 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     List<Object[]> countContractsByStatus(@Param("startDate") LocalDateTime startDate,
                                           @Param("endDate") LocalDateTime endDate);
 
-    @Query(value = "SELECT c.id, 'Unknown', 'Unknown', c.agreed_amount, c.status, " +
+    // S4-F3: returns freelancer_id and job_id so ContractService can enrich via Feign
+    @Query(value = "SELECT c.id, c.freelancer_id, c.job_id, c.agreed_amount, c.status, " +
            "EXTRACT(EPOCH FROM (COALESCE(c.end_date, CURRENT_TIMESTAMP) - c.start_date)) / 86400 " +
            "FROM contracts c " +
            "WHERE c.agreed_amount BETWEEN :minAmount AND :maxAmount " +
@@ -91,7 +88,7 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     @Transactional
     @Query(value = "DELETE FROM contracts WHERE status IN ('COMPLETED', 'TERMINATED') AND created_at < :cutoffDate", nativeQuery = true)
     int purgeOldContracts(@Param("cutoffDate") LocalDateTime cutoffDate);
-  
+
     // --- S4-F8: Freelancer Performance ---
     @Query(value = "SELECT " +
            "COUNT(c.id), " +
@@ -102,15 +99,15 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
            "FROM contracts c " +
            "WHERE c.freelancer_id = :freelancerId " +
            "AND c.created_at >= :startDate AND c.created_at <= :endDate", nativeQuery = true)
-    List<Object[]> getFreelancerPerformanceAggregates(@Param("freelancerId") Long freelancerId, 
-                                                      @Param("startDate") LocalDateTime startDate, 
+    List<Object[]> getFreelancerPerformanceAggregates(@Param("freelancerId") Long freelancerId,
+                                                      @Param("startDate") LocalDateTime startDate,
                                                       @Param("endDate") LocalDateTime endDate);
 
-    // --- S4-F9: Find Stalled Contracts ---
+    // S4-F9: returns freelancer_id and job_id so ContractService can enrich via Feign
     @Query(value = "SELECT " +
            "c.id, " +
-           "'Unknown', " +
-           "'Unknown', " +
+           "c.freelancer_id, " +
+           "c.job_id, " +
            "c.agreed_amount, " +
            "CAST(c.metadata->>'progressPercentage' AS numeric), " +
            "CAST(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(CAST(c.metadata->>'lastActivityDate' AS TIMESTAMP), c.created_at))) / 86400 AS INTEGER) " +

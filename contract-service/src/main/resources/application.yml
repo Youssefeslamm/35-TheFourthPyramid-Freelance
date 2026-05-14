@@ -53,14 +53,11 @@ jwt:
   secret: ${JWT_SECRET:0123456789abcdef0123456789abcdef01234567}
   expiration: ${JWT_EXPIRATION_MS:86400000}
 
-
-
 cache:
   type: redis
   redis:
-    time-to-live: 600000  # 10 minutes in milliseconds
+    time-to-live: 600000
 
-# Outbound Feign — default hostnames match Kubernetes Service DNS (:8080)
 feign:
   user-service:
     url: ${FEIGN_USER_SERVICE_URL:http://user-service:8080}
@@ -73,10 +70,23 @@ feign:
   wallet-service:
     url: ${FEIGN_WALLET_SERVICE_URL:http://wallet-service:8080}
 
-# Grafana Loki push API — default: compose hostname "loki"; prod/k8s document below uses cluster FQDN.
-# Enable Loki appender: SPRING_PROFILES_ACTIVE yekon feh loki aw docker aw prod aw k8s; fel IDE default console bas.
 loki:
   push-url: ${LOKI_PUSH_URL:http://loki:3100/loki/api/v1/push}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus,health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+    tags:
+      application: contract-service
 
 ---
 spring:
@@ -85,15 +95,3 @@ spring:
       on-profile: prod,k8s
 loki:
   push-url: ${LOKI_PUSH_URL:http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push}
-
----
-# Actuator w Prometheus (spec 11.1)
-management:
-  endpoints:
-    web:
-      exposure:
-        include: prometheus,health,info
-  metrics:
-    distribution:
-      percentiles-histogram:
-        http.server.requests: true

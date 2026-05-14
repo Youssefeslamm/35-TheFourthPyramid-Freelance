@@ -8,6 +8,7 @@ import com.team35.freelance.contract.dto.FreelancerPerformanceDTO;
 import com.team35.freelance.contract.dto.ContractAnalyticsDTO;
 import com.team35.freelance.contract.dto.MilestoneTrackRequestDTO;
 import com.team35.freelance.contract.dto.StalledContractDTO;
+import com.team35.freelance.contract.feign.OutboundFeignClients;
 import com.team35.freelance.contract.model.Contract;
 import com.team35.freelance.contract.model.ContractStatus;
 import com.team35.freelance.contract.repository.ContractAnalyticsRepository;
@@ -15,10 +16,13 @@ import com.team35.freelance.contract.repository.ContractRepository;
 import com.team35.freelance.contract.common.observer.EntityObserver;
 import com.team35.freelance.contract.common.observer.MongoEventLogger;
 import com.team35.freelance.contract.messaging.publisher.ContractEventPublisher;
-import com.team35.freelance.contracts.dto.UserContractSummaryDTO;
+import com.team35.freelance.contracts.dto.JobDTO;
+import com.team35.freelance.contracts.dto.UserProfileDTO;
 import com.team35.freelance.contracts.events.ContractCreatedEvent;
 import com.team35.freelance.contracts.events.ContractStatusChangedEvent;
 import java.math.BigDecimal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
@@ -38,10 +42,13 @@ import java.util.stream.Collectors;
 @Service
 public class ContractService {
 
+    private static final Logger log = LoggerFactory.getLogger(ContractService.class);
+
     private final ContractRepository contractRepository;
     private final ContractAnalyticsRepository analyticsRepository;
     private final ContractMilestoneEventRepository milestoneEventRepository;
     private final ContractEventPublisher contractEventPublisher;
+    private final OutboundFeignClients outboundFeignClients;
     private final List<EntityObserver> observers = new ArrayList<>();
 
     private static final java.util.Set<String> ALLOWED_MILESTONE_STATUSES =
@@ -51,11 +58,13 @@ public class ContractService {
                            ContractAnalyticsRepository analyticsRepository,
                            ContractMilestoneEventRepository milestoneEventRepository,
                            MongoEventLogger mongoEventLogger,
-                           ContractEventPublisher contractEventPublisher) {
+                           ContractEventPublisher contractEventPublisher,
+                           OutboundFeignClients outboundFeignClients) {
         this.contractRepository = contractRepository;
         this.analyticsRepository = analyticsRepository;
         this.milestoneEventRepository = milestoneEventRepository;
         this.contractEventPublisher = contractEventPublisher;
+        this.outboundFeignClients = outboundFeignClients;
         registerObserver(mongoEventLogger);
     }
 
@@ -98,7 +107,6 @@ public class ContractService {
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "CREATED");
         payload.put("contractId", saved.getId());
-
         notifyObservers("CONTRACT", payload);
 
         return saved;
@@ -110,7 +118,6 @@ public class ContractService {
 
     @Cacheable(value = "contract-service::contract", key = "#id")
     public Optional<Contract> findById(Long id) {
-
         return contractRepository.findById(id);
     }
 
@@ -148,7 +155,6 @@ public class ContractService {
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "UPDATED");
         payload.put("contractId", saved.getId());
-
         notifyObservers("CONTRACT", payload);
 
         return saved;
@@ -171,56 +177,20 @@ public class ContractService {
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "DELETED");
         payload.put("contractId", id);
-
         notifyObservers("CONTRACT", payload);
 
         contractRepository.deleteById(id);
     }
 
+    // S4-F1: Feign verify user exists before returning active contract
     @Cacheable(value = "contract-service::S4-F1", key = "#userId")
     public Contract getActiveContractForUser(Long userId) {
-
+        if (outboundFeignClients.tryFetchUserProfile(userId, null).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userId);
+        }
         return contractRepository.findMostRecentActiveContractByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("No active contract found for this user"));
-    }
-
-    // S1-F3: el userId da howa el freelancer (freelancer_id). totalEarnings w average 3ala COMPLETED bas; totalContracts 3ala kol el statuses — zay el mesal fel spec (3000 / 3 = 1000). el name yigi men user-service law el caller 3ayezo.
-    public UserContractSummaryDTO getUserContractSummaryForFreelancer(Long userId) {
-        List<Object[]> rows = contractRepository.getUserContractSummaryAggregates(userId);
-        if (rows == null || rows.isEmpty()) {
-            return new UserContractSummaryDTO(userId, null, 0L, 0L, 0L, 0.0, 0.0);
-        }
-        Object[] r = rows.get(0);
-        if (r == null || r.length < 5) {
-            return new UserContractSummaryDTO(userId, null, 0L, 0L, 0L, 0.0, 0.0);
-        }
-        long total = r[0] == null ? 0L : ((Number) r[0]).longValue();
-        long completed = r[1] == null ? 0L : ((Number) r[1]).longValue();
-        long terminated = r[2] == null ? 0L : ((Number) r[2]).longValue();
-        double totalEarnings = r[3] == null ? 0.0 : ((Number) r[3]).doubleValue();
-        double average = r[4] == null ? 0.0 : ((Number) r[4]).doubleValue();
-        return new UserContractSummaryDTO(userId, null, total, completed, terminated, totalEarnings, average);
-    }
-
-    // M3 §6 men el DB bas (mafeesh Feign hina) — S1-F4: kam contract ACTIVE 3and el freelancer
-    public int getActiveContractCountForFreelancer(Long userId) {
-        return contractRepository.countActiveByFreelancerId(userId);
-    }
-
-    // M3 §6 men el DB bas — S1-F9: kam contract COMPLETED 3and el freelancer (filter el lugha aw el minimum contracts)
-    public long getCompletedContractCountForFreelancer(Long userId) {
-        return contractRepository.countCompletedByFreelancerId(userId);
-    }
-
-    // M3 §6 men el DB bas — S2-F4: kam contract ACTIVE 3ala el job (check 2abl ma ye2fel el job)
-    public int getActiveContractCountForJob(Long jobId) {
-        return contractRepository.countActiveByJobId(jobId);
-    }
-
-    // M3 §6 men el DB bas — S3-F4: awel contract ACTIVE bel proposal (el a7'yar) — 404 law mafish
-    public Optional<Contract> findActiveContractForProposal(Long proposalId) {
-        return contractRepository.findFirstByProposalIdAndStatusOrderByCreatedAtDesc(
-                proposalId, ContractStatus.ACTIVE);
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No active contract found for user: " + userId));
     }
 
     @CacheEvict(value = {
@@ -237,11 +207,9 @@ public class ContractService {
                 .orElseThrow(() -> new RuntimeException("Contract not found"));
 
         Map<String, Object> metadata = contract.getMetadata();
-
         if (metadata == null) {
             metadata = new java.util.HashMap<>();
         }
-
         metadata.putAll(updates);
         contract.setMetadata(metadata);
 
@@ -251,7 +219,6 @@ public class ContractService {
         payload.put("action", "PROGRESS_UPDATED");
         payload.put("contractId", saved.getId());
         payload.put("updates", updates);
-
         notifyObservers("CONTRACT", payload);
 
         return saved;
@@ -265,35 +232,47 @@ public class ContractService {
         return contractRepository.findContractsInDateRange(startDate, endDate, statusFilter);
     }
 
+    // S4-F3: Feign enrich freelancerName and jobTitle per row
     @Cacheable(value = "contract-service::S4-F3", key = "#minAmount + ':' + #maxAmount + ':' + #status")
     public List<ContractSummaryDTO> searchByBudgetRange(Double minAmount, Double maxAmount, String status) {
         double effectiveMin = minAmount == null ? 0.0 : minAmount;
         double effectiveMax = maxAmount == null ? 1_000_000_000_000.0 : maxAmount;
 
         if (effectiveMin > effectiveMax) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minAmount must be less than or equal to maxAmount");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minAmount must be <= maxAmount");
         }
 
-        String statusFilter = (status == null || status.isBlank())
-                ? null
-                : status.trim().toUpperCase();
-
+        String statusFilter = (status == null || status.isBlank()) ? null : status.trim().toUpperCase();
         List<Object[]> rows = contractRepository.searchContractsByBudgetRange(effectiveMin, effectiveMax, statusFilter);
 
-        return rows.stream()
-                .map(this::toContractSummaryDTO)
-                .collect(Collectors.toList());
-    }
+        Map<Long, String> userNameCache = new HashMap<>();
+        Map<Long, String> jobTitleCache = new HashMap<>();
 
-    private ContractSummaryDTO toContractSummaryDTO(Object[] row) {
-        return ContractSummaryDTO.builder()
-                .contractId(((Number) row[0]).longValue())
-                .freelancerName((String) row[1])
-                .jobTitle((String) row[2])
-                .agreedAmount(((Number) row[3]).doubleValue())
-                .status(String.valueOf(row[4]))
-                .durationDays(((Number) row[5]).doubleValue())
-                .build();
+        return rows.stream().map(row -> {
+            long contractId   = ((Number) row[0]).longValue();
+            Long freelancerId = ((Number) row[1]).longValue();
+            Long jobId        = ((Number) row[2]).longValue();
+            double amount     = ((Number) row[3]).doubleValue();
+            String statusVal  = String.valueOf(row[4]);
+            double duration   = ((Number) row[5]).doubleValue();
+
+            String freelancerName = userNameCache.computeIfAbsent(freelancerId, id ->
+                    outboundFeignClients.tryFetchUserProfile(id, null)
+                            .map(UserProfileDTO::getName).orElse("Unknown"));
+
+            String jobTitle = jobTitleCache.computeIfAbsent(jobId, id ->
+                    outboundFeignClients.tryFetchJobById(id)
+                            .map(JobDTO::getTitle).orElse("Unknown"));
+
+            return ContractSummaryDTO.builder()
+                    .contractId(contractId)
+                    .freelancerName(freelancerName)
+                    .jobTitle(jobTitle)
+                    .agreedAmount(amount)
+                    .status(statusVal)
+                    .durationDays(duration)
+                    .build();
+        }).collect(Collectors.toList());
     }
 
     @Transactional
@@ -333,7 +312,6 @@ public class ContractService {
                     .orElseThrow(() -> new RuntimeException("Contract not found"));
 
             ContractStatus newStatus;
-
             try {
                 newStatus = ContractStatus.valueOf(update.getStatus().toUpperCase());
             } catch (IllegalArgumentException e) {
@@ -366,8 +344,8 @@ public class ContractService {
         payload.put("action", "BATCH_STATUS_UPDATED");
         payload.put("count", contracts.size());
         payload.put("contractIds", ids);
-
         notifyObservers("CONTRACT", payload);
+
         return contracts.size();
     }
 
@@ -388,27 +366,31 @@ public class ContractService {
         payload.put("action", "OLD_DATA_PURGED");
         payload.put("deletedCount", deletedCount);
         payload.put("olderThanDays", olderThanDays);
-
         notifyObservers("CONTRACT", payload);
 
         return deletedCount;
     }
 
+    // S4-F8: Feign verify freelancer exists before returning performance
     @Cacheable(value = "contract-service::S4-F8", key = "#freelancerId + ':' + #startDate + ':' + #endDate")
     public FreelancerPerformanceDTO getFreelancerPerformance(Long freelancerId,
                                                              LocalDateTime startDate,
                                                              LocalDateTime endDate) {
+        if (outboundFeignClients.tryFetchUserProfile(freelancerId, null).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Freelancer not found: " + freelancerId);
+        }
+
         List<Object[]> results = contractRepository.getFreelancerPerformanceAggregates(freelancerId, startDate, endDate);
         Object[] row = results == null || results.isEmpty() ? null : results.get(0);
 
-        Integer totalContracts = numberAsInt(row, 0);
+        Integer totalContracts     = numberAsInt(row, 0);
         Integer completedContracts = numberAsInt(row, 1);
-        Double totalAmount = numberAsDouble(row, 2);
-        Double totalEarnings = numberAsDouble(row, 3);
-        Double avgDuration = numberAsDouble(row, 4);
+        Double totalAmount         = numberAsDouble(row, 2);
+        Double totalEarnings       = numberAsDouble(row, 3);
+        Double avgDuration         = numberAsDouble(row, 4);
 
         Double averageContractValue = totalContracts > 0 ? totalAmount / totalContracts : 0.0;
-        Double completionRate = totalContracts > 0 ? ((double) completedContracts / totalContracts) * 100 : 0.0;
+        Double completionRate       = totalContracts > 0 ? ((double) completedContracts / totalContracts) * 100 : 0.0;
 
         return FreelancerPerformanceDTO.builder()
                 .freelancerId(freelancerId)
@@ -420,34 +402,48 @@ public class ContractService {
                 .build();
     }
 
+    // S4-F9: Feign enrich freelancerName and jobTitle per row
     @Cacheable(value = "contract-service::S4-F9", key = "#maxProgress + ':' + #stalledDays")
     public List<StalledContractDTO> getStalledContracts(Double maxProgress, Integer stalledDays) {
         List<Object[]> results = contractRepository.findStalledContracts(maxProgress, stalledDays);
 
-        return results.stream()
-                .map(row -> StalledContractDTO.builder()
-                        .contractId(((Number) row[0]).longValue())
-                        .freelancerName((String) row[1])
-                        .jobTitle((String) row[2])
-                        .agreedAmount(((Number) row[3]).doubleValue())
-                        .progressPercentage(row[4] != null ? ((Number) row[4]).doubleValue() : 0.0)
-                        .daysSinceLastActivity(((Number) row[5]).intValue())
-                        .build()
-                )
-                .collect(Collectors.toList());
+        Map<Long, String> userNameCache = new HashMap<>();
+        Map<Long, String> jobTitleCache = new HashMap<>();
+
+        return results.stream().map(row -> {
+            long contractId   = ((Number) row[0]).longValue();
+            Long freelancerId = ((Number) row[1]).longValue();
+            Long jobId        = ((Number) row[2]).longValue();
+            double amount     = ((Number) row[3]).doubleValue();
+            double progress   = row[4] != null ? ((Number) row[4]).doubleValue() : 0.0;
+            int stalledDay    = ((Number) row[5]).intValue();
+
+            String freelancerName = userNameCache.computeIfAbsent(freelancerId, id ->
+                    outboundFeignClients.tryFetchUserProfile(id, null)
+                            .map(UserProfileDTO::getName).orElse("Unknown"));
+
+            String jobTitle = jobTitleCache.computeIfAbsent(jobId, id ->
+                    outboundFeignClients.tryFetchJobById(id)
+                            .map(JobDTO::getTitle).orElse("Unknown"));
+
+            return StalledContractDTO.builder()
+                    .contractId(contractId)
+                    .freelancerName(freelancerName)
+                    .jobTitle(jobTitle)
+                    .agreedAmount(amount)
+                    .progressPercentage(progress)
+                    .daysSinceLastActivity(stalledDay)
+                    .build();
+        }).collect(Collectors.toList());
     }
 
     private Integer numberAsInt(Object[] row, int index) {
-        if (row == null || row.length <= index || row[index] == null) {
-            return 0;
-        }
+        if (row == null || row.length <= index || row[index] == null) return 0;
         return ((Number) row[index]).intValue();
     }
 
     private Double numberAsDouble(Object[] row, int index) {
-        if (row == null || row.length <= index || row[index] == null) {
-            return 0.0;
-        }
+        if (row == null || row.length <= index || row[index] == null) return 0.0;
         return ((Number) row[index]).doubleValue();
     }
 
@@ -463,6 +459,7 @@ public class ContractService {
             throw new IllegalArgumentException("Invalid operator: " + operator);
         }
     }
+
     @CacheEvict(value = {
             "contract-service::S4-F10",
             "contract-service::S4-F12"
@@ -494,7 +491,6 @@ public class ContractService {
         payload.put("status", request.getStatus().toUpperCase());
         payload.put("recordedBy", request.getRecordedBy());
         payload.put("notes", request.getNotes());
-
         notifyObservers("CONTRACT", payload);
 
         return saved;
@@ -527,4 +523,3 @@ public class ContractService {
                 .build();
     }
 }
-
