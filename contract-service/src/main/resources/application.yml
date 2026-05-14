@@ -1,5 +1,6 @@
 spring:
   application:
+    # Loki / dashboards: label service=${spring.application.name}
     name: contract-service
 
   rabbitmq:
@@ -59,8 +60,40 @@ cache:
   redis:
     time-to-live: 600000  # 10 minutes in milliseconds
 
-feign.user-service.url: http://user-service:8080
-feign.job-service.url: http://job-service:8080
-feign.proposal-service.url: http://proposal-service:8080
-feign.contract-service.url: http://contract-service:8080
-feign.wallet-service.url: http://wallet-service:8080
+# Outbound Feign — default hostnames match Kubernetes Service DNS (:8080)
+feign:
+  user-service:
+    url: ${FEIGN_USER_SERVICE_URL:http://user-service:8080}
+  job-service:
+    url: ${FEIGN_JOB_SERVICE_URL:http://job-service:8080}
+  proposal-service:
+    url: ${FEIGN_PROPOSAL_SERVICE_URL:http://proposal-service:8080}
+  contract-service:
+    url: ${FEIGN_CONTRACT_SERVICE_URL:http://contract-service:8080}
+  wallet-service:
+    url: ${FEIGN_WALLET_SERVICE_URL:http://wallet-service:8080}
+
+# Grafana Loki push API — default: compose hostname "loki"; prod/k8s document below uses cluster FQDN.
+# Enable Loki appender: SPRING_PROFILES_ACTIVE yekon feh loki aw docker aw prod aw k8s; fel IDE default console bas.
+loki:
+  push-url: ${LOKI_PUSH_URL:http://loki:3100/loki/api/v1/push}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod,k8s
+loki:
+  push-url: ${LOKI_PUSH_URL:http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push}
+
+---
+# Actuator w Prometheus (spec 11.1)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus,health,info
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

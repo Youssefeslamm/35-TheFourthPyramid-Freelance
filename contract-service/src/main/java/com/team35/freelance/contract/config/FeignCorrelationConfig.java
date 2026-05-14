@@ -10,7 +10,7 @@ import org.springframework.core.Ordered;
 
 import java.util.EnumSet;
 
-// el correlation: filter fel servlet chain (awel order) + Feign interceptor lel tal3
+// @Configuration moktamel: el correlation (filter + servlet registration + Feign interceptor) kolha fel class da
 @Configuration
 public class FeignCorrelationConfig {
 

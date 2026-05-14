@@ -21,6 +21,7 @@ import com.team35.freelance.contracts.dto.ContractDTO;
 import com.team35.freelance.contracts.dto.UserContractSummaryDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -97,75 +98,109 @@ public class ContractController {
 
     @GetMapping("/user/{userId}/active")
     public ResponseEntity<ContractDTO> getActiveContractForUser(@PathVariable Long userId) {
+        putContractMdcIds(userId, null, null, null);
         try {
             Contract contract = contractService.getActiveContractForUser(userId);
             return ResponseEntity.ok(ContractDtoMapper.toDto(contract));
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
+        } finally {
+            clearContractMdcIds();
         }
     }
 
     // --- M3 §6: el GETat el S1/S2/S3 (Feign) — summary w el adad w proposal-active; el service byekalemo el DB bas (mafeesh Feign hina) ---
     @GetMapping("/user/{userId}/summary")
     public ResponseEntity<UserContractSummaryDTO> getUserContractSummary(@PathVariable Long userId) {
-        log.info("Received {} {}", "GET", "/api/contracts/user/" + userId + "/summary");
-        UserContractSummaryDTO body = contractService.getUserContractSummaryForFreelancer(userId);
-        ensureNonNullSummaryCounts(body, userId);
-        ResponseEntity<UserContractSummaryDTO> response = ResponseEntity.status(HttpStatus.OK).body(body);
-        log.info("Returning {} UserContractSummaryDTO userId={} totalContracts={}",
-                response.getStatusCode().value(), userId, body.getTotalContracts());
-        return response;
+        putContractMdcIds(userId, null, null, null);
+        try {
+            log.info("Received {} {}", "GET", "/api/contracts/user/" + userId + "/summary");
+            UserContractSummaryDTO body = contractService.getUserContractSummaryForFreelancer(userId);
+            ensureNonNullSummaryCounts(body, userId);
+            ResponseEntity<UserContractSummaryDTO> response = ResponseEntity.status(HttpStatus.OK).body(body);
+            log.info("Returning {} UserContractSummaryDTO userId={} totalContracts={}",
+                    response.getStatusCode().value(), userId, body.getTotalContracts());
+            return response;
+        } finally {
+            clearContractMdcIds();
+        }
     }
 
     @GetMapping("/user/{userId}/active-count")
     public ResponseEntity<Integer> getActiveContractCount(@PathVariable Long userId) {
-        log.info("Received {} {}", "GET", "/api/contracts/user/" + userId + "/active-count");
-        int count = contractService.getActiveContractCountForFreelancer(userId);
-        ResponseEntity<Integer> response = ResponseEntity.status(HttpStatus.OK).body(count);
-        log.info("Returning {} activeCount={} userId={}", response.getStatusCode().value(), count, userId);
-        return response;
+        putContractMdcIds(userId, null, null, null);
+        try {
+            log.info("Received {} {}", "GET", "/api/contracts/user/" + userId + "/active-count");
+            int count = contractService.getActiveContractCountForFreelancer(userId);
+            ResponseEntity<Integer> response = ResponseEntity.status(HttpStatus.OK).body(count);
+            log.info("Returning {} activeCount={} userId={}", response.getStatusCode().value(), count, userId);
+            return response;
+        } finally {
+            clearContractMdcIds();
+        }
     }
 
     @GetMapping("/user/{userId}/completed-count")
     public ResponseEntity<Long> getCompletedContractCount(@PathVariable Long userId) {
-        log.info("Received {} {}", "GET", "/api/contracts/user/" + userId + "/completed-count");
-        long count = contractService.getCompletedContractCountForFreelancer(userId);
-        ResponseEntity<Long> response = ResponseEntity.status(HttpStatus.OK).body(count);
-        log.info("Returning {} completedCount={} userId={}", response.getStatusCode().value(), count, userId);
-        return response;
+        putContractMdcIds(userId, null, null, null);
+        try {
+            log.info("Received {} {}", "GET", "/api/contracts/user/" + userId + "/completed-count");
+            long count = contractService.getCompletedContractCountForFreelancer(userId);
+            ResponseEntity<Long> response = ResponseEntity.status(HttpStatus.OK).body(count);
+            log.info("Returning {} completedCount={} userId={}", response.getStatusCode().value(), count, userId);
+            return response;
+        } finally {
+            clearContractMdcIds();
+        }
     }
 
     @GetMapping("/job/{jobId}/active-count")
     public ResponseEntity<Integer> getActiveContractCountForJob(@PathVariable Long jobId) {
-        log.info("Received {} {}", "GET", "/api/contracts/job/" + jobId + "/active-count");
-        int count = contractService.getActiveContractCountForJob(jobId);
-        ResponseEntity<Integer> response = ResponseEntity.status(HttpStatus.OK).body(count);
-        log.info("Returning {} jobActiveCount={} jobId={}", response.getStatusCode().value(), count, jobId);
-        return response;
+        putContractMdcIds(null, jobId, null, null);
+        try {
+            log.info("Received {} {}", "GET", "/api/contracts/job/" + jobId + "/active-count");
+            int count = contractService.getActiveContractCountForJob(jobId);
+            ResponseEntity<Integer> response = ResponseEntity.status(HttpStatus.OK).body(count);
+            log.info("Returning {} jobActiveCount={} jobId={}", response.getStatusCode().value(), count, jobId);
+            return response;
+        } finally {
+            clearContractMdcIds();
+        }
     }
 
     @GetMapping("/proposal/{proposalId}/active")
     public ResponseEntity<ContractDTO> getActiveContractForProposal(@PathVariable Long proposalId) {
-        log.info("Received {} {}", "GET", "/api/contracts/proposal/" + proposalId + "/active");
-        ResponseEntity<ContractDTO> response = contractService.findActiveContractForProposal(proposalId)
-                .map(ContractDtoMapper::toDto)
-                .map(dto -> ResponseEntity.status(HttpStatus.OK).body(dto))
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
-        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-            log.info("Returning {} ContractDTO proposalId={} contractId={}",
-                    response.getStatusCode().value(), proposalId, response.getBody().getId());
-        } else {
-            log.info("Returning {} proposalId={}", response.getStatusCode().value(), proposalId);
+        putContractMdcIds(null, null, proposalId, null);
+        try {
+            log.info("Received {} {}", "GET", "/api/contracts/proposal/" + proposalId + "/active");
+            ResponseEntity<ContractDTO> response = contractService.findActiveContractForProposal(proposalId)
+                    .map(ContractDtoMapper::toDto)
+                    .map(dto -> ResponseEntity.status(HttpStatus.OK).body(dto))
+                    .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                MDC.put("contractId", String.valueOf(response.getBody().getId()));
+                log.info("Returning {} ContractDTO proposalId={} contractId={}",
+                        response.getStatusCode().value(), proposalId, response.getBody().getId());
+            } else {
+                log.info("Returning {} proposalId={}", response.getStatusCode().value(), proposalId);
+            }
+            return response;
+        } finally {
+            clearContractMdcIds();
         }
-        return response;
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ContractDTO> getById(@PathVariable Long id) {
-        return contractService.findById(id)
-                .map(ContractDtoMapper::toDto)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        putContractMdcIds(null, null, null, id);
+        try {
+            return contractService.findById(id)
+                    .map(ContractDtoMapper::toDto)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } finally {
+            clearContractMdcIds();
+        }
     }
 
     @PutMapping("/{contractId}/progress")
@@ -311,6 +346,34 @@ public class ContractController {
         }
 
         return ResponseEntity.ok(contractMilestoneTimelineService.getTimeline(id, startTime, endTime));
+    }
+
+    // Phase G / §11.1: Loki JsonLayout includes these keys; correlationId comes from CorrelationIdFilter.
+    private static final String MDC_USER_ID = "userId";
+    private static final String MDC_JOB_ID = "jobId";
+    private static final String MDC_PROPOSAL_ID = "proposalId";
+    private static final String MDC_CONTRACT_ID = "contractId";
+
+    private static void putContractMdcIds(Long userId, Long jobId, Long proposalId, Long contractId) {
+        if (userId != null) {
+            MDC.put(MDC_USER_ID, String.valueOf(userId));
+        }
+        if (jobId != null) {
+            MDC.put(MDC_JOB_ID, String.valueOf(jobId));
+        }
+        if (proposalId != null) {
+            MDC.put(MDC_PROPOSAL_ID, String.valueOf(proposalId));
+        }
+        if (contractId != null) {
+            MDC.put(MDC_CONTRACT_ID, String.valueOf(contractId));
+        }
+    }
+
+    private static void clearContractMdcIds() {
+        MDC.remove(MDC_USER_ID);
+        MDC.remove(MDC_JOB_ID);
+        MDC.remove(MDC_PROPOSAL_ID);
+        MDC.remove(MDC_CONTRACT_ID);
     }
 
     // law el summary feeha null fel counts 7awelhom 0 — mesh 3ayzeen null fel JSON (Feign w el clients)
