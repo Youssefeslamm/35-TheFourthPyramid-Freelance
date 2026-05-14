@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wallet-service
+  labels:
+    app: wallet-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wallet-service
+  template:
+    metadata:
+      labels:
+        app: wallet-service
+    spec:
+      containers:
+        - name: wallet-service
+          image: freelance/wallet-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://wallet-postgres:5432/freelancedb-wallet
+            - name: SPRING_DATASOURCE_USERNAME
+              value: postgres
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: postgres
+            - name: SPRING_RABBITMQ_HOST
+              value: rabbitmq
+            - name: SPRING_RABBITMQ_PORT
+              value: "5672"
+            - name: SPRING_RABBITMQ_USERNAME
+              value: guest
+            - name: SPRING_RABBITMQ_PASSWORD
+              value: guest
+            - name: FEIGN_USER_SERVICE_URL
+              value: http://user-service:8080
+            - name: FEIGN_JOB_SERVICE_URL
+              value: http://job-service:8080
+            - name: FEIGN_PROPOSAL_SERVICE_URL
+              value: http://proposal-service:8080
+            - name: FEIGN_CONTRACT_SERVICE_URL
+              value: http://contract-service:8080
+            - name: FEIGN_WALLET_SERVICE_URL
+              value: http://wallet-service:8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wallet-service
+  labels:
+    app: wallet-service
+spec:
+  selector:
+    app: wallet-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

@@ -1,0 +1,18 @@
+resources:
+  - gateway/api-gateway.yaml
+  - services/user-service.yaml
+  - services/job-service.yaml
+  - services/proposal-service.yaml
+  - services/contract-service.yaml
+  - services/wallet-service.yaml
+  - postgres/user-postgres.yaml
+  - postgres/job-postgres.yaml
+  - postgres/proposal-postgres.yaml
+  - postgres/contract-postgres.yaml
+  - postgres/wallet-postgres.yaml
+  - rabbitmq/rabbitmq.yaml
+  - prometheus-configmap.yaml
+  - grafana-dashboards.yaml
+  - observability/prometheus.yaml
+  - observability/grafana.yaml
+  - observability/loki.yaml
