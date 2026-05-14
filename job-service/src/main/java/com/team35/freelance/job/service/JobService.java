@@ -47,6 +47,10 @@ import com.team35.freelance.job.model.JobCategory;
 import com.team35.freelance.job.model.JobStatus;
 import com.team35.freelance.job.repository.JobAttachmentRepository;
 import com.team35.freelance.job.repository.JobRepository;
+import com.team35.freelance.job.messaging.publisher.JobEventPublisher;
+import com.team35.freelance.contracts.events.JobClosedEvent;
+import com.team35.freelance.contracts.events.JobRatedEvent;
+import com.team35.freelance.contracts.events.JobStatusChangedEvent;
 
 @Service
 public class JobService {
@@ -72,6 +76,7 @@ public class JobService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final JobDashboardCacheService jobDashboardCacheService;
     private final RestTemplate elasticsearchRestTemplate = new RestTemplate();
+    private final JobEventPublisher jobEventPublisher;
 
     @Value("${spring.elasticsearch.uris:http://elasticsearch:9200}")
     private String elasticsearchUris;
@@ -81,13 +86,15 @@ public class JobService {
                       ElasticsearchOperations elasticsearchOperations,
                       ElasticsearchHitAdapter elasticsearchHitAdapter,
                       MongoEventLogger mongoEventLogger,
-                      JobDashboardCacheService jobDashboardCacheService) {
+                      JobDashboardCacheService jobDashboardCacheService,
+                      JobEventPublisher jobEventPublisher) {
 
         this.jobRepository = jobRepository;
         this.jobAttachmentRepository = jobAttachmentRepository;
         this.elasticsearchOperations = elasticsearchOperations;
         this.elasticsearchHitAdapter = elasticsearchHitAdapter;
         this.jobDashboardCacheService = jobDashboardCacheService;
+        this.jobEventPublisher = jobEventPublisher;
 
         this.observers.add(mongoEventLogger);
     }
@@ -216,6 +223,8 @@ public class JobService {
         Job existing = getJobById(id);
         Long requestedClientId = updatedJob == null ? null : updatedJob.getClientId();
 
+        JobStatus oldStatus = existing.getStatus();
+
         applyJobDefaults(updatedJob);
         validateJob(updatedJob);
 
@@ -241,6 +250,12 @@ public class JobService {
 
         Job saved = jobRepository.save(existing);
         indexJobForSearchSafely(saved, "auto_crud_update");
+
+        if (oldStatus != null && saved.getStatus() != null && oldStatus != saved.getStatus()) {
+            jobEventPublisher.publishStatusChanged(
+                    new JobStatusChangedEvent(saved.getId(), oldStatus.name(), saved.getStatus().name())
+            );
+        }
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "JOB_UPDATED");
@@ -805,6 +820,10 @@ public class JobService {
         Job saved = jobRepository.save(job);
         indexJobForSearchSafely(saved, "auto_crud_update");
 
+        jobEventPublisher.publishJobRated(
+                new JobRatedEvent(saved.getId(), request.getContractId(), request.getRating().doubleValue(), null)
+        );
+
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "JOB_RATED");
         payload.put("jobId", saved.getId());
@@ -840,6 +859,8 @@ public class JobService {
 
         Job saved = jobRepository.save(job);
         indexJobForSearchSafely(saved, "auto_crud_update");
+
+        jobEventPublisher.publishJobClosed(new JobClosedEvent(saved.getId(), saved.getClientId()));
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "JOB_CLOSED");

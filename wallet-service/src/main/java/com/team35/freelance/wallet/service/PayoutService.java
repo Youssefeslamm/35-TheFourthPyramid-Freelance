@@ -32,6 +32,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import com.team35.freelance.wallet.messaging.publisher.PaymentEventPublisher;
+import com.team35.freelance.contracts.events.PaymentCompletedEvent;
+import com.team35.freelance.contracts.events.PaymentInitiatedEvent;
+import com.team35.freelance.contracts.events.PaymentRefundedEvent;
+import java.math.BigDecimal;
+
 @Service
 public class PayoutService {
 
@@ -41,19 +47,22 @@ public class PayoutService {
     private final MongoEventRepository mongoEventRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final WalletAnalyticsCacheService walletAnalyticsCacheService;
+    private final PaymentEventPublisher paymentEventPublisher;
 
     public PayoutService(PayoutRepository payoutRepository,
                          PromoCodeRepository promoCodeRepository,
                          RefundStrategySelector refundStrategySelector,
                          MongoEventLogger mongoEventLogger,
                          MongoEventRepository mongoEventRepository,
-                         WalletAnalyticsCacheService walletAnalyticsCacheService) {
+                         WalletAnalyticsCacheService walletAnalyticsCacheService,
+                         PaymentEventPublisher paymentEventPublisher) {
 
         this.payoutRepository = payoutRepository;
         this.promoCodeRepository = promoCodeRepository;
         this.refundStrategySelector = refundStrategySelector;
         this.mongoEventRepository = mongoEventRepository;
         this.walletAnalyticsCacheService = walletAnalyticsCacheService;
+        this.paymentEventPublisher = paymentEventPublisher;
         registerObserver(mongoEventLogger);
     }
     public void registerObserver(EntityObserver observer) {
@@ -82,6 +91,15 @@ public class PayoutService {
     public Payout createPayout(Payout payout) {
         payout.setCreatedAt(LocalDateTime.now());
         Payout saved = payoutRepository.save(payout);
+
+        paymentEventPublisher.publishInitiated(
+                new PaymentInitiatedEvent(
+                        saved.getId(),
+                        null,
+                        saved.getContractId(),
+                        BigDecimal.valueOf(saved.getAmount())
+                )
+        );
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "PAYOUT_CREATED");
@@ -226,6 +244,15 @@ public class PayoutService {
         payout.setTransactionDetails(details);
 
         Payout saved = payoutRepository.save(payout);
+
+        paymentEventPublisher.publishCompleted(
+                new PaymentCompletedEvent(
+                        saved.getId(),
+                        null,
+                        saved.getContractId(),
+                        BigDecimal.valueOf(saved.getAmount())
+                )
+        );
 
         // existing observer logic
         Map<String, Object> payload = new HashMap<>();
@@ -384,6 +411,15 @@ public class PayoutService {
         payout.setStatus(PayoutStatus.COMPLETED);
         Payout saved = payoutRepository.save(payout);
 
+        paymentEventPublisher.publishCompleted(
+                new PaymentCompletedEvent(
+                        saved.getId(),
+                        null,
+                        saved.getContractId(),
+                        BigDecimal.valueOf(saved.getAmount())
+                )
+        );
+
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "PAYOUT_RETRIED");
         payload.put("payoutId", saved.getId());
@@ -440,6 +476,15 @@ public class PayoutService {
         payout.setTransactionDetails(transactionDetails);
 
         Payout saved = payoutRepository.save(payout);
+
+        paymentEventPublisher.publishRefunded(
+                new PaymentRefundedEvent(
+                        saved.getId(),
+                        null,
+                        saved.getContractId(),
+                        BigDecimal.valueOf(saved.getAmount())
+                )
+        );
 
         Map<String, Object> eventPayload = new HashMap<>();
         eventPayload.put("action", "PAYOUT_REFUNDED");
@@ -512,6 +557,15 @@ public class PayoutService {
         payout.setTransactionDetails(details);
 
         Payout saved = payoutRepository.save(payout);
+
+        paymentEventPublisher.publishRefunded(
+                new PaymentRefundedEvent(
+                        saved.getId(),
+                        null,
+                        saved.getContractId(),
+                        BigDecimal.valueOf(result.getAmount())
+                )
+        );
 
         // 6. AUDIT EVENT (FULL REQUIRED DATA)
         Map<String, Object> payload = new HashMap<>();

@@ -8,6 +8,10 @@ import com.team35.freelance.proposal.model.Proposal;
 import com.team35.freelance.proposal.model.ProposalStatus;
 import com.team35.freelance.proposal.model.ProposalMilestone;
 import com.team35.freelance.proposal.repository.*;
+import com.team35.freelance.proposal.messaging.publisher.ProposalEventPublisher;
+import com.team35.freelance.contracts.events.ProposalAcceptedEvent;
+import com.team35.freelance.contracts.events.ProposalCompletedEvent;
+import com.team35.freelance.contracts.events.ProposalWithdrawnEvent;
 import org.neo4j.driver.Driver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +45,7 @@ import java.util.Map;
 import org.springframework.data.neo4j.core.Neo4jClient;
 
 import org.springframework.data.neo4j.core.Neo4jClient;
+import java.math.BigDecimal;
 
 @Service
 public class ProposalService {
@@ -60,17 +65,20 @@ public class ProposalService {
 //    private final ProposalEventRepository proposalEventRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final Driver neo4jDriver;
+    private final ProposalEventPublisher proposalEventPublisher;
 
     public ProposalService(ProposalRepository proposalRepository,
                            ProposalMilestoneRepository milestoneRepository,
                            ProposalEventRepository proposalEventRepository,
                            MongoEventLogger mongoEventLogger,
-                           Driver neo4jDriver) {
+                           Driver neo4jDriver,
+                           ProposalEventPublisher proposalEventPublisher) {
         this.proposalRepository = proposalRepository;
         this.milestoneRepository = milestoneRepository;
         this.proposalEventRepository = proposalEventRepository;
         this.observers.add(mongoEventLogger);
         this.neo4jDriver = neo4jDriver;
+        this.proposalEventPublisher = proposalEventPublisher;
     }
 
     private void notifyObservers(String eventType, Object payload) {
@@ -227,6 +235,10 @@ public class ProposalService {
 
         Proposal saved = proposalRepository.save(proposal);
 
+        proposalEventPublisher.publishWithdrawn(
+                new ProposalWithdrawnEvent(saved.getId(), saved.getJobId(), saved.getFreelancerId())
+        );
+
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "WITHDRAWN");
         payload.put("proposalId", saved.getId());
@@ -298,6 +310,15 @@ public class ProposalService {
 
         Proposal saved = proposalRepository.save(proposal);
 
+        proposalEventPublisher.publishAccepted(
+                new ProposalAcceptedEvent(
+                        saved.getId(),
+                        saved.getJobId(),
+                        saved.getFreelancerId(),
+                        BigDecimal.valueOf(saved.getBidAmount())
+                )
+        );
+
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "ACCEPTED");
         payload.put("proposalId", saved.getId());
@@ -325,6 +346,16 @@ public class ProposalService {
         }
 
         Proposal saved = proposalRepository.save(proposal);
+
+        proposalEventPublisher.publishCompleted(
+                new ProposalCompletedEvent(
+                        saved.getId(),
+                        saved.getJobId(),
+                        saved.getFreelancerId(),
+                        null,
+                        BigDecimal.valueOf(saved.getBidAmount())
+                )
+        );
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "COMPLETED");
