@@ -38,6 +38,11 @@ import com.team35.freelance.contracts.events.PaymentInitiatedEvent;
 import com.team35.freelance.contracts.events.PaymentRefundedEvent;
 import java.math.BigDecimal;
 
+import com.team35.freelance.contracts.feign.UserServiceClient;
+import feign.FeignException;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
 @Service
 public class PayoutService {
 
@@ -48,6 +53,7 @@ public class PayoutService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final WalletAnalyticsCacheService walletAnalyticsCacheService;
     private final PaymentEventPublisher paymentEventPublisher;
+    private final UserServiceClient userServiceClient;
 
     public PayoutService(PayoutRepository payoutRepository,
                          PromoCodeRepository promoCodeRepository,
@@ -55,7 +61,7 @@ public class PayoutService {
                          MongoEventLogger mongoEventLogger,
                          MongoEventRepository mongoEventRepository,
                          WalletAnalyticsCacheService walletAnalyticsCacheService,
-                         PaymentEventPublisher paymentEventPublisher) {
+                         PaymentEventPublisher paymentEventPublisher,UserServiceClient userServiceClient) {
 
         this.payoutRepository = payoutRepository;
         this.promoCodeRepository = promoCodeRepository;
@@ -64,6 +70,7 @@ public class PayoutService {
         this.walletAnalyticsCacheService = walletAnalyticsCacheService;
         this.paymentEventPublisher = paymentEventPublisher;
         registerObserver(mongoEventLogger);
+        this.userServiceClient = userServiceClient;
     }
     public void registerObserver(EntityObserver observer) {
         observers.add(observer);
@@ -174,9 +181,30 @@ public class PayoutService {
 
     @Cacheable(value = "wallet-service::S5-F3", key = "#freelancerId")
     public FreelancerPayoutSummaryDTO getFreelancerSummary(Long freelancerId) {
+        try {
+            userServiceClient.getUserById(freelancerId, currentAuthorizationHeader());
+        } catch (FeignException.NotFound e) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Freelancer not found: " + freelancerId
+            );
+        } catch (FeignException.Forbidden e) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Access denied while validating freelancer: " + freelancerId
+            );
+        }
+
+
         List<Object[]> methodRows = payoutRepository.getFreelancerMethodBreakdown(freelancerId);
+
         if (methodRows == null || methodRows.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found for freelancer");
+            return new FreelancerPayoutSummaryDTO(
+                    freelancerId,
+                    0L,
+                    0.0,
+                    new HashMap<>()
+            );
         }
 
         Map<String, Double> methodBreakdown = new HashMap<>();
@@ -202,6 +230,16 @@ public class PayoutService {
                 totalAmount,
                 methodBreakdown
         );
+    }
+    private String currentAuthorizationHeader() {
+        ServletRequestAttributes attributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+
+        if (attributes == null) {
+            return null;
+        }
+
+        return attributes.getRequest().getHeader("Authorization");
     }
 
     @Transactional

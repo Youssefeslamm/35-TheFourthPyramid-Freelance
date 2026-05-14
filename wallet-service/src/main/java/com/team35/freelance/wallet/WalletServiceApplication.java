@@ -5,8 +5,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
+
 @EnableCaching
-@EnableFeignClients
+@EnableFeignClients(basePackages = "com.team35.freelance.contracts.feign")
 @SpringBootApplication
 public class WalletServiceApplication {
 
