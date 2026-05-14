@@ -184,7 +184,7 @@ public class ContractService {
                 .orElseThrow(() -> new RuntimeException("No active contract found for this user"));
     }
 
-    // S1-F3 semantics: el userId da howa el freelancer (freelancer_id). totalEarnings w average 3ala COMPLETED bas; totalContracts 3ala kol el statuses — zay el worked example (3000 / 3 = 1000). el name yigi men user-service law el caller 3ayezo.
+    // S1-F3: el userId da howa el freelancer (freelancer_id). totalEarnings w average 3ala COMPLETED bas; totalContracts 3ala kol el statuses — zay el mesal fel spec (3000 / 3 = 1000). el name yigi men user-service law el caller 3ayezo.
     public UserContractSummaryDTO getUserContractSummaryForFreelancer(Long userId) {
         List<Object[]> rows = contractRepository.getUserContractSummaryAggregates(userId);
         if (rows == null || rows.isEmpty()) {
@@ -202,22 +202,22 @@ public class ContractService {
         return new UserContractSummaryDTO(userId, null, total, completed, terminated, totalEarnings, average);
     }
 
-    // M3 §6 pure DB bas (mafeesh Feign hina) — S1-F4: kam contract ACTIVE 3and el freelancer
+    // M3 §6 men el DB bas (mafeesh Feign hina) — S1-F4: kam contract ACTIVE 3and el freelancer
     public int getActiveContractCountForFreelancer(Long userId) {
         return contractRepository.countActiveByFreelancerId(userId);
     }
 
-    // M3 §6 pure DB bas — S1-F9: kam contract COMPLETED (language filter / min contracts)
+    // M3 §6 men el DB bas — S1-F9: kam contract COMPLETED 3and el freelancer (filter el lugha aw el minimum contracts)
     public long getCompletedContractCountForFreelancer(Long userId) {
         return contractRepository.countCompletedByFreelancerId(userId);
     }
 
-    // M3 §6 pure DB bas — S2-F4: kam contract ACTIVE 3ala el job (close job pre-check)
+    // M3 §6 men el DB bas — S2-F4: kam contract ACTIVE 3ala el job (check 2abl ma ye2fel el job)
     public int getActiveContractCountForJob(Long jobId) {
         return contractRepository.countActiveByJobId(jobId);
     }
 
-    // M3 §6 pure DB bas — S3-F4: awel contract ACTIVE bel proposal (el a7'yar) — optional 404 law mafish
+    // M3 §6 men el DB bas — S3-F4: awel contract ACTIVE bel proposal (el a7'yar) — 404 law mafish
     public Optional<Contract> findActiveContractForProposal(Long proposalId) {
         return contractRepository.findFirstByProposalIdAndStatusOrderByCreatedAtDesc(
                 proposalId, ContractStatus.ACTIVE);

@@ -7,6 +7,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+// el correlation filter mokamel fel servlet chain (FilterRegistrationBean) abl el security — hina el JWT bas
 @Configuration
 public class SecurityConfig {
 
