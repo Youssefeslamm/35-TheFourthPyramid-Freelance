@@ -30,7 +30,7 @@ data:
         }
       ]
     }
-    proposal-dashboard.json: |
+  proposal-dashboard.json: |
     {
       "title": "Proposal Service Dashboard",
       "schemaVersion": 39,
