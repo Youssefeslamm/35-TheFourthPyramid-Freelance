@@ -11,11 +11,28 @@ import org.springframework.web.bind.annotation.RequestHeader;
 public interface UserServiceClient {
 
     @GetMapping("/api/users/{id}")
-    UserProfileDTO getUserById(@PathVariable("id") Long id,
-                               @RequestHeader(value = "Authorization", required = false) String authorization);
+    UserProfileDTO getUserByIdInternal(@PathVariable("id") Long id,
+                                       @RequestHeader("X-Correlation-ID") String correlationId);
 
     @GetMapping("/api/users/{id}/contract-summary")
-    UserContractSummaryDTO getUserContractSummary(@PathVariable("id") Long id,
-                                                  @RequestHeader(value = "Authorization", required = false) String authorization);
-}
+    UserContractSummaryDTO getUserContractSummaryInternal(@PathVariable("id") Long id,
+                                                            @RequestHeader("X-Correlation-ID") String correlationId);
 
+    default UserProfileDTO getUserById(Long id, String correlationId) {
+        return FeignClientSupport.execute(
+                "user-service",
+                "getUserById",
+                () -> getUserByIdInternal(id, correlationId),
+                null
+        );
+    }
+
+    default UserContractSummaryDTO getUserContractSummary(Long id, String correlationId) {
+        return FeignClientSupport.execute(
+                "user-service",
+                "getUserContractSummary",
+                () -> getUserContractSummaryInternal(id, correlationId),
+                null
+        );
+    }
+}

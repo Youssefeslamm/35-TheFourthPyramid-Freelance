@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -35,6 +36,20 @@ public interface PayoutRepository extends JpaRepository<Payout, Long> {
     GROUP BY p.method
 """, nativeQuery = true)
     List<Object[]> getFreelancerMethodBreakdown(@Param("freelancerId") Long freelancerId);
+
+    // ---------- S5-READ-DB: FREELANCER COMPLETED PAYOUT TOTAL IN DATE RANGE ----------
+    @Query(value = """
+        SELECT COALESCE(SUM(p.amount), 0)
+        FROM payouts p
+        WHERE p.freelancer_id = :freelancerId
+          AND p.status = 'COMPLETED'
+          AND p.created_at BETWEEN :startDate AND :endDate
+        """, nativeQuery = true)
+    BigDecimal sumCompletedPayoutTotalByFreelancerAndDateRange(
+            @Param("freelancerId") Long freelancerId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 
     // ---------- EXISTING METHODS ----------
     Payout findByContractId(Long contractId);

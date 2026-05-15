@@ -647,4 +647,22 @@ public class PayoutService {
         }
         return ((Number) row[index]).doubleValue();
     }
+
+    @Cacheable(value = "wallet-service::S5-READ-DB", key = "#freelancerId + ':' + #startDate + ':' + #endDate")
+    public BigDecimal getFreelancerPayoutTotal(Long freelancerId, LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate and endDate are required");
+        }
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate cannot be after endDate");
+        }
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(23, 59, 59);
+
+        BigDecimal total = payoutRepository.sumCompletedPayoutTotalByFreelancerAndDateRange(
+                freelancerId, start, end
+        );
+        return total == null ? BigDecimal.ZERO : total;
+    }
 }
