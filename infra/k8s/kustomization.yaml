@@ -9,7 +9,10 @@ resources:
   - postgres/job-postgres.yaml
   - postgres/proposal-postgres.yaml
   - postgres/contract-postgres.yaml
-  - postgres/wallet-postgres.yaml
+  - secrets/wallet-postgres-secret.yaml
+  - pvcs/wallet-postgres-pvc.yaml
+  - services/wallet-postgres-svc.yaml
+  - statefulsets/wallet-postgres-statefulset.yaml
   - rabbitmq/rabbitmq.yaml
   - prometheus-configmap.yaml
   - grafana-dashboards.yaml
