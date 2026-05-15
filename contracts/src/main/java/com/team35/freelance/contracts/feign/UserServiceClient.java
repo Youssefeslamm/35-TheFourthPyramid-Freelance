@@ -12,26 +12,36 @@ public interface UserServiceClient {
 
     @GetMapping("/api/users/{id}")
     UserProfileDTO getUserByIdInternal(@PathVariable("id") Long id,
-                                       @RequestHeader("X-Correlation-ID") String correlationId);
+                                       @RequestHeader(value = "Authorization", required = false) String authorization,
+                                       @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId);
 
     @GetMapping("/api/users/{id}/contract-summary")
     UserContractSummaryDTO getUserContractSummaryInternal(@PathVariable("id") Long id,
-                                                            @RequestHeader("X-Correlation-ID") String correlationId);
+                                                          @RequestHeader(value = "Authorization", required = false) String authorization,
+                                                          @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId);
 
-    default UserProfileDTO getUserById(Long id, String correlationId) {
+    default UserProfileDTO getUserById(Long id, String authorization) {
+        return getUserById(id, authorization, null);
+    }
+
+    default UserProfileDTO getUserById(Long id, String authorization, String correlationId) {
         return FeignClientSupport.execute(
                 "user-service",
                 "getUserById",
-                () -> getUserByIdInternal(id, correlationId),
+                () -> getUserByIdInternal(id, authorization, correlationId),
                 null
         );
     }
 
-    default UserContractSummaryDTO getUserContractSummary(Long id, String correlationId) {
+    default UserContractSummaryDTO getUserContractSummary(Long id, String authorization) {
+        return getUserContractSummary(id, authorization, null);
+    }
+
+    default UserContractSummaryDTO getUserContractSummary(Long id, String authorization, String correlationId) {
         return FeignClientSupport.execute(
                 "user-service",
                 "getUserContractSummary",
-                () -> getUserContractSummaryInternal(id, correlationId),
+                () -> getUserContractSummaryInternal(id, authorization, correlationId),
                 null
         );
     }

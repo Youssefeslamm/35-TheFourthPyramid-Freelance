@@ -1,12 +1,19 @@
 package com.team35.freelance.wallet;
 
+import com.team35.freelance.contracts.feign.ContractServiceClient;
+import com.team35.freelance.contracts.feign.JobServiceClient;
+import com.team35.freelance.contracts.feign.UserServiceClient;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @EnableCaching
-@EnableFeignClients(basePackages = "com.team35.freelance.contracts.feign")
+@EnableFeignClients(clients = {
+        UserServiceClient.class,
+        ContractServiceClient.class,
+        JobServiceClient.class
+})
 @SpringBootApplication
 public class WalletServiceApplication {
 

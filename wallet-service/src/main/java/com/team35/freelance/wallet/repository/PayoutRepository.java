@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -45,7 +44,7 @@ public interface PayoutRepository extends JpaRepository<Payout, Long> {
           AND p.status = 'COMPLETED'
           AND p.created_at BETWEEN :startDate AND :endDate
         """, nativeQuery = true)
-    BigDecimal sumCompletedPayoutTotalByFreelancerAndDateRange(
+    Number sumCompletedPayoutTotalByFreelancerAndDateRange(
             @Param("freelancerId") Long freelancerId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate

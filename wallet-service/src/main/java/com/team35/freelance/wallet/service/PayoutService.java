@@ -660,9 +660,9 @@ public class PayoutService {
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(23, 59, 59);
 
-        BigDecimal total = payoutRepository.sumCompletedPayoutTotalByFreelancerAndDateRange(
+        Number total = payoutRepository.sumCompletedPayoutTotalByFreelancerAndDateRange(
                 freelancerId, start, end
         );
-        return total == null ? BigDecimal.ZERO : total;
+        return total == null ? BigDecimal.ZERO : BigDecimal.valueOf(total.doubleValue());
     }
 }

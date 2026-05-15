@@ -11,11 +11,15 @@ public interface ContractServiceClient {
 
     @GetMapping("/api/contracts/{id}")
     ContractDTO getContractByIdInternal(@PathVariable("id") Long id,
-                                          @RequestHeader("X-Correlation-ID") String correlationId);
+                                          @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId);
 
     @GetMapping("/api/contracts/user/{userId}/active")
     ContractDTO getActiveContractForUserInternal(@PathVariable("userId") Long userId,
-                                                 @RequestHeader("X-Correlation-ID") String correlationId);
+                                                 @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId);
+
+    default ContractDTO getContractById(Long id) {
+        return getContractById(id, null);
+    }
 
     default ContractDTO getContractById(Long id, String correlationId) {
         return FeignClientSupport.execute(
@@ -24,6 +28,10 @@ public interface ContractServiceClient {
                 () -> getContractByIdInternal(id, correlationId),
                 null
         );
+    }
+
+    default ContractDTO getActiveContractForUser(Long userId) {
+        return getActiveContractForUser(userId, null);
     }
 
     default ContractDTO getActiveContractForUser(Long userId, String correlationId) {

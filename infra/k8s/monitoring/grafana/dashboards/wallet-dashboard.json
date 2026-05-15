@@ -22,12 +22,8 @@
       "description": "Successful vs failed calls to contract-service and job-service",
       "targets": [
         {
-          "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json |= \"contract-service\" [5m]))",
-          "legendFormat": "contract-service"
-        },
-        {
-          "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json |= \"job-service\" [5m]))",
-          "legendFormat": "job-service"
+          "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json |= \"contract-service\" or |= \"job-service\" [5m]))",
+          "legendFormat": "Feign calls"
         }
       ],
       "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
