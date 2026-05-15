@@ -13,5 +13,7 @@ public interface ContractServiceClient {
 
     @GetMapping("/api/contracts/user/{userId}/active")
     ContractDTO getActiveContractForUser(@PathVariable("userId") Long userId);
-}
+
+    @GetMapping("/api/contracts/proposal/{proposalId}/active")
+    ContractDTO getActiveContractForProposal(@PathVariable("proposalId") Long proposalId);}
 

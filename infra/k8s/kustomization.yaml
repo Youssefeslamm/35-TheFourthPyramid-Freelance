@@ -2,7 +2,9 @@ resources:
   - gateway/api-gateway.yaml
   - services/user-service.yaml
   - services/job-service.yaml
-  - services/proposal-service.yaml
+  - configmaps/proposal-service-configmap.yaml
+  - deployments/proposal-service-deployment.yaml
+  - services/proposal-service-service.yaml
   - services/contract-service.yaml
   - services/wallet-service.yaml
   - postgres/user-postgres.yaml

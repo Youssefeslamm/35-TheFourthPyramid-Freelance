@@ -49,6 +49,11 @@ public class Proposal implements Serializable {
     private LocalDateTime submittedAt;
 
     private LocalDateTime acceptedAt;
+    /**
+     * Set by SagaFeedbackConsumer when contract.created event is received.
+     */
+    @Column(name = "contract_id")
+    private Long contractId;
 
     @OneToMany(mappedBy = "proposal", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
@@ -93,6 +98,8 @@ public class Proposal implements Serializable {
 
     public LocalDateTime getAcceptedAt() { return acceptedAt; }
     public void setAcceptedAt(LocalDateTime acceptedAt) { this.acceptedAt = acceptedAt; }
+    public Long getContractId() { return contractId; }
+    public void setContractId(Long contractId) { this.contractId = contractId; }
 
     public List<ProposalMilestone> getProposalMilestones() { return proposalMilestones; }
     public void setProposalMilestones(List<ProposalMilestone> proposalMilestones) { this.proposalMilestones = proposalMilestones; }
