@@ -1,6 +1,8 @@
 resources:
   - gateway/api-gateway.yaml
-  - services/user-service.yaml
+  - configmaps/user-service-configmap.yaml
+  - deployments/user-service-deployment.yaml
+  - services/user-service-service.yaml
   - services/job-service.yaml
   - configmaps/proposal-service-configmap.yaml
   - deployments/proposal-service-deployment.yaml
