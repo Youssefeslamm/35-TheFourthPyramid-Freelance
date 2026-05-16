@@ -1,5 +1,6 @@
 resources:
   - gateway/api-gateway.yaml
+  - namespace.yaml
   - configmaps/user-service-configmap.yaml
   - deployments/user-service-deployment.yaml
   - services/user-service-service.yaml
@@ -19,5 +20,6 @@ resources:
   - grafana-dashboards.yaml
   - observability/prometheus.yaml
   - observability/grafana.yaml
+  - observability/elasticsearch.yaml
   - observability/loki.yaml
   - observability/neo4j.yaml
