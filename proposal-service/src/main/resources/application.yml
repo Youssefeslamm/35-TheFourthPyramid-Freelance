@@ -72,6 +72,18 @@ saga:
     abandon-after: PT72H
     reaper-interval: PT15M
 
+# ── Logging Configuration ──
+logging:
+  level:
+    root: INFO
+    com.team35.freelance.proposal: DEBUG
+    com.team35.freelance.proposal.service.ProposalService: DEBUG
+    com.team35.freelance.proposal.messaging: DEBUG
+    org.springframework.cloud.openfeign: DEBUG
+    feign: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
 # ── Actuator / Observability ──
 management:
   server:
