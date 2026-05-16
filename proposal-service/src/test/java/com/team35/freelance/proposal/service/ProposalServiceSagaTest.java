@@ -240,6 +240,86 @@ class ProposalServiceSagaTest {
             assertThat(result.getStatus()).isEqualTo(ProposalStatus.ACCEPTED);
             verify(proposalRepository).save(any());
         }
+        @Test
+        void accept_completingProposal_throws400() {
+            proposal.setStatus(ProposalStatus.COMPLETING);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.acceptProposal(1L));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
+            verify(proposalEventPublisher, never()).publishAccepted(any());
+        }
+
+        @Test
+        void accept_paymentPendingProposal_throws400() {
+            proposal.setStatus(ProposalStatus.PAYMENT_PENDING);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.acceptProposal(1L));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
+        }
+
+        @Test
+        void accept_paidProposal_throws400() {
+            proposal.setStatus(ProposalStatus.PAID);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.acceptProposal(1L));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
+        }
+
+        @Test
+        void accept_paymentFailedProposal_throws400() {
+            proposal.setStatus(ProposalStatus.PAYMENT_FAILED);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.acceptProposal(1L));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
+        }
+
+        @Test
+        void accept_refundedProposal_throws400() {
+            proposal.setStatus(ProposalStatus.REFUNDED);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.acceptProposal(1L));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
+        }
+
+        @Test
+        void accept_setsAcceptedAt() {
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            when(proposalRepository.save(any())).thenReturn(proposal);
+            UserProfileDTO freelancer = new UserProfileDTO();
+            freelancer.setRole("FREELANCER");
+            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+
+            service.acceptProposal(1L);
+
+            ArgumentCaptor<Proposal> captor = ArgumentCaptor.forClass(Proposal.class);
+            verify(proposalRepository).save(captor.capture());
+            assertThat(captor.getValue().getAcceptedAt()).isNotNull();
+            assertThat(captor.getValue().getAcceptedAt()).isBefore(
+                    java.time.LocalDateTime.now().plusSeconds(1));
+        }
+
+        @Test
+        void accept_publishedEventHasCorrectBidAmount() {
+            proposal.setBidAmount(3500.0);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            when(proposalRepository.save(any())).thenReturn(proposal);
+            UserProfileDTO freelancer = new UserProfileDTO();
+            freelancer.setRole("FREELANCER");
+            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+
+            service.acceptProposal(1L);
+
+            ArgumentCaptor<ProposalAcceptedEvent> captor =
+                    ArgumentCaptor.forClass(ProposalAcceptedEvent.class);
+            verify(proposalEventPublisher).publishAccepted(captor.capture());
+            assertThat(captor.getValue().bidAmount())
+                    .isEqualByComparingTo(java.math.BigDecimal.valueOf(3500.0));
+        }
     }
 
     // ─── S3-F4: completeProposal ─────────────────────────────────────────────
@@ -365,7 +445,7 @@ class ProposalServiceSagaTest {
 
             ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> service.completeProposal(1L, 5L, "FREELANCER"));
-            assertThat(ex.getStatusCode().value()).isIn(400, 404);
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
             verify(proposalEventPublisher, never()).publishCompleted(any());
             verify(proposalRepository, never()).save(any());
         }
@@ -402,7 +482,7 @@ class ProposalServiceSagaTest {
 
             ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> service.completeProposal(1L, 5L, "FREELANCER"));
-            assertThat(ex.getStatusCode().value()).isIn(400, 404);
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
             verify(proposalEventPublisher, never()).publishCompleted(any());
             verify(proposalRepository, never()).save(any());
         }
@@ -490,6 +570,119 @@ class ProposalServiceSagaTest {
             verify(jobServiceClient).getJobById(10L);
             verify(userServiceClient).getUserById(5L, null);
             verify(contractServiceClient).getActiveContractForProposal(1L);
+        }
+        @Test
+        void complete_jobNotFound_throws400_noEventPublished_tightened() {
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            when(jobServiceClient.getJobById(10L)).thenThrow(feignNotFound());
+
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.completeProposal(1L, 5L, "FREELANCER"));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400); // spec §8.3 explicit
+            verify(proposalEventPublisher, never()).publishCompleted(any());
+            verify(proposalRepository, never()).save(any());
+        }
+
+        @Test
+        void complete_freelancerNotFound_throws400_noEventPublished_tightened() {
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            when(jobServiceClient.getJobById(10L)).thenReturn(job);
+            when(userServiceClient.getUserById(5L, null)).thenThrow(feignNotFound());
+
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.completeProposal(1L, 5L, "FREELANCER"));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400); // spec §8.3 explicit
+            verify(proposalEventPublisher, never()).publishCompleted(any());
+            verify(proposalRepository, never()).save(any());
+        }
+
+        @Test
+        void complete_completingStatus_throws400() {
+            proposal.setStatus(ProposalStatus.COMPLETING);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.completeProposal(1L, 5L, "FREELANCER"));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
+            verify(proposalEventPublisher, never()).publishCompleted(any());
+        }
+
+        @Test
+        void complete_paymentPendingStatus_throws400() {
+            proposal.setStatus(ProposalStatus.PAYMENT_PENDING);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.completeProposal(1L, 5L, "FREELANCER"));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
+        }
+
+        @Test
+        void complete_paymentFailedStatus_throws400() {
+            proposal.setStatus(ProposalStatus.PAYMENT_FAILED);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.completeProposal(1L, 5L, "FREELANCER"));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
+        }
+
+        @Test
+        void complete_refundedStatus_throws400() {
+            proposal.setStatus(ProposalStatus.REFUNDED);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.completeProposal(1L, 5L, "FREELANCER"));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
+        }
+
+        @Test
+        void complete_jobStatusOpen_isValid() {
+            // OPEN job should also be completable per spec — only CLOSED is rejected
+            job.setStatus("OPEN");
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            when(jobServiceClient.getJobById(10L)).thenReturn(job);
+            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(contractServiceClient.getActiveContractForProposal(1L)).thenReturn(contract);
+            when(proposalRepository.save(any())).thenReturn(proposal);
+
+            Proposal result = service.completeProposal(1L, 5L, "FREELANCER");
+            assertThat(result.getStatus()).isEqualTo(ProposalStatus.COMPLETING);
+        }
+
+        @Test
+        void complete_eventPayloadHasAllFields() {
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            when(jobServiceClient.getJobById(10L)).thenReturn(job);
+            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(contractServiceClient.getActiveContractForProposal(1L)).thenReturn(contract);
+            when(proposalRepository.save(any())).thenReturn(proposal);
+
+            service.completeProposal(1L, 5L, "FREELANCER");
+
+            ArgumentCaptor<ProposalCompletedEvent> captor =
+                    ArgumentCaptor.forClass(ProposalCompletedEvent.class);
+            verify(proposalEventPublisher).publishCompleted(captor.capture());
+            ProposalCompletedEvent event = captor.getValue();
+            assertThat(event.proposalId()).isEqualTo(1L);
+            assertThat(event.jobId()).isEqualTo(10L);
+            assertThat(event.freelancerId()).isEqualTo(5L);
+            assertThat(event.contractId()).isEqualTo(99L);
+            assertThat(event.agreedAmount()).isEqualByComparingTo(java.math.BigDecimal.valueOf(2000.0));
+        }
+
+        @Test
+        void complete_proposalStatusIsCompletingNotAccepted() {
+            // Must be COMPLETING after save, not remain ACCEPTED
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            when(jobServiceClient.getJobById(10L)).thenReturn(job);
+            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(contractServiceClient.getActiveContractForProposal(1L)).thenReturn(contract);
+            when(proposalRepository.save(any())).thenReturn(proposal);
+
+            service.completeProposal(1L, 5L, "FREELANCER");
+
+            ArgumentCaptor<Proposal> captor = ArgumentCaptor.forClass(Proposal.class);
+            verify(proposalRepository).save(captor.capture());
+            assertThat(captor.getValue().getStatus()).isEqualTo(ProposalStatus.COMPLETING);
+            assertThat(captor.getValue().getStatus()).isNotEqualTo(ProposalStatus.ACCEPTED);
         }
     }
 
@@ -639,6 +832,80 @@ class ProposalServiceSagaTest {
             // Must publish withdrawn, must NOT publish cancelled
             verify(proposalEventPublisher).publishWithdrawn(any());
             verify(proposalEventPublisher, never()).publishCancelled(any());
+        }
+
+        @Test
+        void withdraw_paymentPendingProposal_throws400() {
+            proposal.setStatus(ProposalStatus.PAYMENT_PENDING);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.withdrawProposal(1L, 5L, "FREELANCER"));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
+            verify(proposalEventPublisher, never()).publishWithdrawn(any());
+        }
+
+        @Test
+        void withdraw_paymentFailedProposal_throws400() {
+            proposal.setStatus(ProposalStatus.PAYMENT_FAILED);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.withdrawProposal(1L, 5L, "FREELANCER"));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
+        }
+
+        @Test
+        void withdraw_refundedProposal_throws400() {
+            proposal.setStatus(ProposalStatus.REFUNDED);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.withdrawProposal(1L, 5L, "FREELANCER"));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
+        }
+
+        @Test
+        void withdraw_alreadyWithdrawnProposal_throws400() {
+            proposal.setStatus(ProposalStatus.WITHDRAWN);
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.withdrawProposal(1L, 5L, "FREELANCER"));
+            assertThat(ex.getStatusCode().value()).isEqualTo(400);
+        }
+
+        @Test
+        void withdraw_eventPayloadHasAllFields() {
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            when(proposalRepository.save(any())).thenReturn(proposal);
+
+            service.withdrawProposal(1L, 5L, "FREELANCER");
+
+            ArgumentCaptor<ProposalWithdrawnEvent> captor =
+                    ArgumentCaptor.forClass(ProposalWithdrawnEvent.class);
+            verify(proposalEventPublisher).publishWithdrawn(captor.capture());
+            assertThat(captor.getValue().proposalId()).isEqualTo(1L);
+            assertThat(captor.getValue().jobId()).isEqualTo(10L);
+            assertThat(captor.getValue().freelancerId()).isEqualTo(5L);
+        }
+
+        @Test
+        void withdraw_saveHappensBeforePublish() {
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            when(proposalRepository.save(any())).thenReturn(proposal);
+
+            var order = inOrder(proposalRepository, proposalEventPublisher);
+            service.withdrawProposal(1L, 5L, "FREELANCER");
+
+            order.verify(proposalRepository).save(any());
+            order.verify(proposalEventPublisher).publishWithdrawn(any());
+        }
+
+        @Test
+        void withdraw_clientRole_cannotWithdrawFreelancerProposal() {
+            // CLIENT role with different userId should be 403
+            when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> service.withdrawProposal(1L, 99L, "CLIENT"));
+            assertThat(ex.getStatusCode().value()).isEqualTo(403);
+            verify(proposalEventPublisher, never()).publishWithdrawn(any());
         }
     }
 }

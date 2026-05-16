@@ -407,13 +407,6 @@ public class ProposalService {
         try {
             JobDTO job = jobServiceClient.getJobById(proposal.getJobId());
 
-            if (job == null) {
-                throw new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Job not found: " + proposal.getJobId()
-                );
-            }
-
             if (job.getStatus() != null && "CLOSED".equalsIgnoreCase(job.getStatus())) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
@@ -422,7 +415,7 @@ public class ProposalService {
             }
         } catch (FeignException.NotFound e) {
             throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
+                    HttpStatus.BAD_REQUEST,
                     "Job not found: " + proposal.getJobId()
             );
         } catch (FeignException e) {
@@ -438,7 +431,7 @@ public class ProposalService {
             freelancer = userServiceClient.getUserById(proposal.getFreelancerId(), null);
         } catch (FeignException.NotFound e) {
             throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
+                    HttpStatus.BAD_REQUEST,
                     "Freelancer not found: " + proposal.getFreelancerId()
             );
         } catch (FeignException e) {
