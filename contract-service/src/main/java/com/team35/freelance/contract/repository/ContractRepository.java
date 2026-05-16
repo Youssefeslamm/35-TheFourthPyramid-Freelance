@@ -96,4 +96,15 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
 
     @Query(value = "SELECT * FROM contracts WHERE CAST(jsonb_extract_path_text(metadata, :key) AS numeric) < :value", nativeQuery = true)
     List<Contract> findByMetadataLt(@Param("key") String key, @Param("value") Double value);
+
+    // --- S1-F3: User Contract Summary ---
+    @Query(value = "SELECT " +
+            "COUNT(c.id) AS totalContracts, " +
+            "COALESCE(SUM(CASE WHEN c.status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS completedContracts, " +
+            "COALESCE(SUM(CASE WHEN c.status = 'TERMINATED' THEN 1 ELSE 0 END), 0) AS terminatedContracts, " +
+            "COALESCE(SUM(CASE WHEN c.status = 'COMPLETED' THEN c.agreed_amount ELSE 0 END), 0) AS totalEarnings, " +
+            "COALESCE(AVG(c.agreed_amount), 0) AS averageContractValue " +
+            "FROM contracts c " +
+            "WHERE c.freelancer_id = :userId", nativeQuery = true)
+    List<Object[]> getUserContractSummary(@Param("userId") Long userId);
 }

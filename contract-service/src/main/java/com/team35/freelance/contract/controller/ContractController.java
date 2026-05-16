@@ -247,6 +247,13 @@ public class ContractController {
         return ResponseEntity.ok(contractMilestoneTimelineService.getTimeline(id, startTime, endTime));
     }
 
+    // --- S1-F3: User Contract Summary ---
+    @GetMapping("/user/{userId}/summary")
+    public ResponseEntity<com.team35.freelance.contracts.dto.UserContractSummaryDTO> getUserContractSummary(
+            @PathVariable Long userId) {
+        return ResponseEntity.ok(contractService.getUserContractSummary(userId));
+    }
+
     private Long extractUserId(String authorizationHeader) {
         try {
             String token = authorizationHeader.substring(7).trim();

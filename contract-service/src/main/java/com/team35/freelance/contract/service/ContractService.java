@@ -411,6 +411,13 @@ public class ContractService {
         return ((Number) row[index]).doubleValue();
     }
 
+    private Long numberAsLong(Object[] row, int index) {
+        if (row == null || row.length <= index || row[index] == null) {
+            return 0L;
+        }
+        return ((Number) row[index]).longValue();
+    }
+
     @Cacheable(value = "contract-service::S4-F5", key = "#key + ':' + #operator + ':' + #value")
     public List<Contract> searchContractsByMetadata(String key, String operator, String value) {
         if ("eq".equalsIgnoreCase(operator)) {
@@ -485,6 +492,29 @@ public class ContractService {
                 .averageContractDurationDays(avgDuration)
                 .contractsByStatus(byStatus)
                 .build();
+    }
+
+    // --- S1-F3: Get User Contract Summary ---
+    @Cacheable(value = "contract-service::S1-F3", key = "#userId")
+    public com.team35.freelance.contracts.dto.UserContractSummaryDTO getUserContractSummary(Long userId) {
+        List<Object[]> results = contractRepository.getUserContractSummary(userId);
+        Object[] row = results == null || results.isEmpty() ? null : results.get(0);
+
+        Long totalContracts = numberAsLong(row, 0);
+        Long completedContracts = numberAsLong(row, 1);
+        Long terminatedContracts = numberAsLong(row, 2);
+        Double totalEarnings = numberAsDouble(row, 3);
+        Double averageContractValue = numberAsDouble(row, 4);
+
+        return new com.team35.freelance.contracts.dto.UserContractSummaryDTO(
+                userId,
+                null,
+                totalContracts,
+                completedContracts,
+                terminatedContracts,
+                totalEarnings,
+                averageContractValue
+        );
     }
 }
 
