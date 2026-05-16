@@ -407,13 +407,6 @@ public class ProposalService {
         try {
             JobDTO job = jobServiceClient.getJobById(proposal.getJobId());
 
-            if (job == null) {
-                throw new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Job not found: " + proposal.getJobId()
-                );
-            }
-
             if (job.getStatus() != null && "CLOSED".equalsIgnoreCase(job.getStatus())) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
