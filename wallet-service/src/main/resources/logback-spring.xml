@@ -7,27 +7,15 @@
         <http>
             <url>http://loki:3100/loki/api/v1/push</url>
         </http>
-        <format>
-            <label>
-                <pattern>app=freelance,service=wallet-service,level=%level,env=k8s</pattern>
-            </label>
-            <message>
-                <pattern>
-                    {
-                    "timestamp":"%d{ISO8601}",
-                    "level":"%level",
-                    "logger":"%logger{36}",
-                    "message":"%msg",
-                    "correlationId":"%mdc{correlationId:-}",
-                    "userId":"%mdc{userId:-}",
-                    "payoutId":"%mdc{payoutId:-}",
-                    "contractId":"%mdc{contractId:-}",
-                    "proposalId":"%mdc{proposalId:-}",
-                    "routingKey":"%mdc{routingKey:-}"
-                    }
-                </pattern>
-            </message>
-        </format>
+        <labels>
+            app = freelance
+            service = wallet-service
+            env = k8s
+            level = %level
+        </labels>
+        <message>
+            <pattern>{"timestamp":"%d{ISO8601}","level":"%level","logger":"%logger{36}","message":"%msg","correlationId":"%mdc{correlationId:-}","userId":"%mdc{userId:-}","payoutId":"%mdc{payoutId:-}","contractId":"%mdc{contractId:-}","proposalId":"%mdc{proposalId:-}","routingKey":"%mdc{routingKey:-}"}</pattern>
+        </message>
     </appender>
 
     <root level="INFO">
