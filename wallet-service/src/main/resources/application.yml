@@ -49,7 +49,9 @@ jwt:
 cache:
   type: simple
 
-feign.user-service.url: http://user-service:8080
+feign:
+  user-service:
+    url: http://user-service:8080
 feign.job-service.url: http://job-service:8080
 feign.proposal-service.url: http://proposal-service:8080
 feign.contract-service.url: http://contract-service:8080
