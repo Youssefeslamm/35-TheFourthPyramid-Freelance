@@ -13,18 +13,7 @@ services:
         CREATE TYPE user_status_enum AS ENUM ('ACTIVE', 'DEACTIVATED');
         CREATE TYPE proficiency_level_enum AS ENUM ('BEGINNER', 'INTERMEDIATE', 'EXPERT');
 
-        CREATE TYPE proposal_status_enum AS ENUM (
-          'SUBMITTED',
-          'SHORTLISTED',
-          'ACCEPTED',
-          'REJECTED',
-          'WITHDRAWN',
-          'COMPLETING',
-          'PAYMENT_PENDING',
-          'PAID',
-          'PAYMENT_FAILED',
-          'REFUNDED'
-        );
+        CREATE TYPE proposal_status_enum AS ENUM ('SUBMITTED', 'SHORTLISTED', 'ACCEPTED', 'REJECTED', 'WITHDRAWN');
         CREATE TYPE milestone_status_enum AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'APPROVED');
 
         CREATE TYPE payout_method_enum AS ENUM (
@@ -74,7 +63,6 @@ services:
             user_id BIGINT NOT NULL,
             CONSTRAINT fk_user_skills_user FOREIGN KEY (user_id) REFERENCES users(id)
         );
-        
 
         CREATE TABLE IF NOT EXISTS jobs (
             id BIGSERIAL PRIMARY KEY,
@@ -104,29 +92,28 @@ services:
         );
 
         CREATE TABLE IF NOT EXISTS proposals (
-          id BIGSERIAL PRIMARY KEY,
-          job_id BIGINT NOT NULL,
-          freelancer_id BIGINT NOT NULL,
-          contract_id BIGINT,
-          cover_letter TEXT NOT NULL,
-          bid_amount DOUBLE PRECISION NOT NULL,
-          estimated_days INTEGER NOT NULL,
-          status proposal_status_enum NOT NULL,
-          metadata JSONB,
-          submitted_at TIMESTAMP NOT NULL,
-          accepted_at TIMESTAMP
+            id BIGSERIAL PRIMARY KEY,
+            job_id BIGINT NOT NULL,
+            freelancer_id BIGINT NOT NULL,
+            cover_letter TEXT NOT NULL,
+            bid_amount DOUBLE PRECISION NOT NULL,
+            estimated_days INTEGER NOT NULL,
+            status proposal_status_enum NOT NULL,
+            metadata JSONB,
+            submitted_at TIMESTAMP NOT NULL,
+            accepted_at TIMESTAMP
         );
-        
+
         CREATE TABLE IF NOT EXISTS proposal_milestones (
-          id BIGSERIAL PRIMARY KEY,
-          milestone_order INTEGER NOT NULL,
-          title VARCHAR(255) NOT NULL,
-          description TEXT NOT NULL,
-          amount DOUBLE PRECISION NOT NULL,
-          status milestone_status_enum NOT NULL,
-          metadata JSONB,
-          proposal_id BIGINT NOT NULL,
-          CONSTRAINT fk_proposal_milestones_proposal FOREIGN KEY (proposal_id) REFERENCES proposals(id)
+            id BIGSERIAL PRIMARY KEY,
+            milestone_order INTEGER NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT NOT NULL,
+            amount DOUBLE PRECISION NOT NULL,
+            status milestone_status_enum NOT NULL,
+            metadata JSONB,
+            proposal_id BIGINT NOT NULL,
+            CONSTRAINT fk_proposal_milestones_proposal FOREIGN KEY (proposal_id) REFERENCES proposals(id)
         );
 
         CREATE TABLE IF NOT EXISTS contracts (
@@ -206,20 +193,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
 
   redis:
     image: redis:latest
