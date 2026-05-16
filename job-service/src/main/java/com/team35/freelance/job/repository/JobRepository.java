@@ -93,5 +93,12 @@ public interface JobRepository extends JpaRepository<Job, Long> {
                                          @Param("minBudget") Double minBudget,
                                          @Param("maxBudget") Double maxBudget);
 
-
+@Query(value = """
+        SELECT COUNT(p.id) AS total_proposals,
+               COALESCE(SUM(CASE WHEN p.status = 'ACCEPTED' THEN 1 ELSE 0 END), 0) AS accepted_proposals,
+               COALESCE(AVG(p.bid_amount), 0) AS average_bid_amount
+        FROM proposals p
+        WHERE p.job_id = :jobId
+        """, nativeQuery = true)
+java.util.List<Object[]> getJobDashboardProposalStats(@Param("jobId") Long jobId);
 }
