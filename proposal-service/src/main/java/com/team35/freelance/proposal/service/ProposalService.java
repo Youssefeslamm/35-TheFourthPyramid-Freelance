@@ -422,7 +422,7 @@ public class ProposalService {
             }
         } catch (FeignException.NotFound e) {
             throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
+                    HttpStatus.BAD_REQUEST,
                     "Job not found: " + proposal.getJobId()
             );
         } catch (FeignException e) {
@@ -438,7 +438,7 @@ public class ProposalService {
             freelancer = userServiceClient.getUserById(proposal.getFreelancerId(), null);
         } catch (FeignException.NotFound e) {
             throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
+                    HttpStatus.BAD_REQUEST,
                     "Freelancer not found: " + proposal.getFreelancerId()
             );
         } catch (FeignException e) {

@@ -49,11 +49,15 @@ class SagaFeedbackConsumerTest {
     }
 
     // Helper to build a RabbitMQ Message with a routing key
-    private Message buildMessage(Object event, String routingKey) throws Exception {
-        byte[] body = objectMapper.writeValueAsBytes(event);
-        MessageProperties props = new MessageProperties();
-        props.setReceivedRoutingKey(routingKey);
-        return new Message(body, props);
+    private Message buildMessage(Object event, String routingKey) {
+        try {
+            byte[] body = objectMapper.writeValueAsBytes(event);
+            MessageProperties props = new MessageProperties();
+            props.setReceivedRoutingKey(routingKey);
+            return new Message(body, props);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
@@ -267,5 +271,114 @@ class SagaFeedbackConsumerTest {
         ArgumentCaptor<Proposal> captor = ArgumentCaptor.forClass(Proposal.class);
         verify(proposalRepository).save(captor.capture());
         assertThat(captor.getValue().getContractId()).isEqualTo(555L);
+    }
+    // ── Idempotency tests ──────────────────────────────────────────────────────
+
+    @Test
+    void paymentCompleted_alreadyPaid_stillSavesAndDoesNotThrow() throws Exception {
+        proposal.setStatus(ProposalStatus.PAID); // already PAID
+        when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+        when(proposalRepository.save(any())).thenReturn(proposal);
+        PaymentCompletedEvent event = new PaymentCompletedEvent(77L, 1L, 99L, BigDecimal.valueOf(2000));
+
+        // Should not throw — consumer is idempotent
+        consumer.onSagaFeedback(buildMessage(event, "payment.completed"), "payment.completed");
+
+        verify(proposalRepository).save(any());
+    }
+
+    @Test
+    void paymentInitiated_alreadyPaymentPending_stillSaves() throws Exception {
+        proposal.setStatus(ProposalStatus.PAYMENT_PENDING); // already pending
+        when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+        when(proposalRepository.save(any())).thenReturn(proposal);
+        PaymentInitiatedEvent event = new PaymentInitiatedEvent(77L, 1L, 99L, BigDecimal.valueOf(2000));
+
+        consumer.onSagaFeedback(buildMessage(event, "payment.initiated"), "payment.initiated");
+
+        ArgumentCaptor<Proposal> captor = ArgumentCaptor.forClass(Proposal.class);
+        verify(proposalRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(ProposalStatus.PAYMENT_PENDING);
+    }
+
+    @Test
+    void contractCreated_contractIdAlreadySet_isIdempotentNotOverwritten() throws Exception {
+        proposal.setContractId(11L); // already linked
+        when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+        when(proposalRepository.save(any())).thenReturn(proposal);
+        ContractCreatedEvent event = new ContractCreatedEvent(11L, 1L, 10L, 5L, BigDecimal.valueOf(2000));
+
+        // Same contractId — idempotent
+        consumer.onSagaFeedback(buildMessage(event, "contract.created"), "contract.created");
+
+        ArgumentCaptor<Proposal> captor = ArgumentCaptor.forClass(Proposal.class);
+        verify(proposalRepository).save(captor.capture());
+        assertThat(captor.getValue().getContractId()).isEqualTo(11L);
+    }
+
+    @Test
+    void paymentFailed_alreadyPaymentFailed_stillPublishesCancelled() throws Exception {
+        proposal.setStatus(ProposalStatus.PAYMENT_FAILED); // already failed
+        when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+        when(proposalRepository.save(any())).thenReturn(proposal);
+        PaymentFailedEvent event = new PaymentFailedEvent(77L, 1L, 99L, "retry_failed");
+
+        consumer.onSagaFeedback(buildMessage(event, "payment.failed"), "payment.failed");
+
+        verify(proposalEventPublisher).publishCancelled(any());
+    }
+
+// ── Payload completeness tests ─────────────────────────────────────────────
+
+    @Test
+    void paymentFailed_cancelledEvent_hasAllFields() throws Exception {
+        proposal.setStatus(ProposalStatus.PAYMENT_PENDING);
+        proposal.setJobId(42L);
+        proposal.setFreelancerId(7L);
+        when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+        when(proposalRepository.save(any())).thenReturn(proposal);
+        PaymentFailedEvent event = new PaymentFailedEvent(77L, 1L, 99L, "bank_rejected");
+
+        consumer.onSagaFeedback(buildMessage(event, "payment.failed"), "payment.failed");
+
+        ArgumentCaptor<ProposalCancelledEvent> captor =
+                ArgumentCaptor.forClass(ProposalCancelledEvent.class);
+        verify(proposalEventPublisher).publishCancelled(captor.capture());
+        assertThat(captor.getValue().proposalId()).isEqualTo(1L);
+        assertThat(captor.getValue().jobId()).isEqualTo(42L);
+        assertThat(captor.getValue().freelancerId()).isEqualTo(7L);
+        assertThat(captor.getValue().reason()).isEqualTo("bank_rejected");
+    }
+
+    @Test
+    void paymentRefunded_setsRefunded_verifyNothingElsePublished() throws Exception {
+        proposal.setStatus(ProposalStatus.PAYMENT_FAILED);
+        when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+        when(proposalRepository.save(any())).thenReturn(proposal);
+        PaymentRefundedEvent event = new PaymentRefundedEvent(77L, 1L, 99L, BigDecimal.valueOf(500));
+
+        consumer.onSagaFeedback(buildMessage(event, "payment.refunded"), "payment.refunded");
+
+        verify(proposalEventPublisher, never()).publishCancelled(any());
+        verify(proposalEventPublisher, never()).publishCompleted(any());
+        verify(proposalEventPublisher, never()).publishAccepted(any());
+        verify(proposalEventPublisher, never()).publishWithdrawn(any());
+    }
+
+    @Test
+    void contractStatusChanged_doesNotInteractWithRepository() throws Exception {
+        ContractStatusChangedEvent event = new ContractStatusChangedEvent(99L, "ACTIVE", "COMPLETED");
+        consumer.onSagaFeedback(buildMessage(event, "contract.status-changed"), "contract.status-changed");
+        verifyNoInteractions(proposalRepository);
+        verifyNoInteractions(proposalEventPublisher);
+    }
+
+    @Test
+    void multipleUnknownRoutingKeys_allIgnoredGracefully() throws Exception {
+        for (String key : new String[]{"user.registered", "job.closed", "random.key", ""}) {
+            consumer.onSagaFeedback(buildMessage("{}", key), key);
+        }
+        verifyNoInteractions(proposalRepository);
+        verifyNoInteractions(proposalEventPublisher);
     }
 }
