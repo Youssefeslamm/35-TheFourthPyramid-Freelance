@@ -1,4 +1,4 @@
-resources:
+﻿resources:
   - gateway/api-gateway.yaml
   - configmaps/user-service-configmap.yaml
   - deployments/user-service-deployment.yaml
@@ -19,5 +19,13 @@ resources:
   - grafana-dashboards.yaml
   - observability/prometheus.yaml
   - observability/grafana.yaml
-  - observability/loki.yaml
   - observability/neo4j.yaml
+  - namespaces/monitoring-namespace.yaml
+  - pvcs/redis-pvc.yaml
+  - statefulsets/redis-statefulset.yaml
+  - services/redis-svc.yaml
+  - monitoring/loki/loki-configmap.yaml
+  - monitoring/loki/loki-pvc.yaml
+  - monitoring/loki/loki-statefulset.yaml
+  - monitoring/loki/loki-service.yaml
+
