@@ -330,17 +330,17 @@ public class ProposalService {
         try {
             log.debug("Fetching freelancer details from user-service. freelancerId={}", proposal.getFreelancerId());
             freelancer = userServiceClient.getUserById(proposal.getFreelancerId(), null);
-            log.debug("Successfully fetched freelancer: id={}, name={}, role={}, status={}", 
-                    freelancer.getId(), freelancer.getName(), freelancer.getRole(), freelancer.getStatus());
+            log.debug("Successfully fetched freelancer: id={}, name={}, role={}, status={}",
+                    freelancer.getUserId(), freelancer.getName(), freelancer.getRole(), freelancer.getStatus());
         } catch (FeignException.NotFound e) {
-            log.error("Freelancer not found in user-service. freelancerId={}, error={}", 
+            log.error("Freelancer not found in user-service. freelancerId={}, error={}",
                     proposal.getFreelancerId(), e.getMessage());
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "Freelancer not found: " + proposal.getFreelancerId()
             );
         } catch (FeignException e) {
-            log.error("User service call failed. freelancerId={}, error={}, status={}", 
+            log.error("User service call failed. freelancerId={}, error={}, status={}",
                     proposal.getFreelancerId(), e.getMessage(), e.status(), e);
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
@@ -350,7 +350,7 @@ public class ProposalService {
 
         if (freelancer.getRole() == null ||
                 !"FREELANCER".equalsIgnoreCase(freelancer.getRole())) {
-            log.warn("Freelancer does not have FREELANCER role. freelancerId={}, role={}", 
+            log.warn("Freelancer does not have FREELANCER role. freelancerId={}, role={}",
                     proposal.getFreelancerId(), freelancer.getRole());
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -362,11 +362,11 @@ public class ProposalService {
         proposal.setAcceptedAt(LocalDateTime.now());
 
         Proposal saved = proposalRepository.save(proposal);
-        log.info("Proposal accepted and saved. proposalId={}, status={}, acceptedAt={}", 
+        log.info("Proposal accepted and saved. proposalId={}, status={}, acceptedAt={}",
                 saved.getId(), saved.getStatus(), saved.getAcceptedAt());
 
         try {
-            log.debug("Publishing proposal.accepted event. proposalId={}, jobId={}, freelancerId={}, bidAmount={}", 
+            log.debug("Publishing proposal.accepted event. proposalId={}, jobId={}, freelancerId={}, bidAmount={}",
                     saved.getId(), saved.getJobId(), saved.getFreelancerId(), saved.getBidAmount());
             proposalEventPublisher.publishAccepted(
                     new ProposalAcceptedEvent(
@@ -403,10 +403,10 @@ public class ProposalService {
             "proposal-service::S3-F9"
     }, allEntries = true)
     public Proposal completeProposal(Long proposalId, Long callerUserId, String callerRole) {
-        log.info("===== S3-F4: completeProposal START for proposalId={}, callerUserId={}, callerRole={}", 
+        log.info("===== S3-F4: completeProposal START for proposalId={}, callerUserId={}, callerRole={}",
                 proposalId, callerUserId, callerRole);
         Proposal proposal = getById(proposalId);
-        log.debug("Loaded proposal: id={}, status={}, freelancerId={}, jobId={}", 
+        log.debug("Loaded proposal: id={}, status={}, freelancerId={}, jobId={}",
                 proposal.getId(), proposal.getStatus(), proposal.getFreelancerId(), proposal.getJobId());
 
         if (proposal.getStatus() != ProposalStatus.ACCEPTED) {
@@ -423,7 +423,7 @@ public class ProposalService {
         log.debug("Authorization check: isAdmin={}, isProposalFreelancer={}", isAdmin, isProposalFreelancer);
 
         if (!isAdmin && !isProposalFreelancer) {
-            log.warn("Unauthorized attempt to complete proposal. proposalId={}, callerUserId={}, callerRole={}", 
+            log.warn("Unauthorized attempt to complete proposal. proposalId={}, callerUserId={}, callerRole={}",
                     proposalId, callerUserId, callerRole);
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
@@ -451,7 +451,7 @@ public class ProposalService {
                     "Job not found: " + proposal.getJobId()
             );
         } catch (FeignException e) {
-            log.error("Job service call failed. jobId={}, error={}, status={}", 
+            log.error("Job service call failed. jobId={}, error={}, status={}",
                     proposal.getJobId(), e.getMessage(), e.status());
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
@@ -464,7 +464,7 @@ public class ProposalService {
         UserProfileDTO freelancer;
         try {
             freelancer = userServiceClient.getUserById(proposal.getFreelancerId(), null);
-            log.debug("Freelancer fetched: id={}, status={}, role={}", freelancer.getId(), freelancer.getStatus(), freelancer.getRole());
+            log.debug("Freelancer fetched: id={}, status={}, role={}", freelancer.getUserId(), freelancer.getStatus(), freelancer.getRole());
         } catch (FeignException.NotFound e) {
             log.error("Freelancer not found in user-service. freelancerId={}", proposal.getFreelancerId());
             throw new ResponseStatusException(
@@ -472,7 +472,7 @@ public class ProposalService {
                     "Freelancer not found: " + proposal.getFreelancerId()
             );
         } catch (FeignException e) {
-            log.error("User service call failed. freelancerId={}, error={}, status={}", 
+            log.error("User service call failed. freelancerId={}, error={}, status={}",
                     proposal.getFreelancerId(), e.getMessage(), e.status());
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
@@ -483,7 +483,7 @@ public class ProposalService {
         if (freelancer == null ||
                 freelancer.getStatus() == null ||
                 !"ACTIVE".equalsIgnoreCase(freelancer.getStatus())) {
-            log.warn("Freelancer is not ACTIVE. freelancerId={}, status={}", 
+            log.warn("Freelancer is not ACTIVE. freelancerId={}, status={}",
                     proposal.getFreelancerId(), freelancer != null ? freelancer.getStatus() : "null");
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -496,8 +496,8 @@ public class ProposalService {
         ContractDTO activeContract;
         try {
             activeContract = contractServiceClient.getActiveContractForProposal(proposalId);
-            log.debug("Active contract fetched: id={}, status={}, agreedAmount={}", 
-                    activeContract != null ? activeContract.getId() : "null", 
+            log.debug("Active contract fetched: id={}, status={}, agreedAmount={}",
+                    activeContract != null ? activeContract.getId() : "null",
                     activeContract != null ? activeContract.getStatus() : "null",
                     activeContract != null ? activeContract.getAgreedAmount() : "null");
         } catch (FeignException.NotFound e) {
@@ -507,7 +507,7 @@ public class ProposalService {
                     "No active contract found for this proposal"
             );
         } catch (FeignException e) {
-            log.error("Contract service call failed. proposalId={}, error={}, status={}", 
+            log.error("Contract service call failed. proposalId={}, error={}, status={}",
                     proposalId, e.getMessage(), e.status());
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
