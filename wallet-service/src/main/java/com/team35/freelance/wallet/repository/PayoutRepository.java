@@ -39,6 +39,8 @@ public interface PayoutRepository extends JpaRepository<Payout, Long> {
     // ---------- EXISTING METHODS ----------
     Payout findByContractId(Long contractId);
 
+    Payout findFirstByContractIdAndStatusOrderByCreatedAtDesc(Long contractId, PayoutStatus status);
+
     List<Payout> findByFreelancerIdAndStatusIn(
             Long freelancerId,
             List<PayoutStatus> statuses

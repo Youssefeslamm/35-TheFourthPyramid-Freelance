@@ -94,6 +94,12 @@ public class PaymentSagaConsumer {
             log.error("❌ Unexpected error in saga", e);
             throw e;
         }
+        Payout existing = payoutRepository.findByContractId(event.contractId());
+
+        if (existing != null) {
+            log.info("Payout already exists for contract {}, skipping duplicate proposal.completed", event.contractId());
+            return;
+        }
 
         Payout payout = new Payout();
 
