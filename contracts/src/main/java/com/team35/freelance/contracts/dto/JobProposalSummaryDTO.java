@@ -4,6 +4,7 @@ public class JobProposalSummaryDTO {
     private Long jobId;
     private String title;
     private Long totalProposals;
+    private Long acceptedProposals;
     private Double averageBidAmount;
     private Double lowestBid;
     private Double highestBid;
@@ -20,6 +21,23 @@ public class JobProposalSummaryDTO {
         this.jobId = jobId;
         this.title = title;
         this.totalProposals = totalProposals;
+        this.acceptedProposals = 0L;
+        this.averageBidAmount = averageBidAmount;
+        this.lowestBid = lowestBid;
+        this.highestBid = highestBid;
+    }
+
+    public JobProposalSummaryDTO(Long jobId,
+                                 String title,
+                                 Long totalProposals,
+                                 Long acceptedProposals,
+                                 Double averageBidAmount,
+                                 Double lowestBid,
+                                 Double highestBid) {
+        this.jobId = jobId;
+        this.title = title;
+        this.totalProposals = totalProposals;
+        this.acceptedProposals = acceptedProposals;
         this.averageBidAmount = averageBidAmount;
         this.lowestBid = lowestBid;
         this.highestBid = highestBid;
@@ -47,6 +65,14 @@ public class JobProposalSummaryDTO {
 
     public void setTotalProposals(Long totalProposals) {
         this.totalProposals = totalProposals;
+    }
+
+    public Long getAcceptedProposals() {
+        return acceptedProposals;
+    }
+
+    public void setAcceptedProposals(Long acceptedProposals) {
+        this.acceptedProposals = acceptedProposals;
     }
 
     public Double getAverageBidAmount() {

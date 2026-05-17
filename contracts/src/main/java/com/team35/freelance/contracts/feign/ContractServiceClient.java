@@ -19,4 +19,10 @@ public interface ContractServiceClient {
 
     @GetMapping("/api/contracts/user/{userId}/active-count")
     Long getActiveContractCount(@PathVariable("userId") Long userId);
+
+    @GetMapping("/api/contracts/job/{jobId}/active-count")
+    Integer getActiveContractCountForJob(@PathVariable("jobId") Long jobId);
+
+    @GetMapping("/api/contracts/{contractId}")
+    ContractDTO getContract(@PathVariable("contractId") Long contractId);
 }
