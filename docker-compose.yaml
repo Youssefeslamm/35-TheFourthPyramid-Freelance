@@ -139,7 +139,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "false"
     volumes:
       - ./infra/docker/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./infra/k8s/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./k8s/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       loki:
         condition: service_healthy

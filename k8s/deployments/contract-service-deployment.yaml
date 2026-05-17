@@ -1,29 +1,33 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: api-gateway
+  name: contract-service
   namespace: freelance
-  labels:
-    app: api-gateway
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: api-gateway
+      app: contract-service
   template:
     metadata:
       labels:
-        app: api-gateway
+        app: contract-service
     spec:
       containers:
-        - name: api-gateway
-          image: api-gateway:latest
+        - name: contract-service
+          image: contract-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           envFrom:
             - configMapRef:
-                name: gateway-configmap
+                name: contract-service-configmap
           env:
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: contract-postgres-secret
+                  key: POSTGRES_PASSWORD
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -33,11 +37,11 @@ spec:
             httpGet:
               path: /actuator/health
               port: 8080
-            initialDelaySeconds: 10
+            initialDelaySeconds: 30
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 20
+            initialDelaySeconds: 60
+            periodSeconds: 30
