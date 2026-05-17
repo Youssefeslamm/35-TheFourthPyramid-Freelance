@@ -191,11 +191,17 @@ services:
       start_period: 60s
 
   rabbitmq:
-    image: rabbitmq:4-management
+    image: rabbitmq:4.0-management
     container_name: freelance-rabbitmq
+    user: "0:0"
+    entrypoint: ["bash", "-c", "chown -R 999:999 /var/lib/rabbitmq && exec /usr/local/bin/docker-entrypoint.sh rabbitmq-server"]
     ports:
       - "5672:5672"
       - "15672:15672"
+    environment:
+      RABBITMQ_ERLANG_COOKIE: freelancedev-cookie
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
       test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
       interval: 5s
@@ -220,7 +226,7 @@ services:
       retries: 5
 
   loki:
-    image: grafana/loki:3.0.0
+    image: grafana/loki:2.9.8
     container_name: freelance-loki
     ports:
       - "3100:3100"
@@ -478,6 +484,7 @@ volumes:
   pgdata:
   wallet-pgdata:
   loki-data:
+  rabbitmq-data:
   mongo-data:
   es-data:
   neo4j-data:
