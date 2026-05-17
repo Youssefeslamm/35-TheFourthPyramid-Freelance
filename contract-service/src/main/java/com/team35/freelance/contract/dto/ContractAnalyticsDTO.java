@@ -1,8 +1,11 @@
 package com.team35.freelance.contract.dto;
 
+import java.io.Serializable;
 import java.util.Map;
 
-public class ContractAnalyticsDTO {
+public class ContractAnalyticsDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private Long totalContracts;
     private Double averageContractValue;
