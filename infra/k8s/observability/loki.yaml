@@ -33,7 +33,7 @@ data:
             period: 24h
 
     limits_config:
-      allow_structured_metadata: false
+      allow_structured_metadata: true
 ---
 apiVersion: apps/v1
 kind: Deployment

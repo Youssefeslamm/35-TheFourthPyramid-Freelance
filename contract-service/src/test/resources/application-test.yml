@@ -1,0 +1,8 @@
+# Used with @ActiveProfiles("test") + Testcontainers: real infra, ephemeral Postgres schema.
+spring:
+  docker:
+    compose:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop

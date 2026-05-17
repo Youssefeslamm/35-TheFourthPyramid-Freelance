@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <springProperty name="LOKI_PUSH_URL" scope="context" source="loki.push-url"
+                    defaultValue="http://loki:3100/loki/api/v1/push"/>
+    <springProperty name="SPRING_APP_NAME" scope="context" source="spring.application.name"
+                    defaultValue="contract-service"/>
+
+    <!-- Loki: profiles loki / docker / prod / k8s — fel IDE default (mafeesh profiles) console bas -->
+    <springProfile name="loki,docker,prod,k8s">
+        <!-- Loki4j 2.x: labels 7asb 11.1 + JSON fe MDC keys (LogQL | json) -->
+        <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+            <labels>
+                app = freelance
+                service = ${SPRING_APP_NAME}
+                level = %level
+                env = k8s
+            </labels>
+            <structuredMetadata>off</structuredMetadata>
+            <message class="com.github.loki4j.logback.JsonLayout">
+                <mdc>
+                    <noPrefix>true</noPrefix>
+                    <include>correlationId</include>
+                    <include>contractId</include>
+                    <include>proposalId</include>
+                    <include>jobId</include>
+                    <include>userId</include>
+                    <include>routingKey</include>
+                </mdc>
+            </message>
+            <http>
+                <url>${LOKI_PUSH_URL}</url>
+            </http>
+            <batch>
+                <maxItems>200</maxItems>
+                <timeoutMs>5000</timeoutMs>
+            </batch>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="LOKI"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!loki &amp; !docker &amp; !prod &amp; !k8s">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+</configuration>

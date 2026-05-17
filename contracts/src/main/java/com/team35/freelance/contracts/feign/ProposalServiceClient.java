@@ -1,7 +1,7 @@
 package com.team35.freelance.contracts.feign;
 
-import com.team35.freelance.contracts.dto.ProposalDTO;
 import com.team35.freelance.contracts.dto.JobProposalSummaryDTO;
+import com.team35.freelance.contracts.dto.ProposalDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,4 +20,3 @@ public interface ProposalServiceClient {
             @RequestParam("endDate") String endDate
     );
 }
-

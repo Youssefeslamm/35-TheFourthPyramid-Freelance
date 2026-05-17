@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -88,6 +89,18 @@ public class PayoutController {
 
         return ResponseEntity.ok(
                 payoutService.getFreelancerSummary(freelancerId)
+        );
+    }
+
+    // -------- S5-READ-DB: FREELANCER COMPLETED PAYOUT TOTAL --------
+    @GetMapping("/freelancer/{freelancerId}/total")
+    public ResponseEntity<BigDecimal> getFreelancerPayoutTotal(
+            @PathVariable Long freelancerId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        return ResponseEntity.ok(
+                payoutService.getFreelancerPayoutTotal(freelancerId, startDate, endDate)
         );
     }
 
@@ -161,15 +174,24 @@ public class PayoutController {
     // -------- PROCESS PAYOUT (S5-F4) --------
 
     @PostMapping("/contract/{contractId}")
-    public ResponseEntity<Void> processContractPayout(
+    public ResponseEntity<Payout> processContractPayout(
             @PathVariable Long contractId,
-            @RequestBody ProcessPayoutRequest request
+            @RequestBody ProcessPayoutRequest request,
+            @RequestHeader("X-User-Id") Long callerId,
+            @RequestHeader("X-User-Role") String callerRole
     ) {
-        payoutService.processContractPayout(contractId, request);
-        return ResponseEntity.status(201).build();
+        Payout payout = payoutService.processContractPayout(contractId, request, callerId, callerRole);
+
+        if (payout.getStatus() == PayoutStatus.COMPLETED || payout.getStatus() == PayoutStatus.FAILED) {
+            return ResponseEntity.ok(payout);
+        }
+
+        return ResponseEntity.status(201).body(payout);
     }
 
+
     // -------- S5-F6: REVENUE REPORT --------
+
 
     @GetMapping("/reports/revenue")
     public ResponseEntity<RevenueReportDTO> getRevenueReport(
