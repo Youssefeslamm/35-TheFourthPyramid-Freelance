@@ -28,6 +28,14 @@ spring:
               uri: http://wallet-service:8080
               predicates:
                 - Path=/api/payouts/**
+            - id: wallet-service-promocodes-route
+              uri: http://wallet-service:8080
+              predicates:
+                - Path=/api/promocodes/**
+            - id: wallet-service-payout-promos-route
+              uri: http://wallet-service:8080
+              predicates:
+                - Path=/api/payout-promos/**
             - id: wallet-service-wallet-route
               uri: http://wallet-service:8080
               predicates:
