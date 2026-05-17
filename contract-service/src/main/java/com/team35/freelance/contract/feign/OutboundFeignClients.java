@@ -28,7 +28,7 @@ public class OutboundFeignClients {
     // user-service getUserById — NotFound WARN mokhtalef 3an ba2y FeignException (§2.4)
     public Optional<UserProfileDTO> tryFetchUserProfile(Long userId, String authorization) {
         try {
-            return Optional.ofNullable(userServiceClient.getUserById(userId, authorization));
+            return Optional.ofNullable(userServiceClient.getUserById(userId));
         } catch (FeignException.NotFound e) {
             log.warn("Feign user-service NotFound userId={}", userId, e);
             return Optional.empty();

@@ -329,7 +329,7 @@ public class ProposalService {
         UserProfileDTO freelancer;
         try {
             log.debug("Fetching freelancer details from user-service. freelancerId={}", proposal.getFreelancerId());
-            freelancer = userServiceClient.getUserById(proposal.getFreelancerId(), null);
+            freelancer = userServiceClient.getUserById(proposal.getFreelancerId());
             log.debug("Successfully fetched freelancer: id={}, name={}, role={}, status={}", 
                     freelancer.getUserId(), freelancer.getName(), freelancer.getRole(), freelancer.getStatus());
         } catch (FeignException.NotFound e) {
@@ -463,7 +463,7 @@ public class ProposalService {
         log.debug("Pre-check 2: Validating freelancer. freelancerId={}", proposal.getFreelancerId());
         UserProfileDTO freelancer;
         try {
-            freelancer = userServiceClient.getUserById(proposal.getFreelancerId(), null);
+            freelancer = userServiceClient.getUserById(proposal.getFreelancerId());
             log.debug("Freelancer fetched: id={}, status={}, role={}", freelancer.getUserId(), freelancer.getStatus(), freelancer.getRole());
         } catch (FeignException.NotFound e) {
             log.error("Freelancer not found in user-service. freelancerId={}", proposal.getFreelancerId());
@@ -847,7 +847,7 @@ public class ProposalService {
         String category = "Unknown";
 
         try {
-            UserProfileDTO user = userServiceClient.getUserById(freelancerId, null);
+            UserProfileDTO user = userServiceClient.getUserById(freelancerId);
             if (user != null && user.getName() != null) name = user.getName();
         } catch (FeignException e) {
             log.warn("Could not fetch user {} from user-service: {}", freelancerId, e.getMessage());

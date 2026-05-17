@@ -235,6 +235,7 @@ services:
       retries: 10
       start_period: 20s
 
+
   grafana:
     image: grafana/grafana:latest
     container_name: freelance-grafana
@@ -472,7 +473,6 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000
-      SPRING_DATA_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
 
 volumes:
   pgdata:
