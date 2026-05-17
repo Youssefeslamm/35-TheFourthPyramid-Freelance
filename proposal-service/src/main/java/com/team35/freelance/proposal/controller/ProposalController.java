@@ -53,7 +53,7 @@ public class ProposalController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping({"/estimate", "/fee-estimate"})
+    @PostMapping("/estimate")
     public ResponseEntity<FeeEstimateDTO> estimateFee(@RequestBody FeeEstimateRequest request) {
         FeeEstimateDTO dto = proposalService.estimateFee(
                 request.getBidAmount(), request.getEstimatedDays());

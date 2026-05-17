@@ -3,7 +3,6 @@ CREATE DATABASE proposaldb;
 CREATE DATABASE contractdb;
 CREATE DATABASE walletdb;
 CREATE DATABASE jobdb;
-
 CREATE TYPE user_role_enum AS ENUM ('ADMIN', 'CLIENT', 'FREELANCER');
 CREATE TYPE user_status_enum AS ENUM ('ACTIVE', 'DEACTIVATED');
 CREATE TYPE proficiency_level_enum AS ENUM ('BEGINNER', 'INTERMEDIATE', 'EXPERT');
@@ -20,7 +19,6 @@ CREATE TYPE proposal_status_enum AS ENUM (
     'PAYMENT_FAILED',
     'REFUNDED'
 );
-
 CREATE TYPE milestone_status_enum AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'APPROVED');
 
 CREATE TYPE payout_method_enum AS ENUM (
@@ -28,19 +26,16 @@ CREATE TYPE payout_method_enum AS ENUM (
     'PAYPAL',
     'CRYPTO'
 );
-
 CREATE TYPE payout_status_enum AS ENUM (
     'PENDING',
     'COMPLETED',
     'FAILED',
     'REFUNDED'
 );
-
 CREATE TYPE discount_type_enum AS ENUM (
     'PERCENTAGE',
     'FIXED'
 );
-
 CREATE TYPE contract_status_enum AS ENUM (
     'ACTIVE', 'COMPLETED', 'TERMINATED', 'DISPUTED'
 );
@@ -102,19 +97,17 @@ CREATE TABLE IF NOT EXISTS job_attachments (
 );
 
 CREATE TABLE IF NOT EXISTS proposals (
-    id BIGSERIAL PRIMARY KEY,
-    job_id BIGINT NOT NULL,
-    job_relation_id BIGINT,
-    freelancer_id BIGINT NOT NULL,
-    contract_id BIGINT,
-    cover_letter TEXT NOT NULL,
-    bid_amount DOUBLE PRECISION NOT NULL,
-    estimated_days INTEGER NOT NULL,
-    status proposal_status_enum NOT NULL,
-    metadata JSONB,
-    submitted_at TIMESTAMP NOT NULL,
-    accepted_at TIMESTAMP,
-    CONSTRAINT fk_proposals_job_relation FOREIGN KEY (job_relation_id) REFERENCES jobs(id)
+                                         id BIGSERIAL PRIMARY KEY,
+                                         job_id BIGINT NOT NULL,
+                                         freelancer_id BIGINT NOT NULL,
+                                         contract_id BIGINT,
+                                         cover_letter TEXT NOT NULL,
+                                         bid_amount DOUBLE PRECISION NOT NULL,
+                                         estimated_days INTEGER NOT NULL,
+                                         status proposal_status_enum NOT NULL,
+                                         metadata JSONB,
+                                         submitted_at TIMESTAMP NOT NULL,
+                                         accepted_at TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS proposal_milestones (

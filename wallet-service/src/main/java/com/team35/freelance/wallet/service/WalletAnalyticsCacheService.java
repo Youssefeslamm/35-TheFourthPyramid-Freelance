@@ -2,8 +2,8 @@ package com.team35.freelance.wallet.service;
 
 import com.team35.freelance.wallet.dto.CategoryRevenueDTO;
 import com.team35.freelance.wallet.repository.PayoutRepository;
-import com.team35.freelance.wallet.service.PayoutService;
 import org.springframework.cache.annotation.Cacheable;
+import com.team35.freelance.wallet.service.PayoutService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -19,7 +19,10 @@ public class WalletAnalyticsCacheService {
         this.payoutRepository = payoutRepository;
     }
 
-        @Cacheable(value = "wallet-service::S5-F10", key = "#startDate + ':' + #endDate")
+        @Cacheable(
+                value = "wallet-service::S5-F10",
+                key = "#startDate.toString() + ':' + #endDate.toString()"
+        )
         public List<CategoryRevenueDTO> getCategoryRevenueAnalyticsCached (LocalDate startDate, LocalDate endDate){
                     return List.of();
         }
