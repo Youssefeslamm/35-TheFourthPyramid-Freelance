@@ -32,7 +32,7 @@ spring:
 
   data:
     mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin&serverSelectionTimeoutMS=1000&connectTimeoutMS=1000&socketTimeoutMS=1000}
+      uri: ${SPRING_DATA_MONGODB_URI:${SPRING_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin&serverSelectionTimeoutMS=1000&connectTimeoutMS=1000&socketTimeoutMS=1000}}
     redis:
       host: ${SPRING_REDIS_HOST:redis}
       port: ${SPRING_REDIS_PORT:6379}

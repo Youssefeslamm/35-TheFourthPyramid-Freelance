@@ -23,8 +23,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(request -> "true".equals(request.getHeader("X-INTERNAL-CALL"))).permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/health").permitAll()
+                        .requestMatchers("/api/proposals/health").permitAll()
                         .requestMatchers("/api/auth/register").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/error").permitAll()

@@ -299,7 +299,7 @@ public class PayoutService {
             paymentEventPublisher.publishFailed(
                     new PaymentFailedEvent(
                             failed.getId(),
-                            null,
+                            extractProposalId(failed),
                             failed.getContractId(),
                             "Simulated payout failure"
                     )
@@ -329,7 +329,7 @@ public class PayoutService {
         paymentEventPublisher.publishCompleted(
                 new PaymentCompletedEvent(
                         saved.getId(),
-                        null,
+                        extractProposalId(saved),
                         saved.getContractId(),
                         BigDecimal.valueOf(saved.getAmount())
                 )
@@ -498,7 +498,7 @@ public class PayoutService {
         paymentEventPublisher.publishCompleted(
                 new PaymentCompletedEvent(
                         saved.getId(),
-                        null,
+                        extractProposalId(saved),
                         saved.getContractId(),
                         BigDecimal.valueOf(saved.getAmount())
                 )
@@ -564,7 +564,7 @@ public class PayoutService {
         paymentEventPublisher.publishRefunded(
                 new PaymentRefundedEvent(
                         saved.getId(),
-                        null,
+                        extractProposalId(saved),
                         saved.getContractId(),
                         BigDecimal.valueOf(saved.getAmount())
                 )
@@ -645,7 +645,7 @@ public class PayoutService {
         paymentEventPublisher.publishRefunded(
                 new PaymentRefundedEvent(
                         saved.getId(),
-                        null,
+                        extractProposalId(saved),
                         saved.getContractId(),
                         BigDecimal.valueOf(result.getAmount())
                 )
@@ -730,6 +730,25 @@ public class PayoutService {
             return 0.0;
         }
         return ((Number) row[index]).doubleValue();
+    }
+
+    private Long extractProposalId(Payout payout) {
+        if (payout == null || payout.getTransactionDetails() == null) {
+            return null;
+        }
+
+        Object rawProposalId = payout.getTransactionDetails().get("proposalId");
+        if (rawProposalId instanceof Number number) {
+            return number.longValue();
+        }
+        if (rawProposalId instanceof String value && !value.isBlank()) {
+            try {
+                return Long.valueOf(value);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 
     @Cacheable(value = "wallet-service::S5-READ-DB", key = "#freelancerId + ':' + #startDate + ':' + #endDate")

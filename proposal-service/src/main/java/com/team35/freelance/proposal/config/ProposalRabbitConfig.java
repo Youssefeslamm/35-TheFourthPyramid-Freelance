@@ -9,13 +9,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.amqp.support.converter.MessageConverter;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 @Configuration
 public class ProposalRabbitConfig {
 
     public static final String PROPOSAL_EXCHANGE = "proposal.events";
     public static final String CONTRACT_EXCHANGE = "contract.events";
     public static final String PAYMENT_EXCHANGE = "payment.events";
+    public static final String JOB_EXCHANGE = "job.events";
+    public static final String USER_EXCHANGE = "user.events";
 
     public static final String SAGA_FEEDBACK_QUEUE = "proposal.saga-feedback";
     public static final String SAGA_FEEDBACK_DLQ = "proposal.saga-feedback.dlq";
@@ -41,6 +42,16 @@ public class ProposalRabbitConfig {
     @Bean
     public TopicExchange paymentEventsExchange() {
         return new TopicExchange(PAYMENT_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public TopicExchange jobEventsExchange() {
+        return new TopicExchange(JOB_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public TopicExchange userEventsExchange() {
+        return new TopicExchange(USER_EXCHANGE, true, false);
     }
 
     @Bean
@@ -124,6 +135,23 @@ public class ProposalRabbitConfig {
                 .to(paymentEventsExchange())
                 .with("payment.refunded");
     }
+
+    @Bean
+    public Binding jobClosedBinding() {
+        return BindingBuilder
+                .bind(proposalSagaFeedbackQueue())
+                .to(jobEventsExchange())
+                .with("job.closed");
+    }
+
+    @Bean
+    public Binding userDeactivatedBinding() {
+        return BindingBuilder
+                .bind(proposalSagaFeedbackQueue())
+                .to(userEventsExchange())
+                .with("user.deactivated");
+    }
+
     // Add this bean to ProposalRabbitConfig.java
     @Bean
     public org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate(

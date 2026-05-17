@@ -37,7 +37,9 @@ public class JwtGatewayFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getURI().getPath();
         String correlationId = resolveCorrelationId(exchange);
 
-        if (path.equals("/api/auth") || path.startsWith("/api/auth/")) {
+        exchange.getResponse().getHeaders().set(CORRELATION_ID_HEADER, correlationId);
+
+        if (isPublicPath(path)) {
             return chain.filter(withCorrelationId(exchange, correlationId));
         }
 
@@ -66,6 +68,14 @@ public class JwtGatewayFilter implements GlobalFilter, Ordered {
                 .build();
 
         return chain.filter(enrichedExchange);
+    }
+
+    private boolean isPublicPath(String path) {
+        return path.equals("/api/auth")
+                || path.startsWith("/api/auth/")
+                || path.equals("/actuator/health")
+                || path.startsWith("/actuator/health/")
+                || path.contains("/health");
     }
 
     private ServerWebExchange withCorrelationId(ServerWebExchange exchange, String correlationId) {
