@@ -106,6 +106,8 @@ public class ContractController {
         try {
             Contract contract = contractService.getActiveContractForUser(userId);
             return ResponseEntity.ok(ContractDtoMapper.toDto(contract));
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         } finally {

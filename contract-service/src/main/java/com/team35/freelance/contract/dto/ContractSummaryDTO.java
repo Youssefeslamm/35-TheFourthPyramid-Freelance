@@ -1,6 +1,10 @@
 package com.team35.freelance.contract.dto;
 
-public class ContractSummaryDTO {
+import java.io.Serializable;
+
+public class ContractSummaryDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private Long contractId;
 

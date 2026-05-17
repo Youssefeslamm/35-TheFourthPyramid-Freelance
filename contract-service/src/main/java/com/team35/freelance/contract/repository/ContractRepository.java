@@ -19,6 +19,8 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     // S4-EVENTS: find contract by proposalId for completed/cancelled consumers
     Optional<Contract> findByProposalId(Long proposalId);
 
+    Optional<Contract> findFirstByProposalIdOrderByCreatedAtDescIdDesc(Long proposalId);
+
     @Query(value = "SELECT * FROM contracts WHERE freelancer_id = :userId AND status = 'ACTIVE' ORDER BY created_at DESC LIMIT 1", nativeQuery = true)
     Optional<Contract> findMostRecentActiveContractByUserId(@Param("userId") Long userId);
 

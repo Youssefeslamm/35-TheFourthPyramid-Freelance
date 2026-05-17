@@ -1,6 +1,11 @@
 package com.team35.freelance.contract.dto;
 
-public class StalledContractDTO {
+import java.io.Serializable;
+
+public class StalledContractDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     private Long contractId;
     private String freelancerName;
     private String jobTitle;

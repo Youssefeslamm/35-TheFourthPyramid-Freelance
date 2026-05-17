@@ -13,6 +13,21 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitConsumerTopologyConfig {
 
     @Bean
+    public Declarables contractSagaListenerTopology() {
+        TopicExchange deadLetterExchange = new TopicExchange("contract.saga-listener.dlx");
+        Queue queue = QueueBuilder.durable("contract.saga-listener")
+                .withArgument("x-dead-letter-exchange", "contract.saga-listener.dlx")
+                .withArgument("x-dead-letter-routing-key", "contract.saga-listener.dlq")
+                .build();
+        Queue deadLetterQueue = QueueBuilder.durable("contract.saga-listener.dlq").build();
+        Binding deadLetterBinding = BindingBuilder.bind(deadLetterQueue)
+                .to(deadLetterExchange)
+                .with("contract.saga-listener.dlq");
+
+        return new Declarables(queue, deadLetterQueue, deadLetterExchange, deadLetterBinding);
+    }
+
+    @Bean
     public Declarables userDeactivatedContractTopology() {
         return consumerTopology("user.events", "user.deactivated", "user.deactivated.contract");
     }

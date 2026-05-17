@@ -157,19 +157,28 @@ public class ContractEventConsumer {
             RabbitObservability.logConsuming(routingKey, "proposalId", event.proposalId());
 
             Contract contract = contractRepository
-                    .findFirstByProposalIdAndStatusOrderByCreatedAtDesc(event.proposalId(), ContractStatus.ACTIVE)
+                    .findFirstByProposalIdOrderByCreatedAtDescIdDesc(event.proposalId())
                     .orElse(null);
 
             if (contract == null) {
-                log.warn("Skipping proposal.cancelled because no ACTIVE contract found proposalId={}",
+                log.warn("Skipping proposal.cancelled because no contract found proposalId={}",
                         event.proposalId());
                 RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
                 return;
             }
 
-            contract.setStatus(ContractStatus.TERMINATED);
-            contract.setEndDate(LocalDateTime.now());
+            if (contract.getStatus() == ContractStatus.TERMINATED) {
+                MDC.put("contractId", String.valueOf(contract.getId()));
+                log.info("Skipping proposal.cancelled because contract is already TERMINATED proposalId={} contractId={}",
+                        event.proposalId(), contract.getId());
+                RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
+                return;
+            }
 
+            contract.setStatus(ContractStatus.TERMINATED);
+            if (contract.getEndDate() == null) {
+                contract.setEndDate(LocalDateTime.now());
+            }
             Contract saved = contractRepository.save(contract);
             MDC.put("contractId", String.valueOf(saved.getId()));
 
