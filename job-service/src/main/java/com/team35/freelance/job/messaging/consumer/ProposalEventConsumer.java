@@ -8,14 +8,15 @@ import com.team35.freelance.contracts.events.ProposalCancelledEvent;
 import com.team35.freelance.contracts.events.ProposalCompletedEvent;
 import com.team35.freelance.contracts.events.ProposalWithdrawnEvent;
 import com.team35.freelance.contracts.feign.ProposalServiceClient;
+import com.team35.freelance.contracts.observability.RabbitObservability;
 import com.team35.freelance.job.config.RabbitConsumerTopologyConfig;
 import com.team35.freelance.job.messaging.publisher.JobEventPublisher;
 import com.team35.freelance.job.model.Job;
 import com.team35.freelance.job.model.JobStatus;
 import com.team35.freelance.job.repository.JobRepository;
+import feign.FeignException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import feign.FeignException;
 import org.slf4j.MDC;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -56,57 +57,61 @@ public class ProposalEventConsumer {
             "job-service::S2-F12"
     }, allEntries = true)
     public void handleProposalEvent(Message message) throws Exception {
+        RabbitObservability.applyInboundMdc(message);
         String routingKey = message.getMessageProperties().getReceivedRoutingKey();
 
         try {
-            MDC.put("routingKey", routingKey);
-
-            Object correlationId = message.getMessageProperties().getHeaders().get("correlationId");
-            if (correlationId != null) {
-                MDC.put("correlationId", correlationId.toString());
-            }
-
-            log.info("Consuming proposal event with routingKey={}", routingKey);
-
             if (RabbitConsumerTopologyConfig.PROPOSAL_ACCEPTED_ROUTING_KEY.equals(routingKey)) {
                 ProposalAcceptedEvent event = objectMapper.readValue(message.getBody(), ProposalAcceptedEvent.class);
-                MDC.put("proposalId", String.valueOf(event.proposalId()));
-                MDC.put("jobId", String.valueOf(event.jobId()));
+                putProposalMdc(event.proposalId(), event.jobId());
+                RabbitObservability.logConsuming(routingKey, "proposalId", event.proposalId());
                 onProposalAccepted(event);
+                RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
                 return;
             }
 
             if (RabbitConsumerTopologyConfig.PROPOSAL_COMPLETED_ROUTING_KEY.equals(routingKey)) {
                 ProposalCompletedEvent event = objectMapper.readValue(message.getBody(), ProposalCompletedEvent.class);
-                MDC.put("proposalId", String.valueOf(event.proposalId()));
-                MDC.put("jobId", String.valueOf(event.jobId()));
+                putProposalMdc(event.proposalId(), event.jobId());
+                RabbitObservability.logConsuming(routingKey, "proposalId", event.proposalId());
                 onProposalCompleted(event);
+                RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
                 return;
             }
 
             if (RabbitConsumerTopologyConfig.PROPOSAL_CANCELLED_ROUTING_KEY.equals(routingKey)) {
                 ProposalCancelledEvent event = objectMapper.readValue(message.getBody(), ProposalCancelledEvent.class);
-                MDC.put("proposalId", String.valueOf(event.proposalId()));
-                MDC.put("jobId", String.valueOf(event.jobId()));
+                putProposalMdc(event.proposalId(), event.jobId());
+                RabbitObservability.logConsuming(routingKey, "proposalId", event.proposalId());
                 onProposalCancelled(event);
+                RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
                 return;
             }
 
             if (RabbitConsumerTopologyConfig.PROPOSAL_WITHDRAWN_ROUTING_KEY.equals(routingKey)) {
                 ProposalWithdrawnEvent event = objectMapper.readValue(message.getBody(), ProposalWithdrawnEvent.class);
-                MDC.put("proposalId", String.valueOf(event.proposalId()));
-                MDC.put("jobId", String.valueOf(event.jobId()));
+                putProposalMdc(event.proposalId(), event.jobId());
+                RabbitObservability.logConsuming(routingKey, "proposalId", event.proposalId());
                 onProposalWithdrawn(event);
+                RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
                 return;
             }
 
             log.warn("Ignoring unsupported proposal routingKey={}", routingKey);
-
+        } catch (Exception e) {
+            RabbitObservability.logFailed(routingKey, e.getMessage(), e);
+            throw e;
         } finally {
-            MDC.remove("routingKey");
-            MDC.remove("correlationId");
-            MDC.remove("proposalId");
-            MDC.remove("jobId");
+            RabbitObservability.clearConsumerMdc("proposalId", "jobId");
+        }
+    }
+
+    private void putProposalMdc(Long proposalId, Long jobId) {
+        if (proposalId != null) {
+            MDC.put("proposalId", String.valueOf(proposalId));
+        }
+        if (jobId != null) {
+            MDC.put("jobId", String.valueOf(jobId));
         }
     }
 

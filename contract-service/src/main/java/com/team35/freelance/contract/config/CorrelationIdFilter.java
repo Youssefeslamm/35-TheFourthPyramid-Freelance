@@ -26,11 +26,11 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
             correlationId = UUID.randomUUID().toString();
         }
         MDC.put(MDC_CORRELATION_ID_KEY, correlationId);
+        response.setHeader(CORRELATION_ID_HEADER, correlationId);
         try {
             filterChain.doFilter(request, response);
         } finally {
-            // fel finally: MDC.clear 3ashan ma-y7salsh leak law el thread et3adet men el pool
-            MDC.clear();
+            MDC.remove(MDC_CORRELATION_ID_KEY);
         }
     }
 }

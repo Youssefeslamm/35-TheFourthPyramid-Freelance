@@ -7,36 +7,45 @@
   "panels": [
     {
       "type": "timeseries",
-      "title": "HTTP Request Rate",
-      "targets": [
-        {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"job-service\"}[5m])) by (uri, method)",
-          "legendFormat": "{{method}} {{uri}}"
-        }
-      ],
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+      "title": "LogQL Error Rate",
+      "targets": [{ "expr": "sum(count_over_time({service=\"job-service\", level=\"ERROR\"}[1m]))", "legendFormat": "errors/min" }],
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 }
+    },
+    {
+      "type": "logs",
+      "title": "LogQL Correlation Trace",
+      "targets": [{ "expr": "{service=\"job-service\"} | json | correlationId=~\".+\"", "legendFormat": "trace" }],
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 }
     },
     {
       "type": "timeseries",
-      "title": "HTTP P95 Latency",
+      "title": "LogQL RabbitMQ Audit",
       "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"job-service\"}[5m])) by (le, uri))",
-          "legendFormat": "P95 {{uri}}"
-        }
+        { "expr": "sum(count_over_time({service=\"job-service\"} |= \"Published\" [5m]))", "legendFormat": "published" },
+        { "expr": "sum(count_over_time({service=\"job-service\"} |= \"Consuming\" [5m]))", "legendFormat": "consumed" }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 }
     },
     {
       "type": "timeseries",
-      "title": "JVM Memory Used",
-      "targets": [
-        {
-          "expr": "jvm_memory_used_bytes{job=\"job-service\"}",
-          "legendFormat": "{{area}} {{id}}"
-        }
-      ],
+      "title": "PromQL HTTP Request Rate",
+      "targets": [{ "expr": "sum(rate(http_server_requests_seconds_count{job=\"job-service\"}[5m])) by (uri, method)", "legendFormat": "{{method}} {{uri}}" }],
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+    },
+    {
+      "type": "timeseries",
+      "title": "PromQL HTTP P95 Latency",
+      "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"job-service\"}[5m])) by (le, uri))", "legendFormat": "P95 {{uri}}" }],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+    },
+    {
+      "type": "timeseries",
+      "title": "PromQL Cache Hit/Miss",
+      "targets": [
+        { "expr": "sum(rate(cache_gets_total{job=\"job-service\", result=\"hit\"}[5m]))", "legendFormat": "hits" },
+        { "expr": "sum(rate(cache_gets_total{job=\"job-service\", result=\"miss\"}[5m]))", "legendFormat": "misses" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 }
     }
   ]
 }

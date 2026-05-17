@@ -776,22 +776,30 @@ public class PayoutService {
         return saved;
     }
 
-    public List<CategoryRevenueDTO> getCategoryRevenueAnalytics(LocalDate startDate, LocalDate endDate) {
-        startDate = startDate == null ? LocalDate.of(1970, 1, 1) : startDate;
-        endDate = endDate == null ? LocalDate.now().plusDays(1) : endDate;
+   public List<CategoryRevenueDTO> getCategoryRevenueAnalytics(LocalDate startDate, LocalDate endDate) {
+    long startedAt = System.currentTimeMillis();
 
-        if (startDate.isAfter(endDate)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate cannot be after endDate");
-        }
+    startDate = startDate == null ? LocalDate.of(1970, 1, 1) : startDate;
+    endDate = endDate == null ? LocalDate.now().plusDays(1) : endDate;
 
-        // ✅ ALWAYS runs
-        logAnalyticsViewedEvent(startDate, endDate);
-
-        // ✅ cached logic
-        List<CategoryRevenueDTO> result = walletAnalyticsCacheService.getCategoryRevenueAnalyticsCached(startDate, endDate);
-        populateCategoryAnalyticsCacheKey(startDate, endDate);
-        return result;
+    if (startDate.isAfter(endDate)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate cannot be after endDate");
     }
+
+    logAnalyticsViewedEvent(startDate, endDate);
+
+    List<CategoryRevenueDTO> result =
+            walletAnalyticsCacheService.getCategoryRevenueAnalyticsCached(startDate, endDate);
+
+    populateCategoryAnalyticsCacheKey(startDate, endDate);
+
+    long elapsedMs = System.currentTimeMillis() - startedAt;
+    if (elapsedMs > 1000) {
+        log.warn("Slow S5-F10 platform fee analytics took {}ms", elapsedMs);
+    }
+
+    return result;
+}
     private void logAnalyticsViewedEvent(LocalDate startDate, LocalDate endDate) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "ANALYTICS_VIEWED");

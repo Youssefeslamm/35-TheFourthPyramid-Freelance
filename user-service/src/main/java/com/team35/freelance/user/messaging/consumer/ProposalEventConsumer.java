@@ -3,10 +3,12 @@ package com.team35.freelance.user.messaging.consumer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.team35.freelance.contracts.events.ProposalCancelledEvent;
 import com.team35.freelance.contracts.events.ProposalCompletedEvent;
+import com.team35.freelance.contracts.observability.RabbitObservability;
 import com.team35.freelance.user.model.User;
 import com.team35.freelance.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -32,30 +34,87 @@ public class ProposalEventConsumer {
     @RabbitListener(queues = "proposal.completed.user.queue")
     @Transactional
     public void onProposalCompleted(Message message) {
-        ProposalCompletedEvent event = readEvent(message, ProposalCompletedEvent.class);
-        if (event == null || event.freelancerId() == null) {
-            log.warn("proposal.completed event missing freelancerId");
-            return;
+        String routingKey = routingKey(message, "proposal.completed");
+        RabbitObservability.applyInboundMdc(message);
+        try {
+            ProposalCompletedEvent event = readEvent(message, ProposalCompletedEvent.class);
+            if (event == null || event.freelancerId() == null) {
+                log.warn("proposal.completed event missing freelancerId");
+                return;
+            }
+            putProposalMdc(event);
+            RabbitObservability.logConsuming(routingKey, "proposalId", event.proposalId());
+
+            userRepository.findById(event.freelancerId()).ifPresentOrElse(user -> {
+                incrementPreference(user, "completedProposals", 1L);
+                addPreferenceAmount(user, "totalEarnings", event.agreedAmount());
+                userRepository.save(user);
+            }, () -> log.warn("Freelancer not found for proposal.completed freelancerId={}", event.freelancerId()));
+
+            RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
+        } catch (Exception e) {
+            RabbitObservability.logFailed(routingKey, e.getMessage(), e);
+            throw new IllegalStateException("Failed to process proposal.completed", e);
+        } finally {
+            RabbitObservability.clearConsumerMdc("proposalId", "jobId", "userId");
         }
-        userRepository.findById(event.freelancerId()).ifPresentOrElse(user -> {
-            incrementPreference(user, "completedProposals", 1L);
-            addPreferenceAmount(user, "totalEarnings", event.agreedAmount());
-            userRepository.save(user);
-        }, () -> log.warn("Freelancer not found for proposal.completed freelancerId={}", event.freelancerId()));
     }
 
     @RabbitListener(queues = "proposal.cancelled.user.queue")
     @Transactional
     public void onProposalCancelled(Message message) {
-        ProposalCancelledEvent event = readEvent(message, ProposalCancelledEvent.class);
-        if (event == null || event.freelancerId() == null) {
-            log.warn("proposal.cancelled event missing freelancerId");
-            return;
+        String routingKey = routingKey(message, "proposal.cancelled");
+        RabbitObservability.applyInboundMdc(message);
+        try {
+            ProposalCancelledEvent event = readEvent(message, ProposalCancelledEvent.class);
+            if (event == null || event.freelancerId() == null) {
+                log.warn("proposal.cancelled event missing freelancerId");
+                return;
+            }
+            putProposalMdc(event.proposalId(), event.jobId(), event.freelancerId());
+            RabbitObservability.logConsuming(routingKey, "proposalId", event.proposalId());
+
+            userRepository.findById(event.freelancerId()).ifPresentOrElse(user -> {
+                incrementPreference(user, "cancelledProposals", 1L);
+                userRepository.save(user);
+            }, () -> log.warn("Freelancer not found for proposal.cancelled freelancerId={}", event.freelancerId()));
+
+            RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
+        } catch (Exception e) {
+            RabbitObservability.logFailed(routingKey, e.getMessage(), e);
+            throw new IllegalStateException("Failed to process proposal.cancelled", e);
+        } finally {
+            RabbitObservability.clearConsumerMdc("proposalId", "jobId", "userId");
         }
-        userRepository.findById(event.freelancerId()).ifPresentOrElse(user -> {
-            incrementPreference(user, "cancelledProposals", 1L);
-            userRepository.save(user);
-        }, () -> log.warn("Freelancer not found for proposal.cancelled freelancerId={}", event.freelancerId()));
+    }
+
+    private void putProposalMdc(ProposalCompletedEvent event) {
+        if (event.proposalId() != null) {
+            MDC.put("proposalId", String.valueOf(event.proposalId()));
+        }
+        if (event.jobId() != null) {
+            MDC.put("jobId", String.valueOf(event.jobId()));
+        }
+        if (event.freelancerId() != null) {
+            MDC.put("userId", String.valueOf(event.freelancerId()));
+        }
+    }
+
+    private void putProposalMdc(Long proposalId, Long jobId, Long freelancerId) {
+        if (proposalId != null) {
+            MDC.put("proposalId", String.valueOf(proposalId));
+        }
+        if (jobId != null) {
+            MDC.put("jobId", String.valueOf(jobId));
+        }
+        if (freelancerId != null) {
+            MDC.put("userId", String.valueOf(freelancerId));
+        }
+    }
+
+    private String routingKey(Message message, String fallback) {
+        String routingKey = message.getMessageProperties().getReceivedRoutingKey();
+        return routingKey != null && !routingKey.isBlank() ? routingKey : fallback;
     }
 
     private <T> T readEvent(Message message, Class<T> eventType) {
@@ -90,4 +149,3 @@ public class ProposalEventConsumer {
         user.setPreferences(preferences);
     }
 }
-

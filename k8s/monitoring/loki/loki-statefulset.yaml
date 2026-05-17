@@ -38,8 +38,7 @@ spec:
             periodSeconds: 30
           volumeMounts:
             - name: config
-              mountPath: /etc/loki/local-config.yaml
-              subPath: local-config.yaml
+              mountPath: /etc/loki
             - name: storage
               mountPath: /loki
       volumes:
