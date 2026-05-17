@@ -17,6 +17,8 @@ import com.team35.freelance.wallet.common.observer.MongoEventLogger;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -44,6 +46,8 @@ import java.math.BigDecimal;
 
 @Service
 public class PayoutService {
+
+    private static final Logger log = LoggerFactory.getLogger(PayoutService.class);
 
     private final PayoutRepository payoutRepository;
     private final PromoCodeRepository promoCodeRepository;
@@ -221,7 +225,8 @@ public class PayoutService {
             "wallet-service::S5-F8",
             "wallet-service::S5-F9"
     }, allEntries = true)
-    public Payout processContractPayout(Long contractId, ProcessPayoutRequest request, Long callerId, String callerRole) {
+    public Payout processContractPayout(Long contractId, ProcessPayoutRequest request, Long callerId, String callerRole, boolean simulateFailure) {
+        log.info("simulateFailure received = {}", simulateFailure);
 
         Payout payout = payoutRepository.findFirstByContractIdAndStatusOrderByCreatedAtDesc(
                 contractId,
@@ -283,12 +288,14 @@ public class PayoutService {
         if (payout.getStatus() == PayoutStatus.COMPLETED || payout.getStatus() == PayoutStatus.FAILED) {
             return payout;
         }
-        if ("FAIL".equalsIgnoreCase(request.getAccountLastFour())) {
+        if (simulateFailure || "FAIL".equalsIgnoreCase(request.getAccountLastFour())) {
+            log.info("Simulating payout failure contractId={} payoutId={}", contractId, payout.getId());
 
             payout.setStatus(PayoutStatus.FAILED);
 
             Payout failed = payoutRepository.save(payout);
 
+            log.info("Publishing payment.failed payoutId={} contractId={}", failed.getId(), failed.getContractId());
             paymentEventPublisher.publishFailed(
                     new PaymentFailedEvent(
                             failed.getId(),

@@ -6,6 +6,7 @@ import com.team35.freelance.wallet.messaging.publisher.PaymentEventPublisher;
 import com.team35.freelance.wallet.repository.MongoEventRepository;
 import com.team35.freelance.wallet.repository.PayoutRepository;
 import com.team35.freelance.wallet.repository.PromoCodeRepository;
+import com.team35.freelance.contracts.feign.ContractServiceClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +42,8 @@ class PayoutServiceFreelancerTotalTest {
     private WalletAnalyticsCacheService walletAnalyticsCacheService;
     @Mock
     private PaymentEventPublisher paymentEventPublisher;
+    @Mock
+    private ContractServiceClient contractServiceClient;
 
     private PayoutService payoutService;
 
@@ -53,7 +56,8 @@ class PayoutServiceFreelancerTotalTest {
                 mongoEventLogger,
                 mongoEventRepository,
                 walletAnalyticsCacheService,
-                paymentEventPublisher
+                paymentEventPublisher,
+                contractServiceClient
         );
     }
 

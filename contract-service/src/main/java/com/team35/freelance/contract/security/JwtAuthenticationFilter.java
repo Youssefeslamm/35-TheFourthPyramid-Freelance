@@ -4,9 +4,14 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import com.team35.freelance.contract.common.security.chain.*;
@@ -18,6 +23,18 @@ import java.util.List;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+    private static final RequestMatcher[] PUBLIC_INTERNAL_GET_ENDPOINTS = {
+            get("^/actuator/health$"),
+            get("^/api/health$"),
+            get("^/api/contracts/[0-9]+$"),
+            get("^/api/contracts/user/[0-9]+/summary$"),
+            get("^/api/contracts/user/[0-9]+/active-count$"),
+            get("^/api/contracts/user/[0-9]+/completed-count$"),
+            get("^/api/contracts/job/[0-9]+/active-count$"),
+            get("^/api/contracts/proposal/[0-9]+/active$")
+    };
+
     private final JwtService jwtService;
 
     public JwtAuthenticationFilter(JwtService jwtService) {
@@ -25,17 +42,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        log.info("CONTRACT JWT FILTER PATH = {}", path);
+
+        for (RequestMatcher matcher : PUBLIC_INTERNAL_GET_ENDPOINTS) {
+            if (matcher.matches(request)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
-
-        String path = request.getRequestURI();
-
-        if (path.contains("/health")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
 
         // Create context
         AuthContext ctx = new AuthContext(request);
@@ -75,5 +98,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         String normalized = role.trim().toUpperCase();
         return normalized.startsWith("ROLE_") ? normalized.substring(5) : normalized;
+    }
+
+    private static RequestMatcher get(String pattern) {
+        return RegexRequestMatcher.regexMatcher(HttpMethod.GET, pattern);
     }
 }
