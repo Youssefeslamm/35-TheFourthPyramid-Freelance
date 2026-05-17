@@ -48,7 +48,7 @@ public class ContractMilestoneTrackingService {
                     contractId,
                     request.getMilestoneOrder(),
                     validatedStatus.name(),
-                    request.getRecordedBy() == null ? null : request.getRecordedBy().toString(),
+                    request.getRecordedBy(),
                     request.getNotes()
             );
         } catch (RuntimeException ignored) {

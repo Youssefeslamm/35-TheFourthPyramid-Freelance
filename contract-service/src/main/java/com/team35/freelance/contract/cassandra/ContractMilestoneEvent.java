@@ -23,7 +23,7 @@ public class ContractMilestoneEvent {
     private String status;
 
     @Column("recorded_by")
-    private Long recordedBy;
+    private String recordedBy;
 
     private String notes;
 
@@ -34,7 +34,7 @@ public class ContractMilestoneEvent {
     public ContractMilestoneEvent(Long contractId,
                                   Integer milestoneOrder,
                                   String status,
-                                  Long recordedBy,
+                                  String recordedBy,
                                   String notes) {
         this.contractId = contractId;
         this.timestamp = LocalDateTime.now();
@@ -48,13 +48,13 @@ public class ContractMilestoneEvent {
     public LocalDateTime getTimestamp() { return timestamp; }
     public Integer getMilestoneOrder() { return milestoneOrder; }
     public String getStatus() { return status; }
-    public Long getRecordedBy() { return recordedBy; }
+    public String getRecordedBy() { return recordedBy; }
     public String getNotes() { return notes; }
 
     public void setContractId(Long contractId) { this.contractId = contractId; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
     public void setMilestoneOrder(Integer milestoneOrder) { this.milestoneOrder = milestoneOrder; }
     public void setStatus(String status) { this.status = status; }
-    public void setRecordedBy(Long recordedBy) { this.recordedBy = recordedBy; }
+    public void setRecordedBy(String recordedBy) { this.recordedBy = recordedBy; }
     public void setNotes(String notes) { this.notes = notes; }
 }

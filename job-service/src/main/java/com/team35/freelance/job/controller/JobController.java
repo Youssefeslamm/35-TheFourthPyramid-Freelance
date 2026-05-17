@@ -66,17 +66,11 @@ public class JobController {
 
     @GetMapping("/search")
     public ResponseEntity<List<Job>> searchJobs(
-            @RequestParam(required = false) String query,
-            @RequestParam(required = false) String title,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) Double minBudget,
-            @RequestParam(required = false) Double maxBudget) {
+            @RequestParam Double minBudget,
+            @RequestParam Double maxBudget) {
 
-        return ResponseEntity.ok(jobService.searchJobs(
-                query == null || query.isBlank() ? title : query,
-                status,
-                minBudget,
-                maxBudget));
+        return ResponseEntity.ok(jobService.searchJobs(status, minBudget, maxBudget));
     }
 
     @PostMapping
