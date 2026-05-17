@@ -34,5 +34,11 @@ public interface JobAttachmentRepository extends JpaRepository<JobAttachment, Lo
             """)
     List<JobAttachment> findVerifiedByType(@Param("jobId") Long jobId,
                                            @Param("type") JobAttachmentType type);
-                                           
+        @Query(value = """
+        SELECT COUNT(*)
+        FROM job_attachments ja
+        WHERE ja.job_id = :jobId
+          AND ja.expiry_date >= CURRENT_DATE
+        """, nativeQuery = true)
+long countActiveAttachmentsForJob(@Param("jobId") Long jobId);                                   
 }

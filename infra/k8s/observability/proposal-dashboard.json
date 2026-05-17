@@ -1,0 +1,80 @@
+{
+  "title": "Proposal Service Dashboard",
+  "uid": "proposal-service",
+  "panels": [
+    {
+      "title": "Error Rate - Proposal Service",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {
+          "datasource": "Loki",
+          "expr": "count_over_time({service=\"proposal-service\", level=\"ERROR\"}[1m])",
+          "legendFormat": "Errors/min"
+        }
+      ]
+    },
+    {
+      "title": "Saga State Transitions",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {
+          "datasource": "Loki",
+          "expr": "count_over_time({service=\"proposal-service\"} |= \"transitioning\"[5m])",
+          "legendFormat": "Saga Transitions"
+        }
+      ]
+    },
+    {
+      "title": "Feign Call Outcomes",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [
+        {
+          "datasource": "Loki",
+          "expr": "count_over_time({service=\"proposal-service\"} |= \"Feign call\"[5m])",
+          "legendFormat": "Feign Calls"
+        }
+      ]
+    },
+    {
+      "title": "HTTP Request Rate",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(http_server_requests_seconds_count{job=\"proposal-service\"}[5m])",
+          "legendFormat": "Requests/sec"
+        }
+      ]
+    },
+    {
+      "title": "HTTP Latency P99",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{job=\"proposal-service\"}[5m]))",
+          "legendFormat": "P99 Latency"
+        }
+      ]
+    },
+    {
+      "title": "JVM Heap Usage",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "jvm_memory_used_bytes{job=\"proposal-service\", area=\"heap\"}",
+          "legendFormat": "Heap Used"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 36,
+  "version": 1
+}

@@ -1,5 +1,6 @@
 package com.team35.freelance.job.service;
 
+import feign.FeignException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,6 +53,8 @@ import com.team35.freelance.job.messaging.publisher.JobEventPublisher;
 import com.team35.freelance.contracts.events.JobClosedEvent;
 import com.team35.freelance.contracts.events.JobRatedEvent;
 import com.team35.freelance.contracts.events.JobStatusChangedEvent;
+import com.team35.freelance.contracts.feign.ProposalServiceClient;
+import com.team35.freelance.contracts.feign.ContractServiceClient;
 
 @Service
 public class JobService {
@@ -78,8 +81,9 @@ public class JobService {
     private final JobDashboardCacheService jobDashboardCacheService;
     private final RestTemplate elasticsearchRestTemplate = new RestTemplate();
     private final JobEventPublisher jobEventPublisher;
+
+    private final ProposalServiceClient proposalServiceClient;
     private final ContractServiceClient contractServiceClient;
-    private final ProposalServiceClient  proposalServiceClient;
 
     @Value("${spring.elasticsearch.uris:http://elasticsearch:9200}")
     private String elasticsearchUris;
@@ -91,8 +95,11 @@ public class JobService {
                       MongoEventLogger mongoEventLogger,
                       JobDashboardCacheService jobDashboardCacheService,
                       JobEventPublisher jobEventPublisher,
-                      ContractServiceClient contractServiceClient,
-                      ProposalServiceClient  proposalServiceClient) {
+
+                       
+
+                      ProposalServiceClient proposalServiceClient,
+                      ContractServiceClient contractServiceClient) {
 
         this.jobRepository = jobRepository;
         this.jobAttachmentRepository = jobAttachmentRepository;
@@ -100,8 +107,10 @@ public class JobService {
         this.elasticsearchHitAdapter = elasticsearchHitAdapter;
         this.jobDashboardCacheService = jobDashboardCacheService;
         this.jobEventPublisher = jobEventPublisher;
+
+        this.proposalServiceClient = proposalServiceClient;
         this.contractServiceClient = contractServiceClient;
-        this.proposalServiceClient  = proposalServiceClient;
+
 
         this.observers.add(mongoEventLogger);
     }
@@ -125,37 +134,33 @@ public class JobService {
         Job job = jobRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found"));
 
-        // Call proposal-service via Feign.
-        // Use fully-qualified type to avoid name clash with the local JobProposalSummaryDTO import.
-        com.team35.freelance.contracts.dto.JobProposalSummaryDTO remote;
         try {
-            remote = proposalServiceClient.getJobProposalSummary(id, startDate, endDate);
-        } catch (feign.FeignException e) {
-            log.warn("ProposalServiceClient.getJobProposalSummary failed for jobId={}: {}", id, e.getMessage());
-            remote = new com.team35.freelance.contracts.dto.JobProposalSummaryDTO(
-                    id, job.getTitle(), 0L, 0.0, 0.0, 0.0);
+            com.team35.freelance.contracts.dto.JobProposalSummaryDTO proposalSummary =
+                    proposalServiceClient.getJobProposalSummary(id, startDate, endDate);
+
+            return JobProposalSummaryDTO.builder()
+                    .jobId(job.getId())
+                    .title(job.getTitle())
+                    .totalProposals(proposalSummary.getTotalProposals() == null ? 0L : proposalSummary.getTotalProposals())
+                    .averageBidAmount(proposalSummary.getAverageBidAmount() == null ? 0.0 : proposalSummary.getAverageBidAmount())
+                    .lowestBid(proposalSummary.getLowestBid() == null ? 0.0 : proposalSummary.getLowestBid())
+                    .highestBid(proposalSummary.getHighestBid() == null ? 0.0 : proposalSummary.getHighestBid())
+                    .build();
+
+        } catch (FeignException.NotFound e) {
+            return JobProposalSummaryDTO.builder()
+                    .jobId(job.getId())
+                    .title(job.getTitle())
+                    .totalProposals(0L)
+                    .averageBidAmount(0.0)
+                    .lowestBid(0.0)
+                    .highestBid(0.0)
+                    .build();
+
+        } catch (FeignException e) {
+            log.warn("proposal-service unavailable while building proposal summary for job {}: {}", id, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Proposal service temporarily unavailable");
         }
-
-        // Call contract-service via Feign — active contract count for this job's owner.
-        Long activeContracts = 0L;
-        try {
-            activeContracts = contractServiceClient.getActiveContractCount(job.getClientId());
-        } catch (feign.FeignException e) {
-            log.warn("ContractServiceClient.getActiveContractCount failed for jobId={}: {}", id, e.getMessage());
-        }
-
-        log.info("ProposalSummary fetched: jobId={} totalProposals={} activeContracts={}",
-                id, remote.getTotalProposals(), activeContracts);
-
-        // Map from the shared contracts DTO → the local job-service DTO that the controller expects.
-        return new JobProposalSummaryDTOBuilder()
-                .jobId(remote.getJobId())
-                .title(job.getTitle())
-                .totalProposals(remote.getTotalProposals())
-                .averageBidAmount(remote.getAverageBidAmount())
-                .lowestBid(remote.getLowestBid())
-                .highestBid(remote.getHighestBid())
-                .build();
     }
 
     @CacheEvict(value = {
@@ -833,6 +838,26 @@ public class JobService {
             throw new BadRequestException("rating must be between 1 and 5 inclusive");
         }
 
+        com.team35.freelance.contracts.dto.ContractDTO contract;
+
+        try {
+            contract = contractServiceClient.getContract(request.getContractId());
+        } catch (FeignException.NotFound e) {
+            throw new ResourceNotFoundException("Contract not found");
+        } catch (FeignException e) {
+            log.warn("contract-service unavailable while rating job {} using contract {}: {}",
+                    jobId, request.getContractId(), e.getMessage());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Contract service temporarily unavailable");
+        }
+
+        if (contract.getJobId() == null || !contract.getJobId().equals(jobId)) {
+            throw new BadRequestException("Contract does not belong to this job");
+        }
+
+        if (contract.getStatus() == null || !"COMPLETED".equalsIgnoreCase(contract.getStatus())) {
+            throw new BadRequestException("Only completed contracts can be rated");
+        }
+
         double currentRating = job.getRating() == null ? 0.0 : job.getRating();
         int totalRatings = job.getTotalRatings() == null ? 0 : job.getTotalRatings();
 
@@ -881,10 +906,35 @@ public class JobService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status must be CLOSED");
         }
 
+        Integer activeContractCount;
+
+        try {
+            activeContractCount = contractServiceClient.getActiveContractCountForJob(id);
+        } catch (FeignException e) {
+            log.warn("contract-service unavailable while closing job {}: {}", id, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Contract service temporarily unavailable");
+        }
+
+        if (activeContractCount != null && activeContractCount > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Job has active contracts");
+        }
+
+        JobStatus oldStatus = job.getStatus();
+
         job.setStatus(JobStatus.CLOSED);
 
         Job saved = jobRepository.save(job);
         indexJobForSearchSafely(saved, "auto_crud_update");
+
+        if (oldStatus != JobStatus.CLOSED) {
+            jobEventPublisher.publishStatusChanged(
+                    new JobStatusChangedEvent(
+                            saved.getId(),
+                            oldStatus == null ? null : oldStatus.name(),
+                            JobStatus.CLOSED.name()
+                    )
+            );
+        }
 
         jobEventPublisher.publishJobClosed(new JobClosedEvent(saved.getId(), saved.getClientId()));
 

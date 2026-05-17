@@ -1,0 +1,32 @@
+[
+  {
+    "title": "Contract Service — HTTP Request Rate (req/sec)",
+    "type": "timeseries",
+    "targets": [
+      {
+        "expr": "rate(http_server_requests_seconds_count{application=\"contract-service\"}[1m])",
+        "legendFormat": "{{method}} {{uri}} [{{status}}]"
+      }
+    ]
+  },
+  {
+    "title": "Contract Service — HTTP P95 Latency (seconds)",
+    "type": "timeseries",
+    "targets": [
+      {
+        "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"contract-service\"}[5m])) by (le, uri))",
+        "legendFormat": "p95 {{uri}}"
+      }
+    ]
+  },
+  {
+    "title": "Contract Service — RabbitMQ Consumer Failures (DLQ)",
+    "type": "timeseries",
+    "targets": [
+      {
+        "expr": "increase(spring_rabbitmq_listener_failed_messages_total{application=\"contract-service\"}[5m])",
+        "legendFormat": "DLQ failures"
+      }
+    ]
+  }
+]

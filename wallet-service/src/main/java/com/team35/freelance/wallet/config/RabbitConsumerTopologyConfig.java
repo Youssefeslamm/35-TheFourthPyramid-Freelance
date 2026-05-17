@@ -11,30 +11,43 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitConsumerTopologyConfig {
+    public static final String PROPOSAL_EVENTS_EXCHANGE = "proposal.events";
+    public static final String PAYMENT_SAGA_QUEUE = "payment.saga-listener";
+    public static final String PAYMENT_SAGA_DLQ = "payment.saga-listener.dlq";
+    public static final String PAYMENT_SAGA_DLX = "payment.saga-listener.dlx";
 
     @Bean
-    public Declarables proposalCompletedWalletTopology() {
-        return consumerTopology("proposal.events", "proposal.completed", "proposal.completed.wallet");
-    }
+    public Declarables paymentSagaListenerTopology() {
+        TopicExchange proposalEventsExchange = new TopicExchange(PROPOSAL_EVENTS_EXCHANGE);
+        TopicExchange deadLetterExchange = new TopicExchange(PAYMENT_SAGA_DLX);
 
-    @Bean
-    public Declarables proposalCancelledWalletTopology() {
-        return consumerTopology("proposal.events", "proposal.cancelled", "proposal.cancelled.wallet");
-    }
-
-    private Declarables consumerTopology(String exchangeName, String routingKey, String queuePrefix) {
-        TopicExchange exchange = new TopicExchange(exchangeName);
-        TopicExchange deadLetterExchange = new TopicExchange(queuePrefix + ".dlx");
-        Queue queue = QueueBuilder.durable(queuePrefix + ".queue")
-                .withArgument("x-dead-letter-exchange", queuePrefix + ".dlx")
-                .withArgument("x-dead-letter-routing-key", queuePrefix + ".dlq")
+        Queue queue = QueueBuilder.durable(PAYMENT_SAGA_QUEUE)
+                .withArgument("x-dead-letter-exchange", PAYMENT_SAGA_DLX)
+                .withArgument("x-dead-letter-routing-key", PAYMENT_SAGA_DLQ)
                 .build();
-        Queue deadLetterQueue = QueueBuilder.durable(queuePrefix + ".dlq").build();
-        Binding binding = BindingBuilder.bind(queue).to(exchange).with(routingKey);
+
+        Queue deadLetterQueue = QueueBuilder.durable(PAYMENT_SAGA_DLQ).build();
+
+        Binding completedBinding = BindingBuilder.bind(queue)
+                .to(proposalEventsExchange)
+                .with("proposal.completed");
+
+        Binding cancelledBinding = BindingBuilder.bind(queue)
+                .to(proposalEventsExchange)
+                .with("proposal.cancelled");
+
         Binding deadLetterBinding = BindingBuilder.bind(deadLetterQueue)
                 .to(deadLetterExchange)
-                .with(queuePrefix + ".dlq");
+                .with(PAYMENT_SAGA_DLQ);
 
-        return new Declarables(exchange, queue, deadLetterQueue, deadLetterExchange, binding, deadLetterBinding);
+        return new Declarables(
+                proposalEventsExchange,
+                queue,
+                deadLetterQueue,
+                deadLetterExchange,
+                completedBinding,
+                cancelledBinding,
+                deadLetterBinding
+        );
     }
 }

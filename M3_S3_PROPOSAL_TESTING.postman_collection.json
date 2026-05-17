@@ -1,0 +1,413 @@
+{
+  "info": {
+    "_postman_id": "m3-s3-proposal-testing",
+    "name": "M3 S3 Proposal Service Event Flow Testing",
+    "description": "Complete testing collection for M3 S3 Proposal Service including accept, complete, and payment saga flows",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Create CLIENT User",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"John Client\",\n  \"email\": \"client@test.com\",\n  \"password\": \"Password123!\",\n  \"phone\": \"+1234567890\",\n  \"role\": \"CLIENT\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8081/api/users",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "users"]
+        },
+        "description": "Create a CLIENT user. Save the returned ID for jobCreation.\nExpected Response: 201 Created"
+      },
+      "response": []
+    },
+    {
+      "name": "2. Create FREELANCER User",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Jane Freelancer\",\n  \"email\": \"freelancer@test.com\",\n  \"password\": \"Password123!\",\n  \"phone\": \"+0987654321\",\n  \"role\": \"FREELANCER\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8081/api/users",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "users"]
+        },
+        "description": "Create a FREELANCER user. Save the returned ID for proposal creation.\nExpected Response: 201 Created"
+      },
+      "response": []
+    },
+    {
+      "name": "3. Create JOB",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clientId\": 1,\n  \"title\": \"Build a React App\",\n  \"description\": \"Create a responsive web application using React and TypeScript\",\n  \"category\": \"WEB_DEV\",\n  \"status\": \"OPEN\",\n  \"budgetMin\": 1000,\n  \"budgetMax\": 5000,\n  \"rating\": 4.5,\n  \"totalRatings\": 10,\n  \"requirements\": [\"React\", \"TypeScript\", \"Redux\"]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8082/api/jobs",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8082",
+          "path": ["api", "jobs"]
+        },
+        "description": "Create a JOB by the client. Replace clientId with the ID from step 1.\nExpected Response: 201 Created"
+      },
+      "response": []
+    },
+    {
+      "name": "4. Create PROPOSAL",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jobId\": 1,\n  \"freelancerId\": 2,\n  \"coverLetter\": \"I have 5 years of React experience and excited to work on this project\",\n  \"bidAmount\": 3500,\n  \"estimatedDays\": 30,\n  \"status\": \"SUBMITTED\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8083/api/proposals",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "proposals"]
+        },
+        "description": "Create a PROPOSAL by the freelancer. Replace jobId and freelancerId with IDs from previous steps.\nExpected Response: 201 Created\nSave the proposal ID for the accept step."
+      },
+      "response": []
+    },
+    {
+      "name": "5. GET Proposal Details (Before Accept)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8083/api/proposals/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "proposals", "1"]
+        },
+        "description": "Verify proposal status is SUBMITTED before acceptance.\nExpected Response: 200 OK with status=SUBMITTED"
+      },
+      "response": []
+    },
+    {
+      "name": "6. ACCEPT PROPOSAL - S3-F2 (THE CRITICAL TEST)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8083/api/proposals/1/accept",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "proposals", "1", "accept"]
+        },
+        "description": "★ CRITICAL TEST ★\nAccepts the proposal. This should NOT return 503.\nExpected Response: 200 OK with status=ACCEPTED\n\nIF YOU GET 503:\n1. Check proposal-service logs: docker logs freelance-proposal-service\n2. Verify user-service is healthy: curl http://localhost:8081/actuator/health\n3. Verify freelancer exists: GET http://localhost:8081/api/users/2\n4. Check Feign URL config in proposal-service/application.yml\n\nWhat happens in this request:\n1. Load proposal from DB\n2. Call user-service to fetch freelancer (Feign client)\n3. Validate freelancer has FREELANCER role\n4. Update proposal status to ACCEPTED\n5. Publish proposal.accepted event to RabbitMQ (proposal.events exchange)"
+      },
+      "response": []
+    },
+    {
+      "name": "7. GET Proposal Details (After Accept)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8083/api/proposals/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "proposals", "1"]
+        },
+        "description": "Verify proposal status is now ACCEPTED and acceptedAt is set.\nExpected Response: 200 OK with status=ACCEPTED"
+      },
+      "response": []
+    },
+    {
+      "name": "8. Check RabbitMQ - proposal.accepted Event",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:15672/api/exchanges/%2F/proposal.events",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "15672",
+          "path": ["api", "exchanges", "%2F", "proposal.events"],
+          "query": [
+            {
+              "key": "auth",
+              "value": "guest:guest",
+              "disabled": true
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "guest",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "guest",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Check the proposal.events exchange via RabbitMQ HTTP API (requires Basic auth: guest/guest).\nOr go to http://localhost:15672 and navigate manually:\n- Login: guest / guest\n- Exchanges → proposal.events\n- Look for routed messages\n\nExpected: proposal.accepted was published and routed"
+      },
+      "response": []
+    },
+    {
+      "name": "9. COMPLETE PROPOSAL - S3-F4",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-User-Id",
+            "value": "2",
+            "description": "The freelancer's user ID (must match proposal.freelancerId)"
+          },
+          {
+            "key": "X-User-Role",
+            "value": "FREELANCER",
+            "description": "The caller's role (FREELANCER or ADMIN)"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8083/api/proposals/1/complete",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "proposals", "1", "complete"]
+        },
+        "description": "Completes an ACCEPTED proposal. Only the freelancer or an ADMIN can call this.\nExpected Response: 200 OK with status=COMPLETING\n\nWhat happens in this request:\n1. Validate proposal is ACCEPTED\n2. Validate caller is the freelancer or ADMIN\n3. Fetch job from job-service and validate it's not CLOSED\n4. Fetch freelancer from user-service and validate status is ACTIVE\n5. Fetch active contract from contract-service\n6. Update proposal status to COMPLETING\n7. Publish proposal.completed event to RabbitMQ"
+      },
+      "response": []
+    },
+    {
+      "name": "10. GET Proposal Details (After Complete)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8083/api/proposals/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "proposals", "1"]
+        },
+        "description": "Verify proposal status is now COMPLETING and contractId is set.\nExpected Response: 200 OK with status=COMPLETING, contractId=<some-id>"
+      },
+      "response": []
+    },
+    {
+      "name": "11. Publish payment.completed Event (Manual)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "guest",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "guest",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"properties\": {\n    \"delivery_mode\": 2,\n    \"content_type\": \"application/json\"\n  },\n  \"routing_key\": \"payment.completed\",\n  \"payload\": \"{\\\"contractId\\\":1,\\\"proposalId\\\":1,\\\"amount\\\":3500,\\\"status\\\":\\\"COMPLETED\\\"}\",\n  \"payload_encoding\": \"string\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:15672/api/exchanges/%2F/payment.events/publish",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "15672",
+          "path": ["api", "exchanges", "%2F", "payment.events", "publish"]
+        },
+        "description": "Manually publish a payment.completed event to simulate wallet-service.\nThis demonstrates the payment saga feedback flow.\nExpected: Event is routed to proposal.saga-feedback queue\nProposal status should change to PAID\n\nNote: Replace contractId and proposalId with actual values from your test."
+      },
+      "response": []
+    },
+    {
+      "name": "12. GET Proposal Details (After Payment)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8083/api/proposals/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "proposals", "1"]
+        },
+        "description": "Verify proposal status changed to PAID after payment.completed event was processed.\nExpected Response: 200 OK with status=PAID"
+      },
+      "response": []
+    },
+    {
+      "name": "DEBUG: Get All Users",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/api/users",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "users"]
+        },
+        "description": "Debug endpoint to see all created users"
+      },
+      "response": []
+    },
+    {
+      "name": "DEBUG: Get All Proposals",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8083/api/proposals",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["api", "proposals"]
+        },
+        "description": "Debug endpoint to see all created proposals"
+      },
+      "response": []
+    },
+    {
+      "name": "DEBUG: Service Health - User Service",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/actuator/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["actuator", "health"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DEBUG: Service Health - Proposal Service",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8083/actuator/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["actuator", "health"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DEBUG: Service Health - Contract Service",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8084/actuator/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8084",
+          "path": ["actuator", "health"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DEBUG: RabbitMQ Overview",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "guest",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "guest",
+              "type": "string"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:15672/api/overview",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "15672",
+          "path": ["api", "overview"]
+        },
+        "description": "Get RabbitMQ statistics and overview"
+      },
+      "response": []
+    }
+  ]
+}
+

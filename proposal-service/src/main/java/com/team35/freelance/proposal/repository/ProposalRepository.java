@@ -140,6 +140,46 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
             @Param("jobId") Long jobId,
             @Param("status") String status
     );
+    // S3-READ-DB: Job Proposal Summary
+    @Query(value = """
+SELECT
+    COUNT(*) as totalProposals,
+    COALESCE(SUM(CASE WHEN status = 'ACCEPTED' THEN 1 ELSE 0 END), 0) as acceptedProposals,
+    COALESCE(AVG(bid_amount), 0) as averageBidAmount,
+    COALESCE(MIN(bid_amount), 0) as lowestBid,
+    COALESCE(MAX(bid_amount), 0) as highestBid
+FROM proposals
+WHERE job_id = :jobId
+AND submitted_at BETWEEN :startDate AND :endDate
+""", nativeQuery = true)
+    Object[] getJobProposalSummary(
+            @Param("jobId") Long jobId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
     // Saga abandonment reaper — finds proposals stuck in PAYMENT_PENDING past the cutoff
     List<Proposal> findByStatusAndAcceptedAtBefore(ProposalStatus status, LocalDateTime cutoff);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Proposal p
+            SET p.status = :newStatus
+            WHERE p.jobId = :jobId
+              AND p.status = :currentStatus
+            """)
+    int updateStatusForJobAndStatus(@Param("jobId") Long jobId,
+                                    @Param("currentStatus") ProposalStatus currentStatus,
+                                    @Param("newStatus") ProposalStatus newStatus);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Proposal p
+            SET p.status = :newStatus
+            WHERE p.freelancerId = :freelancerId
+              AND p.status = :currentStatus
+            """)
+    int updateStatusForFreelancerAndStatus(@Param("freelancerId") Long freelancerId,
+                                           @Param("currentStatus") ProposalStatus currentStatus,
+                                           @Param("newStatus") ProposalStatus newStatus);
 }

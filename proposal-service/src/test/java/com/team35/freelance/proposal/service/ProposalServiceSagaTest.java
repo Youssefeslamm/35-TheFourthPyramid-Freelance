@@ -104,7 +104,7 @@ class ProposalServiceSagaTest {
 
             UserProfileDTO freelancer = new UserProfileDTO();
             freelancer.setRole("FREELANCER");
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
 
             Proposal result = service.acceptProposal(1L);
 
@@ -128,7 +128,7 @@ class ProposalServiceSagaTest {
 
             UserProfileDTO freelancer = new UserProfileDTO();
             freelancer.setRole("FREELANCER");
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
 
             Proposal result = service.acceptProposal(1L);
             assertThat(result.getStatus()).isEqualTo(ProposalStatus.ACCEPTED);
@@ -179,7 +179,7 @@ class ProposalServiceSagaTest {
         @Test
         void accept_freelancerNotFound_throws404() {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
-            when(userServiceClient.getUserById(5L, null)).thenThrow(feignNotFound());
+            when(userServiceClient.getUserById(5L)).thenThrow(feignNotFound());
 
             ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> service.acceptProposal(1L));
@@ -191,7 +191,7 @@ class ProposalServiceSagaTest {
         @Test
         void accept_userServiceUnavailable_throws503() {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
-            when(userServiceClient.getUserById(5L, null)).thenThrow(feignServiceUnavailable());
+            when(userServiceClient.getUserById(5L)).thenThrow(feignServiceUnavailable());
 
             ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> service.acceptProposal(1L));
@@ -204,7 +204,7 @@ class ProposalServiceSagaTest {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             UserProfileDTO client = new UserProfileDTO();
             client.setRole("CLIENT");
-            when(userServiceClient.getUserById(5L, null)).thenReturn(client);
+            when(userServiceClient.getUserById(5L)).thenReturn(client);
 
             ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> service.acceptProposal(1L));
@@ -218,7 +218,7 @@ class ProposalServiceSagaTest {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             UserProfileDTO user = new UserProfileDTO();
             user.setRole(null);
-            when(userServiceClient.getUserById(5L, null)).thenReturn(user);
+            when(userServiceClient.getUserById(5L)).thenReturn(user);
 
             ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> service.acceptProposal(1L));
@@ -231,7 +231,7 @@ class ProposalServiceSagaTest {
             when(proposalRepository.save(any())).thenReturn(proposal);
             UserProfileDTO freelancer = new UserProfileDTO();
             freelancer.setRole("FREELANCER");
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
             doThrow(new RuntimeException("rabbit down"))
                     .when(proposalEventPublisher).publishAccepted(any());
 
@@ -292,7 +292,7 @@ class ProposalServiceSagaTest {
             when(proposalRepository.save(any())).thenReturn(proposal);
             UserProfileDTO freelancer = new UserProfileDTO();
             freelancer.setRole("FREELANCER");
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
 
             service.acceptProposal(1L);
 
@@ -310,7 +310,7 @@ class ProposalServiceSagaTest {
             when(proposalRepository.save(any())).thenReturn(proposal);
             UserProfileDTO freelancer = new UserProfileDTO();
             freelancer.setRole("FREELANCER");
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
 
             service.acceptProposal(1L);
 
@@ -358,7 +358,7 @@ class ProposalServiceSagaTest {
         void complete_happyPath_freelancerCaller() {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             when(jobServiceClient.getJobById(10L)).thenReturn(job);
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
             when(contractServiceClient.getActiveContractForProposal(1L)).thenReturn(contract);
             when(proposalRepository.save(any())).thenReturn(proposal);
 
@@ -378,7 +378,7 @@ class ProposalServiceSagaTest {
         void complete_happyPath_adminCaller() {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             when(jobServiceClient.getJobById(10L)).thenReturn(job);
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
             when(contractServiceClient.getActiveContractForProposal(1L)).thenReturn(contract);
             when(proposalRepository.save(any())).thenReturn(proposal);
 
@@ -478,7 +478,7 @@ class ProposalServiceSagaTest {
         void complete_freelancerNotFound_throws400_noEventPublished() {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             when(jobServiceClient.getJobById(10L)).thenReturn(job);
-            when(userServiceClient.getUserById(5L, null)).thenThrow(feignNotFound());
+            when(userServiceClient.getUserById(5L)).thenThrow(feignNotFound());
 
             ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> service.completeProposal(1L, 5L, "FREELANCER"));
@@ -492,7 +492,7 @@ class ProposalServiceSagaTest {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             when(jobServiceClient.getJobById(10L)).thenReturn(job);
             freelancer.setStatus("DEACTIVATED");
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
 
             ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> service.completeProposal(1L, 5L, "FREELANCER"));
@@ -506,7 +506,7 @@ class ProposalServiceSagaTest {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             when(jobServiceClient.getJobById(10L)).thenReturn(job);
             freelancer.setStatus(null);
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
 
             ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> service.completeProposal(1L, 5L, "FREELANCER"));
@@ -518,7 +518,7 @@ class ProposalServiceSagaTest {
         void complete_noActiveContract_throws400_noEventPublished() {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             when(jobServiceClient.getJobById(10L)).thenReturn(job);
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
             when(contractServiceClient.getActiveContractForProposal(1L)).thenThrow(feignNotFound());
 
             ResponseStatusException ex = assertThrows(ResponseStatusException.class,
@@ -532,7 +532,7 @@ class ProposalServiceSagaTest {
         void complete_contractServiceUnavailable_throws503() {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             when(jobServiceClient.getJobById(10L)).thenReturn(job);
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
             when(contractServiceClient.getActiveContractForProposal(1L)).thenThrow(feignServiceUnavailable());
 
             ResponseStatusException ex = assertThrows(ResponseStatusException.class,
@@ -545,7 +545,7 @@ class ProposalServiceSagaTest {
         void complete_publisherThrows_proposalStillSaved() {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             when(jobServiceClient.getJobById(10L)).thenReturn(job);
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
             when(contractServiceClient.getActiveContractForProposal(1L)).thenReturn(contract);
             when(proposalRepository.save(any())).thenReturn(proposal);
             doThrow(new RuntimeException("rabbit down"))
@@ -560,7 +560,7 @@ class ProposalServiceSagaTest {
         void complete_verifyAllThreePrechecksRunInOrder() {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             when(jobServiceClient.getJobById(10L)).thenReturn(job);
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
             when(contractServiceClient.getActiveContractForProposal(1L)).thenReturn(contract);
             when(proposalRepository.save(any())).thenReturn(proposal);
 
@@ -568,7 +568,7 @@ class ProposalServiceSagaTest {
 
             // All three Feign clients must have been called
             verify(jobServiceClient).getJobById(10L);
-            verify(userServiceClient).getUserById(5L, null);
+            verify(userServiceClient).getUserById(5L);
             verify(contractServiceClient).getActiveContractForProposal(1L);
         }
         @Test
@@ -587,7 +587,7 @@ class ProposalServiceSagaTest {
         void complete_freelancerNotFound_throws400_noEventPublished_tightened() {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             when(jobServiceClient.getJobById(10L)).thenReturn(job);
-            when(userServiceClient.getUserById(5L, null)).thenThrow(feignNotFound());
+            when(userServiceClient.getUserById(5L)).thenThrow(feignNotFound());
 
             ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> service.completeProposal(1L, 5L, "FREELANCER"));
@@ -639,7 +639,7 @@ class ProposalServiceSagaTest {
             job.setStatus("OPEN");
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             when(jobServiceClient.getJobById(10L)).thenReturn(job);
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
             when(contractServiceClient.getActiveContractForProposal(1L)).thenReturn(contract);
             when(proposalRepository.save(any())).thenReturn(proposal);
 
@@ -651,7 +651,7 @@ class ProposalServiceSagaTest {
         void complete_eventPayloadHasAllFields() {
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             when(jobServiceClient.getJobById(10L)).thenReturn(job);
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
             when(contractServiceClient.getActiveContractForProposal(1L)).thenReturn(contract);
             when(proposalRepository.save(any())).thenReturn(proposal);
 
@@ -673,7 +673,7 @@ class ProposalServiceSagaTest {
             // Must be COMPLETING after save, not remain ACCEPTED
             when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
             when(jobServiceClient.getJobById(10L)).thenReturn(job);
-            when(userServiceClient.getUserById(5L, null)).thenReturn(freelancer);
+            when(userServiceClient.getUserById(5L)).thenReturn(freelancer);
             when(contractServiceClient.getActiveContractForProposal(1L)).thenReturn(contract);
             when(proposalRepository.save(any())).thenReturn(proposal);
 

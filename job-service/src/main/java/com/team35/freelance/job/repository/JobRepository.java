@@ -93,5 +93,4 @@ public interface JobRepository extends JpaRepository<Job, Long> {
                                          @Param("minBudget") Double minBudget,
                                          @Param("maxBudget") Double maxBudget);
 
-
 }

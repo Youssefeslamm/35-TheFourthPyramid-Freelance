@@ -32,7 +32,7 @@ spring:
 
   data:
     mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin}
+      uri: ${SPRING_DATA_MONGODB_URI:${SPRING_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin}}
     redis:
       host: ${SPRING_REDIS_HOST:redis}
       port: ${SPRING_REDIS_PORT:6379}
@@ -66,11 +66,27 @@ feign.proposal-service.url: http://proposal-service:8080
 feign.contract-service.url: http://contract-service:8080
 feign.wallet-service.url: http://wallet-service:8080
 
+loki:
+  push-url: ${LOKI_PUSH_URL:http://loki:3100/loki/api/v1/push}
+  env: ${LOKI_ENV:docker}
+
 # ── Saga Configuration ──
 saga:
   payout:
     abandon-after: PT72H
     reaper-interval: PT15M
+
+# ── Logging Configuration ──
+logging:
+  level:
+    root: INFO
+    com.team35.freelance.proposal: DEBUG
+    com.team35.freelance.proposal.service.ProposalService: DEBUG
+    com.team35.freelance.proposal.messaging: DEBUG
+    org.springframework.cloud.openfeign: DEBUG
+    feign: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
 
 # ── Actuator / Observability ──
 management:
@@ -111,6 +127,9 @@ spring:
     url: jdbc:postgresql://localhost:5432/freelancedb-proposals
     username: postgres
     password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: update
   rabbitmq:
     host: localhost
   data:

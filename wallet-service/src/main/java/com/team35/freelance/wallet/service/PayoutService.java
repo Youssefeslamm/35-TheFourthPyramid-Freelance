@@ -1,5 +1,10 @@
 package com.team35.freelance.wallet.service;
 
+
+import com.team35.freelance.contracts.dto.ContractDTO;
+import com.team35.freelance.contracts.feign.ContractServiceClient;
+import feign.FeignException;
+import com.team35.freelance.contracts.events.PaymentFailedEvent;
 import com.team35.freelance.wallet.common.refund.RefundRequest;
 import com.team35.freelance.wallet.dto.*;
 import com.team35.freelance.wallet.model.Payout;
@@ -19,7 +24,6 @@ import com.team35.freelance.wallet.dto.PayoutMethodDTO;
 import com.team35.freelance.wallet.common.event.PayoutAuditEvent;
 import com.team35.freelance.wallet.repository.MongoEventRepository;
 import java.time.LocalTime;
-import java.util.stream.Collectors;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -48,6 +52,7 @@ public class PayoutService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final WalletAnalyticsCacheService walletAnalyticsCacheService;
     private final PaymentEventPublisher paymentEventPublisher;
+    private final ContractServiceClient contractServiceClient;
 
     public PayoutService(PayoutRepository payoutRepository,
                          PromoCodeRepository promoCodeRepository,
@@ -55,7 +60,7 @@ public class PayoutService {
                          MongoEventLogger mongoEventLogger,
                          MongoEventRepository mongoEventRepository,
                          WalletAnalyticsCacheService walletAnalyticsCacheService,
-                         PaymentEventPublisher paymentEventPublisher) {
+                         PaymentEventPublisher paymentEventPublisher, ContractServiceClient contractServiceClient) {
 
         this.payoutRepository = payoutRepository;
         this.promoCodeRepository = promoCodeRepository;
@@ -63,6 +68,7 @@ public class PayoutService {
         this.mongoEventRepository = mongoEventRepository;
         this.walletAnalyticsCacheService = walletAnalyticsCacheService;
         this.paymentEventPublisher = paymentEventPublisher;
+        this.contractServiceClient=contractServiceClient;
         registerObserver(mongoEventLogger);
     }
     public void registerObserver(EntityObserver observer) {
@@ -215,16 +221,84 @@ public class PayoutService {
             "wallet-service::S5-F8",
             "wallet-service::S5-F9"
     }, allEntries = true)
-    public void processContractPayout(Long contractId, ProcessPayoutRequest request) {
+    public Payout processContractPayout(Long contractId, ProcessPayoutRequest request, Long callerId, String callerRole) {
 
-        Payout payout = payoutRepository.findByContractId(contractId);
+        Payout payout = payoutRepository.findFirstByContractIdAndStatusOrderByCreatedAtDesc(
+                contractId,
+                PayoutStatus.PENDING
+        );
 
         if (payout == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found");
+
+        }
+        ContractDTO contract = null;
+
+        long delay = 200;
+
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                contract = contractServiceClient.getContractById(contractId);
+                break;
+
+            } catch (FeignException.NotFound e) {
+
+                if (attempt == 3) {
+                    throw new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Contract not found"
+                    );
+                }
+
+                try {
+                    Thread.sleep(delay);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+
+                    throw new ResponseStatusException(
+                            HttpStatus.INTERNAL_SERVER_ERROR,
+                            "Retry interrupted"
+                    );
+                }
+
+                delay *= 2;
+            }
         }
 
-        if (payout.getStatus() == PayoutStatus.COMPLETED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "already paid");
+        if (!"COMPLETED".equalsIgnoreCase(contract.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Contract must be COMPLETED before payout"
+            );
+        }
+        if (!"ADMIN".equalsIgnoreCase(callerRole)
+                && !contract.getClientId().equals(callerId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the contract client or ADMIN can release payout"
+            );
+        }
+
+
+        if (payout.getStatus() == PayoutStatus.COMPLETED || payout.getStatus() == PayoutStatus.FAILED) {
+            return payout;
+        }
+        if ("FAIL".equalsIgnoreCase(request.getAccountLastFour())) {
+
+            payout.setStatus(PayoutStatus.FAILED);
+
+            Payout failed = payoutRepository.save(payout);
+
+            paymentEventPublisher.publishFailed(
+                    new PaymentFailedEvent(
+                            failed.getId(),
+                            extractProposalId(failed),
+                            failed.getContractId(),
+                            "Simulated payout failure"
+                    )
+            );
+
+            return failed;
         }
 
         payout.setStatus(PayoutStatus.COMPLETED);
@@ -248,11 +322,12 @@ public class PayoutService {
         paymentEventPublisher.publishCompleted(
                 new PaymentCompletedEvent(
                         saved.getId(),
-                        null,
+                        extractProposalId(saved),
                         saved.getContractId(),
                         BigDecimal.valueOf(saved.getAmount())
                 )
         );
+
 
         // existing observer logic
         Map<String, Object> payload = new HashMap<>();
@@ -260,6 +335,8 @@ public class PayoutService {
         payload.put("payoutId", saved.getId());
 
         notifyObservers("PAYOUT_AUDIT", payload);
+
+        return saved;
     }
 
     @Cacheable(value = "wallet-service::S5-F1", key = "#status + ':' + #startDate + ':' + #endDate")
@@ -414,7 +491,7 @@ public class PayoutService {
         paymentEventPublisher.publishCompleted(
                 new PaymentCompletedEvent(
                         saved.getId(),
-                        null,
+                        extractProposalId(saved),
                         saved.getContractId(),
                         BigDecimal.valueOf(saved.getAmount())
                 )
@@ -480,7 +557,7 @@ public class PayoutService {
         paymentEventPublisher.publishRefunded(
                 new PaymentRefundedEvent(
                         saved.getId(),
-                        null,
+                        extractProposalId(saved),
                         saved.getContractId(),
                         BigDecimal.valueOf(saved.getAmount())
                 )
@@ -561,7 +638,7 @@ public class PayoutService {
         paymentEventPublisher.publishRefunded(
                 new PaymentRefundedEvent(
                         saved.getId(),
-                        null,
+                        extractProposalId(saved),
                         saved.getContractId(),
                         BigDecimal.valueOf(result.getAmount())
                 )
@@ -646,5 +723,42 @@ public class PayoutService {
             return 0.0;
         }
         return ((Number) row[index]).doubleValue();
+    }
+
+    private Long extractProposalId(Payout payout) {
+        if (payout == null || payout.getTransactionDetails() == null) {
+            return null;
+        }
+
+        Object rawProposalId = payout.getTransactionDetails().get("proposalId");
+        if (rawProposalId instanceof Number number) {
+            return number.longValue();
+        }
+        if (rawProposalId instanceof String value && !value.isBlank()) {
+            try {
+                return Long.valueOf(value);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    @Cacheable(value = "wallet-service::S5-READ-DB", key = "#freelancerId + ':' + #startDate + ':' + #endDate")
+    public BigDecimal getFreelancerPayoutTotal(Long freelancerId, LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate and endDate are required");
+        }
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate cannot be after endDate");
+        }
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(23, 59, 59);
+
+        Number total = payoutRepository.sumCompletedPayoutTotalByFreelancerAndDateRange(
+                freelancerId, start, end
+        );
+        return total == null ? BigDecimal.ZERO : BigDecimal.valueOf(total.doubleValue());
     }
 }

@@ -45,7 +45,9 @@ public class UserController {
 
     @GetMapping("/{id}")
     public UserProfileDTO getUserById(@PathVariable Long id, HttpServletRequest request) {
-        assertOwnerOrAdmin(id, request);
+        if (request.getHeader("X-INTERNAL-CALL") == null) {
+            assertOwnerOrAdmin(id, request);
+        }
         return userService.getUserById(id);
     }
 

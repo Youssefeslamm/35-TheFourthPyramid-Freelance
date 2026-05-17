@@ -17,6 +17,7 @@ metadata:
   labels:
     app: job-postgres
 spec:
+  clusterIP: None
   selector:
     app: job-postgres
   ports:
@@ -50,6 +51,22 @@ spec:
           envFrom:
             - secretRef:
                 name: job-postgres-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data

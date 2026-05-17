@@ -32,7 +32,7 @@ spring:
 
   data:
     mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin&serverSelectionTimeoutMS=1000&connectTimeoutMS=1000&socketTimeoutMS=1000}
+      uri: ${SPRING_DATA_MONGODB_URI:${SPRING_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin&serverSelectionTimeoutMS=1000&connectTimeoutMS=1000&socketTimeoutMS=1000}}
     redis:
       host: ${SPRING_REDIS_HOST:redis}
       port: ${SPRING_REDIS_PORT:6379}
@@ -49,8 +49,41 @@ jwt:
 cache:
   type: simple
 
-feign.user-service.url: http://user-service:8080
+feign:
+  user-service:
+    url: http://user-service:8080
 feign.job-service.url: http://job-service:8080
 feign.proposal-service.url: http://proposal-service:8080
 feign.contract-service.url: http://contract-service:8080
 feign.wallet-service.url: http://wallet-service:8080
+
+management:
+  server:
+    port: 8080
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: wallet-service
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  health:
+    rabbit:
+      enabled: true
+    db:
+      enabled: true
+    redis:
+      enabled: true
+

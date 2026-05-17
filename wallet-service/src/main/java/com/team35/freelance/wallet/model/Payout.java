@@ -28,7 +28,7 @@ public class Payout implements Serializable {
     @Column(nullable = false)
     private Double amount;
 
-    @Column(nullable = false, columnDefinition = "payout_method_enum")
+    @Column(columnDefinition = "payout_method_enum")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private PayoutMethod method;
 

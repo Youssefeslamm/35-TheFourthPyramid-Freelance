@@ -1,0 +1,42 @@
+{
+  "title": "Job Service Dashboard",
+  "tags": ["freelance", "job-service"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "HTTP Request Rate",
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"job-service\"}[5m])) by (uri, method)",
+          "legendFormat": "{{method}} {{uri}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP P95 Latency",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"job-service\"}[5m])) by (le, uri))",
+          "legendFormat": "P95 {{uri}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "JVM Memory Used",
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{job=\"job-service\"}",
+          "legendFormat": "{{area}} {{id}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+    }
+  ]
+}

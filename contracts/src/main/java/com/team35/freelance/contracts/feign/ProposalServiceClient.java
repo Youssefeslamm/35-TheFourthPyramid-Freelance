@@ -14,14 +14,10 @@ public interface ProposalServiceClient {
     @GetMapping("/api/proposals/{id}")
     ProposalDTO getProposalById(@PathVariable("id") Long id);
 
-    /**
-     * S4S2 — Get proposal statistics for a job within a date range.
-     * Calls GET /api/proposals/summary?jobId=X&startDate=Y&endDate=Z
-     */
-    @GetMapping("/api/proposals/summary")
+@GetMapping("/api/proposals/job/{jobId}/summary")
     JobProposalSummaryDTO getJobProposalSummary(
-            @RequestParam("jobId")    Long jobId,
+            @PathVariable("jobId") Long jobId,
             @RequestParam("startDate") String startDate,
-            @RequestParam("endDate")   String endDate
+            @RequestParam("endDate") String endDate
     );
 }
