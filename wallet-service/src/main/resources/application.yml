@@ -49,13 +49,24 @@ jwt:
 cache:
   type: simple
 
-feign.user-service.url: http://user-service:8080
+feign:
+  user-service:
+    url: http://user-service:8080
 feign.job-service.url: http://job-service:8080
 feign.proposal-service.url: http://proposal-service:8080
 feign.contract-service.url: http://contract-service:8080
 feign.wallet-service.url: http://wallet-service:8080
 
 management:
+
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+
   server:
     port: 8080
   endpoints:
@@ -84,3 +95,4 @@ management:
       enabled: true
     redis:
       enabled: true
+

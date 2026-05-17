@@ -177,6 +177,18 @@ services:
       retries: 20
       start_period: 60s
 
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: freelance-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   mongo:
     image: mongo:latest
     container_name: freelance-mongo
@@ -387,6 +399,7 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000
+      SPRING_DATA_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
 
 volumes:
   pgdata:

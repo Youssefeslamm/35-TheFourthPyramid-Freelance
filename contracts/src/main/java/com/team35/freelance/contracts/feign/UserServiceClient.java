@@ -11,8 +11,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 public interface UserServiceClient {
 
     @GetMapping("/api/users/{id}")
-    UserProfileDTO getUserById(@PathVariable("id") Long id,
-                               @RequestHeader(value = "Authorization", required = false) String authorization);
+    UserProfileDTO getUserById(@PathVariable("id") Long id);
 
     @GetMapping("/api/users/{id}/contract-summary")
     UserContractSummaryDTO getUserContractSummary(@PathVariable("id") Long id,

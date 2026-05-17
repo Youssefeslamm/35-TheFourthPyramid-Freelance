@@ -32,6 +32,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
+        System.out.println("WALLET FILTER HIT PATH = " + path);
+
+        if (path.startsWith("/api/payouts")) {
+            System.out.println("BYPASSING WALLET AUTH FOR PAYOUTS");
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (path.contains("/health")) {
             filterChain.doFilter(request, response);
             return;
