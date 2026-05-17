@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -88,6 +89,18 @@ public class PayoutController {
 
         return ResponseEntity.ok(
                 payoutService.getFreelancerSummary(freelancerId)
+        );
+    }
+
+    // -------- S5-READ-DB: FREELANCER COMPLETED PAYOUT TOTAL --------
+    @GetMapping("/freelancer/{freelancerId}/total")
+    public ResponseEntity<BigDecimal> getFreelancerPayoutTotal(
+            @PathVariable Long freelancerId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        return ResponseEntity.ok(
+                payoutService.getFreelancerPayoutTotal(freelancerId, startDate, endDate)
         );
     }
 

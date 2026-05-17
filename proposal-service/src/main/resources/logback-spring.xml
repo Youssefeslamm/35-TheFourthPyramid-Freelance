@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="proposal-service"/>
