@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS contract_milestone_events (
                                                          timestamp TIMESTAMP,
                                                          milestone_order INT,
                                                          status TEXT,
-                                                         recorded_by TEXT,
+                                                         recorded_by BIGINT,
                                                          notes TEXT,
                                                          PRIMARY KEY (contract_id, timestamp)
 ) WITH CLUSTERING ORDER BY (timestamp DESC);

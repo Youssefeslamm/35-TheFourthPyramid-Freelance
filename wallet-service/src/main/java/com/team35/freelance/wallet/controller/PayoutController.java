@@ -1,25 +1,22 @@
 package com.team35.freelance.wallet.controller;
 
-import com.team35.freelance.wallet.dto.*;
-import com.team35.freelance.wallet.model.Payout;
-import com.team35.freelance.wallet.model.PayoutStatus;
-
-import com.team35.freelance.wallet.service.PayoutService;
-import com.team35.freelance.wallet.service.PayoutPromoService;
-
+import com.team35.freelance.wallet.dto.CategoryRevenueDTO;
 import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
-import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
 import com.team35.freelance.wallet.dto.PayoutDetailsDTO;
+import com.team35.freelance.wallet.dto.PayoutMethodDTO;
+import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
 import com.team35.freelance.wallet.dto.PromoCodeUsage;
 import com.team35.freelance.wallet.dto.RefundRequest;
 import com.team35.freelance.wallet.dto.RevenueReportDTO;
-import com.team35.freelance.wallet.dto.PayoutMethodDTO;
-
+import com.team35.freelance.wallet.model.Payout;
+import com.team35.freelance.wallet.model.PayoutStatus;
+import com.team35.freelance.wallet.service.PayoutPromoService;
+import com.team35.freelance.wallet.service.PayoutService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.format.annotation.DateTimeFormat;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -40,8 +37,6 @@ public class PayoutController {
         this.payoutPromoService = payoutPromoService;
     }
 
-    // -------- CRUD --------
-
     @PostMapping
     public ResponseEntity<Payout> createPayout(@RequestBody Payout payout) {
         return ResponseEntity.ok(payoutService.createPayout(payout));
@@ -52,13 +47,11 @@ public class PayoutController {
         return ResponseEntity.ok(payoutService.getAllPayouts());
     }
 
-    // -------- S5-F10: PLATFORM FEE ANALYTICS BY CATEGORY --------
-    @GetMapping("/analytics/category")
+    @GetMapping({"/analytics/category", "/analytics/categories", "/analytics/category-revenue"})
     public ResponseEntity<List<CategoryRevenueDTO>> getCategoryRevenueAnalytics(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate startDate,
-
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate endDate
@@ -67,6 +60,7 @@ public class PayoutController {
                 payoutService.getCategoryRevenueAnalytics(startDate, endDate)
         );
     }
+
     @GetMapping("/{id}")
     public ResponseEntity<Payout> getPayoutById(@PathVariable Long id) {
         return ResponseEntity.ok(payoutService.getPayoutById(id));
@@ -84,31 +78,23 @@ public class PayoutController {
         return ResponseEntity.ok("Payout deleted successfully");
     }
 
-    // -------- S5-F3: FREELANCER PAYOUT SUMMARY --------
-    // Spec: GET /api/payouts/freelancer/{freelancerId}/summary
-
     @GetMapping("/freelancer/{freelancerId}/summary")
     public ResponseEntity<FreelancerPayoutSummaryDTO> getFreelancerSummary(
             @PathVariable Long freelancerId) {
-
         return ResponseEntity.ok(
                 payoutService.getFreelancerSummary(freelancerId)
         );
     }
 
-    // -------- S5-READ-DB: FREELANCER COMPLETED PAYOUT TOTAL --------
     @GetMapping("/freelancer/{freelancerId}/total")
     public ResponseEntity<BigDecimal> getFreelancerPayoutTotal(
             @PathVariable Long freelancerId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-
         return ResponseEntity.ok(
                 payoutService.getFreelancerPayoutTotal(freelancerId, startDate, endDate)
         );
     }
-
-    // -------- SEARCH --------
 
     @GetMapping("/search")
     public ResponseEntity<List<Payout>> searchPayouts(
@@ -123,8 +109,6 @@ public class PayoutController {
         );
     }
 
-    // -------- PROMO --------
-
     @PostMapping("/{payoutId}/promos/{promoCodeId}")
     public ResponseEntity<Payout> applyPromoCodeToPayout(
             @PathVariable Long payoutId,
@@ -138,13 +122,10 @@ public class PayoutController {
     @GetMapping("/promos/top-used")
     public ResponseEntity<List<PromoCodeUsage>> getMostUsedPromoCodes(
             @RequestParam(required = false) Integer limit) {
-
         return ResponseEntity.ok(
                 payoutService.getMostUsedPromoCodes(limit == null ? 10 : limit)
         );
     }
-
-    // -------- RETRY --------
 
     @PutMapping("/{id}/retry")
     public ResponseEntity<Payout> retryPayout(@PathVariable Long id) {
@@ -153,18 +134,13 @@ public class PayoutController {
         );
     }
 
-    // -------- REFUND --------
-
     @PutMapping("/{id}/refund")
     public ResponseEntity<Payout> refundPayout(@PathVariable Long id,
                                                @RequestBody RefundRequest request) {
-
         return ResponseEntity.ok(
                 payoutService.processRefund(id, request == null ? null : request.getReason())
         );
     }
-
-    // -------- DETAILS --------
 
     @GetMapping("/{payoutId}/details")
     public ResponseEntity<PayoutDetailsDTO> getPayoutDetails(
@@ -175,18 +151,32 @@ public class PayoutController {
         );
     }
 
-    // -------- PROCESS PAYOUT (S5-F4) --------
-
     @PostMapping("/contract/{contractId}")
     public ResponseEntity<Payout> processContractPayout(
             @PathVariable Long contractId,
-            @RequestParam(name = "simulateFailure", defaultValue = "false") boolean simulateFailure,
-            @RequestBody ProcessPayoutRequest request,
-            @RequestHeader("X-User-Id") Long callerId,
-            @RequestHeader("X-User-Role") String callerRole
+            @RequestBody(required = false) ProcessPayoutRequest request,
+            @RequestParam(name = "simulateFailure", required = false) Boolean simulateFailure,
+            @RequestHeader(value = "X-User-Id", required = false) Long callerId,
+            @RequestHeader(value = "X-User-Role", required = false) String callerRole
     ) {
-        log.info("simulateFailure received = {}", simulateFailure);
-        Payout payout = payoutService.processContractPayout(contractId, request, callerId, callerRole, simulateFailure);
+        if (request == null) {
+            request = new ProcessPayoutRequest();
+        }
+
+        if (simulateFailure != null) {
+            request.setSimulateFailure(simulateFailure);
+        }
+
+        boolean effectiveSimulateFailure = Boolean.TRUE.equals(request.getSimulateFailure());
+        log.info("simulateFailure received = {}", effectiveSimulateFailure);
+
+        Payout payout = payoutService.processContractPayout(
+                contractId,
+                request,
+                callerId,
+                callerRole,
+                effectiveSimulateFailure
+        );
 
         if (payout.getStatus() == PayoutStatus.COMPLETED || payout.getStatus() == PayoutStatus.FAILED) {
             return ResponseEntity.ok(payout);
@@ -195,29 +185,39 @@ public class PayoutController {
         return ResponseEntity.status(201).body(payout);
     }
 
+    @PostMapping("/{id}/process")
+    public ResponseEntity<Payout> processPayout(
+            @PathVariable Long id,
+            @RequestBody(required = false) ProcessPayoutRequest request
+    ) {
+        if (request == null) {
+            request = new ProcessPayoutRequest();
+        }
 
-    // -------- S5-F6: REVENUE REPORT --------
-
+        return ResponseEntity.ok(payoutService.processPayout(id, request));
+    }
 
     @GetMapping("/reports/revenue")
     public ResponseEntity<RevenueReportDTO> getRevenueReport(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate startDate,
-
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate endDate) {
-
         return ResponseEntity.ok(
                 payoutService.getRevenueReport(startDate, endDate)
         );
     }
-    // S5-F11
-    @GetMapping("/analytics/methods")
+
+    @GetMapping({"/analytics/methods", "/analytics/method-breakdown", "/analytics/payment-methods"})
     public ResponseEntity<List<PayoutMethodDTO>> getPayoutMethodBreakdown(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate startDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate endDate) {
         return ResponseEntity.ok(payoutService.getPayoutMethodBreakdown(startDate, endDate));
     }
 
@@ -234,5 +234,4 @@ public class PayoutController {
                 )
         );
     }
-
 }

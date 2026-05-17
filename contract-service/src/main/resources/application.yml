@@ -31,9 +31,10 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+  mongodb:
+    uri: ${SPRING_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin}
+
   data:
-    mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:${SPRING_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin}}
     redis:
       host: ${SPRING_REDIS_HOST:redis}
       port: ${SPRING_REDIS_PORT:6379}
@@ -93,5 +94,6 @@ spring:
   config:
     activate:
       on-profile: prod,k8s
+
 loki:
   push-url: ${LOKI_PUSH_URL:http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push}

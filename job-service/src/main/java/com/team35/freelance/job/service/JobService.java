@@ -1,21 +1,38 @@
 package com.team35.freelance.job.service;
 
-import feign.FeignException;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import com.team35.freelance.contracts.events.JobClosedEvent;
+import com.team35.freelance.contracts.events.JobRatedEvent;
+import com.team35.freelance.contracts.events.JobStatusChangedEvent;
 import com.team35.freelance.contracts.feign.ContractServiceClient;
 import com.team35.freelance.contracts.feign.ProposalServiceClient;
+import com.team35.freelance.job.common.adapter.ElasticsearchHitAdapter;
+import com.team35.freelance.job.common.observer.EntityObserver;
+import com.team35.freelance.job.common.observer.MongoEventLogger;
+import com.team35.freelance.job.dto.CloseJobRequest;
+import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
+import com.team35.freelance.job.dto.JobDashboardDTO;
+import com.team35.freelance.job.dto.JobProposalSummaryDTO;
+import com.team35.freelance.job.dto.RateJobRequestDTO;
+import com.team35.freelance.job.dto.TopBudgetJobDTO;
+import com.team35.freelance.job.elasticsearch.JobSearchDocument;
+import com.team35.freelance.job.exception.BadRequestException;
+import com.team35.freelance.job.exception.ResourceNotFoundException;
+import com.team35.freelance.job.messaging.publisher.JobEventPublisher;
+import com.team35.freelance.job.model.Job;
+import com.team35.freelance.job.model.JobAttachment;
+import com.team35.freelance.job.model.JobCategory;
+import com.team35.freelance.job.model.JobStatus;
+import com.team35.freelance.job.repository.JobAttachmentRepository;
+import com.team35.freelance.job.repository.JobRepository;
+import feign.FeignException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.data.elasticsearch.core.query.StringQuery;
 import org.springframework.http.HttpEntity;
@@ -29,32 +46,13 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.team35.freelance.job.common.adapter.ElasticsearchHitAdapter;
-import com.team35.freelance.job.common.observer.EntityObserver;
-import com.team35.freelance.job.common.observer.MongoEventLogger;
-import com.team35.freelance.job.dto.CloseJobRequest;
-import com.team35.freelance.job.dto.ContractLookupProjection;
-import com.team35.freelance.job.dto.JobAttachmentAlertDTO;
-import com.team35.freelance.job.dto.JobDashboardDTO;
-import com.team35.freelance.job.dto.JobProposalSummaryDTO;
-import com.team35.freelance.job.dto.JobProposalSummaryDTOBuilder;
-import com.team35.freelance.job.dto.RateJobRequestDTO;
-import com.team35.freelance.job.dto.TopBudgetJobDTO;
-import com.team35.freelance.job.elasticsearch.JobSearchDocument;
-import com.team35.freelance.job.exception.BadRequestException;
-import com.team35.freelance.job.exception.ResourceNotFoundException;
-import com.team35.freelance.job.model.Job;
-import com.team35.freelance.job.model.JobAttachment;
-import com.team35.freelance.job.model.JobCategory;
-import com.team35.freelance.job.model.JobStatus;
-import com.team35.freelance.job.repository.JobAttachmentRepository;
-import com.team35.freelance.job.repository.JobRepository;
-import com.team35.freelance.job.messaging.publisher.JobEventPublisher;
-import com.team35.freelance.contracts.events.JobClosedEvent;
-import com.team35.freelance.contracts.events.JobRatedEvent;
-import com.team35.freelance.contracts.events.JobStatusChangedEvent;
-import com.team35.freelance.contracts.feign.ProposalServiceClient;
-import com.team35.freelance.contracts.feign.ContractServiceClient;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class JobService {
@@ -81,7 +79,6 @@ public class JobService {
     private final JobDashboardCacheService jobDashboardCacheService;
     private final RestTemplate elasticsearchRestTemplate = new RestTemplate();
     private final JobEventPublisher jobEventPublisher;
-
     private final ProposalServiceClient proposalServiceClient;
     private final ContractServiceClient contractServiceClient;
 
@@ -95,23 +92,16 @@ public class JobService {
                       MongoEventLogger mongoEventLogger,
                       JobDashboardCacheService jobDashboardCacheService,
                       JobEventPublisher jobEventPublisher,
-
-                       
-
                       ProposalServiceClient proposalServiceClient,
                       ContractServiceClient contractServiceClient) {
-
         this.jobRepository = jobRepository;
         this.jobAttachmentRepository = jobAttachmentRepository;
         this.elasticsearchOperations = elasticsearchOperations;
         this.elasticsearchHitAdapter = elasticsearchHitAdapter;
         this.jobDashboardCacheService = jobDashboardCacheService;
         this.jobEventPublisher = jobEventPublisher;
-
         this.proposalServiceClient = proposalServiceClient;
         this.contractServiceClient = contractServiceClient;
-
-
         this.observers.add(mongoEventLogger);
     }
 
@@ -133,6 +123,12 @@ public class JobService {
     public JobProposalSummaryDTO getProposalSummary(Long id, String startDate, String endDate) {
         Job job = jobRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found"));
+
+        LocalDateTime start = parseSummaryDate(startDate, true);
+        LocalDateTime end = parseSummaryDate(endDate, false);
+        if (start.isAfter(end)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must not be after endDate");
+        }
 
         try {
             com.team35.freelance.contracts.dto.JobProposalSummaryDTO proposalSummary =
@@ -320,8 +316,8 @@ public class JobService {
         notifyObservers("JOB_DELETED", payload);
     }
 
-    @Cacheable(value = "job-service::S2-F1", key = "#status + ':' + #minBudget + ':' + #maxBudget")
-    public List<Job> searchJobs(String status, Double minBudget, Double maxBudget) {
+    public List<Job> searchJobs(String query, String status, Double minBudget, Double maxBudget) {
+        JobStatus statusFilter = parseStatus(status);
         if (minBudget != null && maxBudget != null && minBudget > maxBudget) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -329,7 +325,12 @@ public class JobService {
             );
         }
 
-        return jobRepository.searchJobs(status, minBudget, maxBudget);
+        return jobRepository.searchJobs(
+                query == null || query.isBlank() ? null : query.trim(),
+                statusFilter == null ? null : statusFilter.name(),
+                minBudget,
+                maxBudget
+        );
     }
 
     @Cacheable(
@@ -413,7 +414,10 @@ public class JobService {
 
         } catch (Exception ex) {
             log.error("Explicit Elasticsearch indexing failed for job {}: {}", job.getId(), getRootCauseMessage(ex), ex);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to index job for search: " + getRootCauseMessage(ex));
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to index job for search: " + getRootCauseMessage(ex)
+            );
         }
     }
 
@@ -533,6 +537,10 @@ public class JobService {
     private void saveJobDocumentDirectly(Job job) {
         createJobsIndexDirectly();
 
+        JobSearchDocument searchDocument = toSearchDocument(job);
+        elasticsearchOperations.save(searchDocument, IndexCoordinates.of("jobs"));
+        elasticsearchOperations.indexOps(IndexCoordinates.of("jobs")).refresh();
+
         Map<String, Object> document = new HashMap<>();
         document.put("id", job.getId());
         document.put("title", job.getTitle());
@@ -555,6 +563,23 @@ public class JobService {
                 new HttpEntity<>(document, headers),
                 String.class
         );
+    }
+
+    private LocalDateTime parseSummaryDate(String value, boolean startOfDay) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date range is required");
+        }
+
+        try {
+            return LocalDateTime.parse(value.trim());
+        } catch (Exception ignored) {
+            try {
+                LocalDate date = LocalDate.parse(value.trim());
+                return startOfDay ? date.atStartOfDay() : date.atTime(23, 59, 59, 999_000_000);
+            } catch (Exception ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid date format");
+            }
+        }
     }
 
     private String getRootCauseMessage(Exception ex) {
@@ -671,6 +696,7 @@ public class JobService {
         if (query == null || query.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "query is required");
         }
+
         return query.trim();
     }
 
@@ -741,6 +767,7 @@ public class JobService {
         if (job.getDescription() == null || job.getDescription().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "description is required");
         }
+
         if (job.getBudgetMin() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "budgetMin is required");
         }
@@ -765,18 +792,23 @@ public class JobService {
         if (job.getCategory() == null) {
             job.setCategory(JobCategory.DEVELOPMENT);
         }
+
         if (job.getClientId() == null) {
             job.setClientId(1L);
         }
+
         if (job.getStatus() == null) {
             job.setStatus(JobStatus.OPEN);
         }
+
         if (job.getRating() == null) {
             job.setRating(0.0);
         }
+
         if (job.getTotalRatings() == null) {
             job.setTotalRatings(0);
         }
+
         if (job.getRequirements() == null) {
             job.setRequirements(new HashMap<>());
         }
@@ -828,12 +860,15 @@ public class JobService {
         if (request == null) {
             throw new BadRequestException("Request body is required");
         }
+
         if (request.getContractId() == null) {
             throw new BadRequestException("contractId is required");
         }
+
         if (request.getRating() == null) {
             throw new BadRequestException("rating is required");
         }
+
         if (request.getRating() < 1 || request.getRating() > 5) {
             throw new BadRequestException("rating must be between 1 and 5 inclusive");
         }
@@ -906,6 +941,10 @@ public class JobService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status must be CLOSED");
         }
 
+        if (job.getStatus() == JobStatus.CLOSED) {
+            return job;
+        }
+
         Integer activeContractCount;
 
         try {
@@ -957,11 +996,17 @@ public class JobService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "value is required");
         }
 
-        return jobRepository.findByRequirementAndOptionalStatus(
+        List<Job> jobs = jobRepository.findByRequirementAndOptionalStatus(
                 key.trim(),
                 value.trim(),
                 status
         );
+
+        if (jobs.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No jobs found for requirement");
+        }
+
+        return jobs;
     }
 
     @Cacheable(value = "job-service::S2-F6", key = "#limit")

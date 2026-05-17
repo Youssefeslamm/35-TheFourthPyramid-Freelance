@@ -75,6 +75,25 @@ services:
       retries: 20
       start_period: 30s
 
+  wallet-postgres:
+    image: postgres:17
+    container_name: wallet-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: freelancedb-wallet
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./wallet-service/docker/postgres/init-wallet.sql:/docker-entrypoint-initdb.d/init-wallet.sql:ro
+      - wallet-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d freelancedb-wallet"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
   rabbitmq:
     image: rabbitmq:4.0-management
     container_name: freelance-rabbitmq
@@ -110,64 +129,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  loki:
-    image: grafana/loki:2.9.8
-    container_name: freelance-loki
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./infra/docker/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
-      - loki-data:/loki
-    command: -config.file=/etc/loki/local-config.yaml
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:3100/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: freelance-grafana
-    ports:
-      - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_AUTH_ANONYMOUS_ENABLED: "false"
-    volumes:
-      - ./infra/docker/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./k8s/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
-    depends_on:
-      loki:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/api/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-
-  wallet-postgres:
-    image: postgres:17
-    container_name: wallet-postgres
-    ports:
-      - "5433:5432"
-    environment:
-      POSTGRES_DB: freelancedb-wallet
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - ./wallet-service/docker/postgres/init-wallet.sql:/docker-entrypoint-initdb.d/init-wallet.sql:ro
-      - wallet-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d freelancedb-wallet"]
-      interval: 10s
-      timeout: 5s
-      retries: 20
-      start_period: 30s
 
   redis:
     image: redis:latest
@@ -246,6 +207,44 @@ services:
     command: >
       bash -c "cqlsh cassandra 9042 -f /init.cql"
 
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: freelance-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./infra/docker/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: freelance-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./infra/docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/k8s/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   user-service:
     build: ./user-service
     ports:
@@ -293,6 +292,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://job-postgres:5432/freelancedb-jobs
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000
@@ -325,7 +325,6 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000
-      SPRING_DATA_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
       SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
       SPRING_NEO4J_URI: bolt://neo4j:7687
       SPRING_NEO4J_USERNAME: neo4j
@@ -356,7 +355,6 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://contract-postgres:5432/freelancedb-contracts
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_DATA_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
       SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
@@ -368,6 +366,12 @@ services:
       SPRING_CASSANDRA_REQUEST_TIMEOUT: 30s
       SPRING_CASSANDRA_SCHEMA_ACTION: CREATE_IF_NOT_EXISTS
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      FEIGN_USER_SERVICE_URL: http://user-service:8080
+      FEIGN_JOB_SERVICE_URL: http://job-service:8080
+      FEIGN_PROPOSAL_SERVICE_URL: http://proposal-service:8080
+      FEIGN_CONTRACT_SERVICE_URL: http://contract-service:8080
+      FEIGN_WALLET_SERVICE_URL: http://wallet-service:8080
+      LOKI_PUSH_URL: http://loki:3100/loki/api/v1/push
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000
     healthcheck:
@@ -396,8 +400,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://wallet-postgres:5432/freelancedb-wallet
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_DATA_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
-      SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
+      SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin&serverSelectionTimeoutMS=1000&connectTimeoutMS=1000&socketTimeoutMS=1000
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000

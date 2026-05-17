@@ -1,53 +1,47 @@
 package com.team35.freelance.user.service;
 
-import com.team35.freelance.user.common.adapter.UserContractSummaryAdapter;
+import com.team35.freelance.contracts.events.UserDeactivatedEvent;
+import com.team35.freelance.contracts.events.UserRegisteredEvent;
+import com.team35.freelance.contracts.feign.ContractServiceClient;
+import com.team35.freelance.contracts.feign.WalletServiceClient;
+import com.team35.freelance.user.common.event.AuthEvent;
+import com.team35.freelance.user.common.observer.EntityObserver;
+import com.team35.freelance.user.common.observer.MongoEventLogger;
+import com.team35.freelance.user.dto.ActivityFeedResponseDTO;
+import com.team35.freelance.user.dto.ActivityFeedResponseDTO.ActivityEventDTO;
+import com.team35.freelance.user.dto.AuthRequest;
+import com.team35.freelance.user.dto.AuthResponse;
+import com.team35.freelance.user.dto.RegisterRequest;
+import com.team35.freelance.user.dto.TopFreelancerDTO;
+import com.team35.freelance.user.dto.UserContractSummaryDTO;
+import com.team35.freelance.user.dto.UserProfileDTO;
+import com.team35.freelance.user.dto.UserSkillProfileDTO;
+import com.team35.freelance.user.messaging.publisher.UserEventPublisher;
 import com.team35.freelance.user.model.Role;
 import com.team35.freelance.user.model.Status;
 import com.team35.freelance.user.model.User;
 import com.team35.freelance.user.model.UserSkill;
+import com.team35.freelance.user.repository.AuthEventRepository;
 import com.team35.freelance.user.repository.UserRepository;
 import com.team35.freelance.user.repository.UserSkillRepository;
+import com.team35.freelance.user.security.JwtService;
+import jakarta.transaction.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import com.team35.freelance.user.dto.UserProfileDTO;
-import com.team35.freelance.user.dto.UserSkillProfileDTO;
-import com.team35.freelance.user.dto.UserContractSummaryDTO;
-import com.team35.freelance.user.dto.TopFreelancerDTO;
-import com.team35.freelance.user.common.observer.EntityObserver;
-import com.team35.freelance.user.common.observer.MongoEventLogger;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import jakarta.transaction.Transactional;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CacheEvict;
-import com.team35.freelance.user.dto.RegisterRequest;
-import com.team35.freelance.user.dto.ActivityFeedResponseDTO;
-import com.team35.freelance.user.dto.ActivityFeedResponseDTO.ActivityEventDTO;
-import com.team35.freelance.user.repository.AuthEventRepository;
-import com.team35.freelance.user.common.event.AuthEvent;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import com.team35.freelance.user.dto.AuthRequest;
-import com.team35.freelance.user.dto.AuthResponse;
-import com.team35.freelance.user.security.JwtService;
-import com.team35.freelance.user.common.observer.EntityObserver;
-import com.team35.freelance.user.common.observer.MongoEventLogger;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import java.util.HashMap;
-import java.util.Map;
-import com.team35.freelance.user.messaging.publisher.UserEventPublisher;
-import com.team35.freelance.contracts.events.UserDeactivatedEvent;
-import com.team35.freelance.contracts.events.UserRegisteredEvent;
-import com.team35.freelance.contracts.feign.ContractServiceClient;
-import com.team35.freelance.contracts.feign.WalletServiceClient;
-
-import java.math.BigDecimal;
 
 @Service
 public class UserService {
@@ -62,7 +56,6 @@ public class UserService {
     private final UserEventPublisher userEventPublisher;
     private final ContractServiceClient contractServiceClient;
     private final WalletServiceClient walletServiceClient;
-
 
     public UserService(UserRepository userRepository,
                        UserSkillRepository userSkillRepository,
@@ -83,7 +76,6 @@ public class UserService {
         this.userEventPublisher = userEventPublisher;
         this.contractServiceClient = contractServiceClient;
         this.walletServiceClient = walletServiceClient;
-
         this.observers.add(mongoEventLogger);
     }
 
@@ -92,6 +84,7 @@ public class UserService {
             observer.onEvent(eventType, payload);
         }
     }
+
     public void registerObserver(EntityObserver observer) {
         observers.add(observer);
     }
@@ -99,8 +92,6 @@ public class UserService {
     public void unregisterObserver(EntityObserver observer) {
         observers.remove(observer);
     }
-    // ===================== USER =====================
-
 
     public User createUser(User user) {
         if (user.getName() == null || user.getName().isBlank() ||
@@ -131,7 +122,6 @@ public class UserService {
         return savedUser;
     }
 
-    // ✅ CACHE DTO INSTEAD OF ENTITY
     @Cacheable(value = "user-service::user", key = "#id")
     public UserProfileDTO getUserById(Long id) {
         User user = userRepository.findById(id)
@@ -139,7 +129,6 @@ public class UserService {
         return buildUserProfileDTO(user);
     }
 
-    // ✅ NO CACHING - Returns entities which shouldn't be cached
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
@@ -156,8 +145,9 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        if (updatedUser.getName() != null && !updatedUser.getName().isBlank())
+        if (updatedUser.getName() != null && !updatedUser.getName().isBlank()) {
             user.setName(updatedUser.getName());
+        }
 
         if (updatedUser.getEmail() != null && !updatedUser.getEmail().isBlank()) {
             if (!updatedUser.getEmail().equals(user.getEmail()) &&
@@ -167,20 +157,25 @@ public class UserService {
             user.setEmail(updatedUser.getEmail());
         }
 
-        if (updatedUser.getPassword() != null && !updatedUser.getPassword().isBlank())
+        if (updatedUser.getPassword() != null && !updatedUser.getPassword().isBlank()) {
             user.setPassword(updatedUser.getPassword());
+        }
 
-        if (updatedUser.getPhone() != null && !updatedUser.getPhone().isBlank())
+        if (updatedUser.getPhone() != null && !updatedUser.getPhone().isBlank()) {
             user.setPhone(updatedUser.getPhone());
+        }
 
-        if (updatedUser.getRole() != null)
+        if (updatedUser.getRole() != null) {
             user.setRole(updatedUser.getRole());
+        }
 
-        if (updatedUser.getStatus() != null)
+        if (updatedUser.getStatus() != null) {
             user.setStatus(updatedUser.getStatus());
+        }
 
-        if (updatedUser.getPreferences() != null)
+        if (updatedUser.getPreferences() != null) {
             user.setPreferences(updatedUser.getPreferences());
+        }
 
         User saved = userRepository.save(user);
 
@@ -212,9 +207,6 @@ public class UserService {
 
         notifyObservers("USER_DELETED", payload);
     }
-
-    // ===================== USER SKILLS =====================
-
 
     @CacheEvict(value = {
             "user-service::user",
@@ -266,23 +258,29 @@ public class UserService {
         UserSkill skill = userSkillRepository.findById(skillId)
                 .orElseThrow(() -> new RuntimeException("Skill not found"));
 
-        if (updatedSkill.getSkillName() != null && !updatedSkill.getSkillName().isBlank())
+        if (updatedSkill.getSkillName() != null && !updatedSkill.getSkillName().isBlank()) {
             skill.setSkillName(updatedSkill.getSkillName());
+        }
 
-        if (updatedSkill.getCategory() != null && !updatedSkill.getCategory().isBlank())
+        if (updatedSkill.getCategory() != null && !updatedSkill.getCategory().isBlank()) {
             skill.setCategory(updatedSkill.getCategory());
+        }
 
-        if (updatedSkill.getYearsOfExperience() != null)
+        if (updatedSkill.getYearsOfExperience() != null) {
             skill.setYearsOfExperience(updatedSkill.getYearsOfExperience());
+        }
 
-        if (updatedSkill.getProficiencyLevel() != null)
+        if (updatedSkill.getProficiencyLevel() != null) {
             skill.setProficiencyLevel(updatedSkill.getProficiencyLevel());
+        }
 
-        if (updatedSkill.getIsPrimary() != null)
+        if (updatedSkill.getIsPrimary() != null) {
             skill.setIsPrimary(updatedSkill.getIsPrimary());
+        }
 
-        if (updatedSkill.getMetadata() != null)
+        if (updatedSkill.getMetadata() != null) {
             skill.setMetadata(updatedSkill.getMetadata());
+        }
 
         UserSkill saved = userSkillRepository.save(skill);
 
@@ -315,13 +313,10 @@ public class UserService {
         notifyObservers("SKILL_DELETED", payload);
     }
 
-
     @Cacheable(value = "user-service::S1-F1", key = "#name + ':' + #email + ':' + #role")
     public List<User> searchUsers(String name, String email, String role) {
         return userRepository.searchUsers(name, email, role);
     }
-
-
 
     @CacheEvict(value = {
             "user-service::user",
@@ -336,7 +331,6 @@ public class UserService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         Map<String, Object> existingPreferences = user.getPreferences();
-
         if (existingPreferences == null) {
             existingPreferences = new HashMap<>();
         }
@@ -345,7 +339,7 @@ public class UserService {
             existingPreferences.putAll(newPreferences);
         }
 
-        user.setPreferences(existingPreferences);   // 🔥 MISSING LINE
+        user.setPreferences(existingPreferences);
         User saved = userRepository.save(user);
 
         Map<String, Object> payload = new HashMap<>();
@@ -356,7 +350,6 @@ public class UserService {
 
         return saved;
     }
-
 
     @Cacheable(value = "user-service::S1-F5", key = "#key + ':' + #value")
     public List<User> searchUsersByPreference(String key, String value) {
@@ -370,15 +363,13 @@ public class UserService {
     @Cacheable(value = "user-service::S1-F3", key = "#userId")
     public UserContractSummaryDTO getUserContractSummary(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "User not found"
-                ));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        com.team35.freelance.contracts.dto.UserContractSummaryDTO contractSummary = null;
+        com.team35.freelance.contracts.dto.UserContractSummaryDTO contractSummary;
+
         try {
             contractSummary = contractServiceClient.getUserContractSummary(userId);
         } catch (Exception e) {
-            // Return user data with zero contract stats if contract-service is unavailable
             return UserContractSummaryDTO.builder()
                     .userId(user.getId())
                     .name(user.getName())
@@ -412,20 +403,13 @@ public class UserService {
     }, allEntries = true)
     public User setPrimarySkill(Long userId, Long skillId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "User not found"
-                ));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         UserSkill skill = userSkillRepository.findById(skillId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Skill not found"
-                ));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Skill not found"));
 
         if (skill.getUser() == null || !skill.getUser().getId().equals(userId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Skill does not belong to this user"
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill does not belong to this user");
         }
 
         List<UserSkill> userSkills = userSkillRepository.findByUserId(userId);
@@ -445,22 +429,16 @@ public class UserService {
         notifyObservers("PRIMARY_SKILL_SET", payload);
 
         return userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "User not found"
-                ));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
-    // ✅ CACHE DTO INSTEAD OF ENTITY
     @Cacheable(value = "user-service::user", key = "#id")
     public UserProfileDTO getUserProfile(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "User not found"
-                ));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         return buildUserProfileDTO(user);
     }
 
-    // ✅ HELPER METHOD TO BUILD DTO
     private UserProfileDTO buildUserProfileDTO(User user) {
         List<UserSkill> userSkills = userSkillRepository.findByUserId(user.getId());
         List<UserSkillProfileDTO> skillDTOs = new ArrayList<>();
@@ -490,8 +468,6 @@ public class UserService {
                 .build();
     }
 
-    // ===================== DEACTIVATE USER ACCOUNT =====================
-
     @Transactional
     @CacheEvict(value = {
             "user-service::user",
@@ -506,7 +482,7 @@ public class UserService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         int activeCount = contractServiceClient.getActiveContractCount(id);
-        if (activeCount > 0)  {
+        if (activeCount > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User has active contracts");
         }
 
@@ -524,16 +500,16 @@ public class UserService {
         return saved;
     }
 
-    // ===================== TOP FREELANCERS BY EARNINGS =====================
-
     @Cacheable(value = "user-service::S1-F6:v2", key = "#startDate + ':' + #endDate + ':' + #limit")
     public List<TopFreelancerDTO> getTopFreelancersByEarnings(LocalDate startDate, LocalDate endDate, int limit) {
         if (limit < 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be greater than 0");
         }
+
         if (startDate.isAfter(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must not be after endDate");
         }
+
         return userRepository.findAll().stream()
                 .filter(user -> user.getRole() == Role.FREELANCER)
                 .map(user -> {
@@ -544,6 +520,7 @@ public class UserService {
                             ? 0L
                             : contractSummary.getTotalContracts().longValue();
                     double totalEarnings = payoutTotal == null ? 0.0 : payoutTotal.doubleValue();
+
                     return TopFreelancerDTO.builder()
                             .userId(user.getId())
                             .name(user.getName())
@@ -562,21 +539,20 @@ public class UserService {
                 .toList();
     }
 
-    // ===================== USERS BY LANGUAGE + MIN COMPLETED CONTRACTS =====================
-
     @Cacheable(value = "user-service::S1-F9:v2", key = "#lang + ':' + #minContracts")
     public List<User> findUsersByLanguageAndMinContracts(String lang, int minContracts) {
         if (lang == null || lang.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "lang must not be blank");
         }
+
         if (minContracts < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minContracts must be greater than or equal to 0");
         }
+
         return userRepository.findUsersByPreference("language", lang).stream()
                 .filter(user -> contractServiceClient.getCompletedContractCount(user.getId()) >= minContracts)
                 .toList();
     }
-
 
     @CacheEvict(value = {
             "user-service::user",
@@ -589,17 +565,13 @@ public class UserService {
     }, allEntries = true)
     public User updateUserRole(Long id, String role) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "User not found"
-                ));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         Role newRole;
         try {
             newRole = Role.valueOf(role.toUpperCase());
         } catch (Exception e) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Invalid role"
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid role");
         }
 
         user.setRole(newRole);
@@ -614,7 +586,6 @@ public class UserService {
 
         return saved;
     }
-
 
     public User registerUser(RegisterRequest request) {
         if (request.getName() == null || request.getName().trim().isEmpty()) {
@@ -675,31 +646,27 @@ public class UserService {
         return savedUser;
     }
 
-    // ===================== S1-F12: USER ACTIVITY FEED =====================
-
-    @Cacheable(value = "user-service::S1-F12", key = "#userId + ':' + #page + ':' + #size")
     public ActivityFeedResponseDTO getUserActivityFeed(Long userId, Long callerUserId, String callerRole,
                                                        int page, int size) {
         if (page < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be greater than or equal to 0");
         }
+
         if (size <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be greater than 0");
         }
 
-        // Ownership check: caller must be the user themselves OR an ADMIN
         if ((callerUserId == null || !callerUserId.equals(userId)) && !"ADMIN".equalsIgnoreCase(callerRole)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
 
-        // Verify user exists in PostgreSQL
         userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        // Cap size at 100
-        if (size > 100) size = 100;
+        if (size > 100) {
+            size = 100;
+        }
 
-        // Query MongoDB for events sorted by timestamp descending
         Page<AuthEvent> eventsPage;
         try {
             eventsPage = authEventRepository.findByUserIdOrderByTimestampDesc(
@@ -714,6 +681,7 @@ public class UserService {
 
         return new ActivityFeedResponseDTO(content, page, size, eventsPage.getTotalElements());
     }
+
     public AuthResponse login(AuthRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(
@@ -751,9 +719,11 @@ public class UserService {
         if (raw == null || raw.length == 0) {
             return new Object[0];
         }
+
         if (raw.length == 1 && raw[0] instanceof Object[] row) {
             return row;
         }
+
         return raw;
     }
 }
