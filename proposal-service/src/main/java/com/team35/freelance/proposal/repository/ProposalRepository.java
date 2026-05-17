@@ -140,7 +140,6 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
             @Param("jobId") Long jobId,
             @Param("status") String status
     );
-
     // S3-READ-DB: Job Proposal Summary
     @Query(value = """
 SELECT
@@ -159,4 +158,6 @@ AND submitted_at BETWEEN :startDate AND :endDate
             @Param("endDate") LocalDateTime endDate
     );
 
+    // Saga abandonment reaper — finds proposals stuck in PAYMENT_PENDING past the cutoff
+    List<Proposal> findByStatusAndAcceptedAtBefore(ProposalStatus status, LocalDateTime cutoff);
 }
