@@ -9,7 +9,9 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 @FeignClient(name = "user-service", url = "${feign.user-service.url}")
 public interface UserServiceClient {
-
+    default UserProfileDTO getUserById(Long id) {
+        return getUserById(id, null, null);
+    }
     @GetMapping("/api/users/{id}")
     UserProfileDTO getUserByIdInternal(@PathVariable("id") Long id,
                                        @RequestHeader(value = "Authorization", required = false) String authorization,
