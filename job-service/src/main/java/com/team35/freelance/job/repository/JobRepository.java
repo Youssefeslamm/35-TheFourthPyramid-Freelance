@@ -23,11 +23,15 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     @Query(value = """
         SELECT *
         FROM jobs j
-        WHERE (:status IS NULL OR j.status = CAST(:status AS job_status_enum))
-          AND j.budget_max BETWEEN :minBudget AND :maxBudget
+        WHERE (:query IS NULL OR LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
+               OR LOWER(j.description) LIKE LOWER(CONCAT('%', :query, '%')))
+          AND (:status IS NULL OR j.status = CAST(:status AS job_status_enum))
+          AND (:minBudget IS NULL OR j.budget_max >= :minBudget)
+          AND (:maxBudget IS NULL OR j.budget_min <= :maxBudget)
         ORDER BY j.budget_max DESC
         """, nativeQuery = true)
-    List<Job> searchJobs(@Param("status") String status,
+    List<Job> searchJobs(@Param("query") String query,
+                         @Param("status") String status,
                          @Param("minBudget") Double minBudget,
                          @Param("maxBudget") Double maxBudget);
 

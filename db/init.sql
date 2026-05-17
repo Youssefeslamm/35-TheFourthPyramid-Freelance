@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS job_attachments (
 CREATE TABLE IF NOT EXISTS proposals (
     id BIGSERIAL PRIMARY KEY,
     job_id BIGINT NOT NULL,
+    job_relation_id BIGINT,
     freelancer_id BIGINT NOT NULL,
     cover_letter TEXT NOT NULL,
     bid_amount DOUBLE PRECISION NOT NULL,
@@ -90,7 +91,8 @@ CREATE TABLE IF NOT EXISTS proposals (
     status proposal_status_enum NOT NULL,
     metadata JSONB,
     submitted_at TIMESTAMP NOT NULL,
-    accepted_at TIMESTAMP
+    accepted_at TIMESTAMP,
+    CONSTRAINT fk_proposals_job_relation FOREIGN KEY (job_relation_id) REFERENCES jobs(id)
 );
 
 CREATE TABLE IF NOT EXISTS proposal_milestones (

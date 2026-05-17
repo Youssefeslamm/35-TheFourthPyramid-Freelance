@@ -48,7 +48,7 @@ public class PayoutController {
     }
 
     // -------- S5-F10: PLATFORM FEE ANALYTICS BY CATEGORY --------
-    @GetMapping("/analytics/category")
+    @GetMapping({"/analytics/category", "/analytics/categories", "/analytics/category-revenue"})
     public ResponseEntity<List<CategoryRevenueDTO>> getCategoryRevenueAnalytics(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -161,12 +161,26 @@ public class PayoutController {
     // -------- PROCESS PAYOUT (S5-F4) --------
 
     @PostMapping("/contract/{contractId}")
-    public ResponseEntity<Void> processContractPayout(
+    public ResponseEntity<Payout> processContractPayout(
             @PathVariable Long contractId,
+            @RequestBody(required = false) ProcessPayoutRequest request,
+            @RequestParam(required = false) Boolean simulateFailure
+    ) {
+        if (request == null) {
+            request = new ProcessPayoutRequest();
+        }
+        if (simulateFailure != null) {
+            request.setSimulateFailure(simulateFailure);
+        }
+        return ResponseEntity.status(201).body(payoutService.processContractPayout(contractId, request));
+    }
+
+    @PostMapping("/{id}/process")
+    public ResponseEntity<Payout> processPayout(
+            @PathVariable Long id,
             @RequestBody ProcessPayoutRequest request
     ) {
-        payoutService.processContractPayout(contractId, request);
-        return ResponseEntity.status(201).build();
+        return ResponseEntity.ok(payoutService.processPayout(id, request));
     }
 
     // -------- S5-F6: REVENUE REPORT --------
@@ -186,7 +200,7 @@ public class PayoutController {
         );
     }
     // S5-F11
-    @GetMapping("/analytics/methods")
+    @GetMapping({"/analytics/methods", "/analytics/method-breakdown", "/analytics/payment-methods"})
     public ResponseEntity<List<PayoutMethodDTO>> getPayoutMethodBreakdown(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {

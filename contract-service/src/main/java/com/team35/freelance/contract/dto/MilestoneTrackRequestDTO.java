@@ -1,9 +1,12 @@
 package com.team35.freelance.contract.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 public class MilestoneTrackRequestDTO {
     private Integer milestoneOrder;
     private String status;
-    private String recordedBy;
+    @JsonAlias("recorded_by")
+    private Long recordedBy;
     private String notes;
 
     public MilestoneTrackRequestDTO() {}
@@ -24,11 +27,11 @@ public class MilestoneTrackRequestDTO {
         this.status = status;
     }
 
-    public String getRecordedBy() {
+    public Long getRecordedBy() {
         return recordedBy;
     }
 
-    public void setRecordedBy(String recordedBy) {
+    public void setRecordedBy(Long recordedBy) {
         this.recordedBy = recordedBy;
     }
 

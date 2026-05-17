@@ -94,6 +94,7 @@ services:
         CREATE TABLE IF NOT EXISTS proposals (
             id BIGSERIAL PRIMARY KEY,
             job_id BIGINT NOT NULL,
+            job_relation_id BIGINT,
             freelancer_id BIGINT NOT NULL,
             cover_letter TEXT NOT NULL,
             bid_amount DOUBLE PRECISION NOT NULL,
@@ -101,7 +102,8 @@ services:
             status proposal_status_enum NOT NULL,
             metadata JSONB,
             submitted_at TIMESTAMP NOT NULL,
-            accepted_at TIMESTAMP
+            accepted_at TIMESTAMP,
+            CONSTRAINT fk_proposals_job_relation FOREIGN KEY (job_relation_id) REFERENCES jobs(id)
         );
 
         CREATE TABLE IF NOT EXISTS proposal_milestones (
@@ -332,7 +334,7 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000
-      SPRING_DATA_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
+      SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
       SPRING_NEO4J_URI: bolt://neo4j:7687
       SPRING_NEO4J_USERNAME: neo4j
       SPRING_NEO4J_PASSWORD: neo4jpass
@@ -354,7 +356,6 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freelancedb
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_DATA_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
       SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
@@ -387,6 +388,7 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000
+      SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin&serverSelectionTimeoutMS=1000&connectTimeoutMS=1000&socketTimeoutMS=1000
 
 volumes:
   pgdata:

@@ -489,7 +489,6 @@ public class UserService {
 
     // ===================== TOP FREELANCERS BY EARNINGS =====================
 
-    @Cacheable(value = "user-service::S1-F6", key = "#startDate + ':' + #endDate + ':' + #limit")
     public List<TopFreelancerDTO> getTopFreelancersByEarnings(LocalDate startDate, LocalDate endDate, int limit) {
         if (limit < 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be greater than 0");
@@ -625,7 +624,6 @@ public class UserService {
 
     // ===================== S1-F12: USER ACTIVITY FEED =====================
 
-    @Cacheable(value = "user-service::S1-F12", key = "#userId + ':' + #page + ':' + #size")
     public ActivityFeedResponseDTO getUserActivityFeed(Long userId, Long callerUserId, String callerRole,
                                                        int page, int size) {
         if (page < 0) {

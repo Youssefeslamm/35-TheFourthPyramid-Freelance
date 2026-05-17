@@ -195,7 +195,6 @@ public class ContractService {
         return saved;
     }
 
-    @Cacheable(value = "contract-service::S4-F6", key = "#startDate + ':' + #endDate + ':' + #status")
     public List<Contract> getContractsInDateRange(LocalDateTime startDate,
                                                   LocalDateTime endDate,
                                                   ContractStatus status) {
@@ -203,7 +202,6 @@ public class ContractService {
         return contractRepository.findContractsInDateRange(startDate, endDate, statusFilter);
     }
 
-    @Cacheable(value = "contract-service::S4-F3", key = "#minAmount + ':' + #maxAmount + ':' + #status")
     public List<ContractSummaryDTO> searchByBudgetRange(Double minAmount, Double maxAmount, String status) {
         double effectiveMin = minAmount == null ? 0.0 : minAmount;
         double effectiveMax = maxAmount == null ? 1_000_000_000_000.0 : maxAmount;
@@ -317,10 +315,12 @@ public class ContractService {
         return deletedCount;
     }
 
-    @Cacheable(value = "contract-service::S4-F8", key = "#freelancerId + ':' + #startDate + ':' + #endDate")
     public FreelancerPerformanceDTO getFreelancerPerformance(Long freelancerId,
                                                              LocalDateTime startDate,
                                                              LocalDateTime endDate) {
+        if (contractRepository.checkUserExists(freelancerId) == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Freelancer not found");
+        }
         List<Object[]> results = contractRepository.getFreelancerPerformanceAggregates(freelancerId, startDate, endDate);
         Object[] row = results == null || results.isEmpty() ? null : results.get(0);
 
@@ -343,7 +343,6 @@ public class ContractService {
                 .build();
     }
 
-    @Cacheable(value = "contract-service::S4-F9", key = "#maxProgress + ':' + #stalledDays")
     public List<StalledContractDTO> getStalledContracts(Double maxProgress, Integer stalledDays) {
         List<Object[]> results = contractRepository.findStalledContracts(maxProgress, stalledDays);
 

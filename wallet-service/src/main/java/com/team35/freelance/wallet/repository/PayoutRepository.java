@@ -77,6 +77,8 @@ public interface PayoutRepository extends JpaRepository<Payout, Long> {
         COALESCE(SUM(
             COALESCE(
                 NULLIF(p.transaction_details ->> 'platformFee', '')::numeric,
+                NULLIF(p.transaction_details ->> 'platform_fee', '')::numeric,
+                NULLIF(p.transaction_details ->> 'fee', '')::numeric,
                 p.amount * 0.10
             )
         ), 0) AS platformFeeRevenue,

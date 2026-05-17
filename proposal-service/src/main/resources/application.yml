@@ -16,9 +16,10 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+  mongodb:
+    uri: ${SPRING_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin}
+
   data:
-    mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin}
     redis:
       host: ${SPRING_REDIS_HOST:redis}
       port: ${SPRING_REDIS_PORT:6379}
@@ -56,7 +57,7 @@ spring:
   data:
     neo4j:
       uri: bolt://localhost:7687
-    mongodb:
-      uri: mongodb://root:rootpass@localhost:27017/freelancemongo?authSource=admin
     redis:
       host: localhost
+  mongodb:
+    uri: mongodb://root:rootpass@localhost:27017/freelancemongo?authSource=admin
