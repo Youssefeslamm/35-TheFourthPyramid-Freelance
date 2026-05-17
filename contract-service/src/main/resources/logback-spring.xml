@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <springProperty name="LOKI_PUSH_URL" scope="context" source="loki.push-url"
+                    defaultValue="http://loki:3100/loki/api/v1/push"/>
+    <springProperty name="SPRING_APP_NAME" scope="context" source="spring.application.name"
+                    defaultValue="contract-service"/>
+
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>${LOKI_PUSH_URL}</url>
+        </http>
+        <labels>
+            app = freelance
+            service = ${SPRING_APP_NAME}
+            env = docker
+            level = %level
+        </labels>
+        <message>
+            <pattern>{"timestamp":"%d{ISO8601}","level":"%level","logger":"%logger{36}","message":"%msg","correlationId":"%mdc{correlationId:-}","contractId":"%mdc{contractId:-}","proposalId":"%mdc{proposalId:-}","jobId":"%mdc{jobId:-}","userId":"%mdc{userId:-}","routingKey":"%mdc{routingKey:-}"}</pattern>
+        </message>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="LOKI"/>
+    </root>
+</configuration>

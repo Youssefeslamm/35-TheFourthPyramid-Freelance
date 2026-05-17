@@ -32,75 +32,6 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     long countOtherActiveProposalsForJob(@Param("jobId") long jobId,
                                          @Param("excludeId") long excludeId);
 
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE jobs SET status = 'OPEN' WHERE id = :jobId", nativeQuery = true)
-    void revertJobToOpen(@Param("jobId") long jobId);
-
-    // S3-F2: Get freelancer role
-    @Query(value = "SELECT role FROM users WHERE id = :freelancerId", nativeQuery = true)
-    String findFreelancerRole(@Param("freelancerId") Long freelancerId);
-
-    // S3-F2: Update job to IN_PROGRESS
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE jobs SET status = 'IN_PROGRESS' WHERE id = :jobId", nativeQuery = true)
-    void updateJobStatusToInProgress(@Param("jobId") Long jobId);
-
-    // S3-F2: Get clientId from job
-    @Query(value = "SELECT client_id FROM jobs WHERE id = :jobId", nativeQuery = true)
-    Long findClientIdByJobId(@Param("jobId") Long jobId);
-
-    // S3-F2: Insert new contract
-    @Modifying
-    @Transactional
-    @Query(value = "INSERT INTO contracts (job_id, freelancer_id, client_id, proposal_id, agreed_amount, status, start_date, created_at, metadata) " +
-            "VALUES (:jobId, :freelancerId, :clientId, :proposalId, :agreedAmount, 'ACTIVE', NOW(), NOW(), '{}'::jsonb)",
-            nativeQuery = true)
-    void insertContract(@Param("jobId") Long jobId,
-                        @Param("freelancerId") Long freelancerId,
-                        @Param("clientId") Long clientId,
-                        @Param("proposalId") Long proposalId,
-                        @Param("agreedAmount") Double agreedAmount);
-    // S3-F4: Find active contract for proposal
-    @Query(value = "SELECT id FROM contracts WHERE proposal_id = :proposalId AND status = 'ACTIVE' LIMIT 1",
-            nativeQuery = true)
-    Long findActiveContractIdByProposalId(@Param("proposalId") Long proposalId);
-
-    // S3-F4: Get agreed amount from contract
-    @Query(value = "SELECT agreed_amount FROM contracts WHERE id = :contractId", nativeQuery = true)
-    Double findAgreedAmountByContractId(@Param("contractId") Long contractId);
-
-    // S3-F4: Get job_id from contract
-    @Query(value = "SELECT job_id FROM contracts WHERE id = :contractId", nativeQuery = true)
-    Long findJobIdByContractId(@Param("contractId") Long contractId);
-
-    // S3-F4: Get freelancer_id from contract
-    @Query(value = "SELECT freelancer_id FROM contracts WHERE id = :contractId", nativeQuery = true)
-    Long findFreelancerIdByContractId(@Param("contractId") Long contractId);
-
-    // S3-F4: Complete contract
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE contracts SET status = 'COMPLETED', end_date = NOW() WHERE id = :contractId",
-            nativeQuery = true)
-    void completeContract(@Param("contractId") Long contractId);
-
-    // S3-F4: Close job
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE jobs SET status = 'CLOSED' WHERE id = :jobId", nativeQuery = true)
-    void updateJobStatusToClosed(@Param("jobId") Long jobId);
-
-    // S3-F4: Insert pending payout
-    @Modifying
-    @Transactional
-    @Query(value = "INSERT INTO payouts (contract_id, freelancer_id, amount, method, status, created_at, transaction_details) " +
-            "VALUES (:contractId, :freelancerId, :amount, 'BANK_TRANSFER', 'PENDING', NOW(), '{}'::jsonb)",
-            nativeQuery = true)
-    void insertPendingPayout(@Param("contractId") Long contractId,
-                             @Param("freelancerId") Long freelancerId,
-                             @Param("amount") Double amount);
     // S3-F6
     @Query(value = """
     SELECT
@@ -209,24 +140,46 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
             @Param("jobId") Long jobId,
             @Param("status") String status
     );
-    // S3-F11: Get freelancer name
-    @Query(value = "SELECT name FROM users WHERE id = :freelancerId", nativeQuery = true)
-    String findFreelancerNameById(@Param("freelancerId") Long freelancerId);
+    // S3-READ-DB: Job Proposal Summary
+    @Query(value = """
+SELECT
+    COUNT(*) as totalProposals,
+    COALESCE(SUM(CASE WHEN status = 'ACCEPTED' THEN 1 ELSE 0 END), 0) as acceptedProposals,
+    COALESCE(AVG(bid_amount), 0) as averageBidAmount,
+    COALESCE(MIN(bid_amount), 0) as lowestBid,
+    COALESCE(MAX(bid_amount), 0) as highestBid
+FROM proposals
+WHERE job_id = :jobId
+AND submitted_at BETWEEN :startDate AND :endDate
+""", nativeQuery = true)
+    Object[] getJobProposalSummary(
+            @Param("jobId") Long jobId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 
-    // S3-F11: Get job title and category
-    @Query(value = "SELECT title || '|' || category FROM jobs WHERE id = :jobId", nativeQuery = true)
-    String findJobTitleAndCategoryById(@Param("jobId") Long jobId);
-    //S3-F12
-    @Query(value = "SELECT name FROM users WHERE id = :userId", nativeQuery = true)
-    String findUserNameById(@Param("userId") Long userId);
+    // Saga abandonment reaper — finds proposals stuck in PAYMENT_PENDING past the cutoff
+    List<Proposal> findByStatusAndAcceptedAtBefore(ProposalStatus status, LocalDateTime cutoff);
 
-    @Query(value = "SELECT title FROM jobs WHERE id = :jobId", nativeQuery = true)
-    String findJobTitleById(@Param("jobId") Long jobId);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Proposal p
+            SET p.status = :newStatus
+            WHERE p.jobId = :jobId
+              AND p.status = :currentStatus
+            """)
+    int updateStatusForJobAndStatus(@Param("jobId") Long jobId,
+                                    @Param("currentStatus") ProposalStatus currentStatus,
+                                    @Param("newStatus") ProposalStatus newStatus);
 
-    @Query(value = "SELECT category FROM jobs WHERE id = :jobId", nativeQuery = true)
-    String findJobCategoryById(@Param("jobId") Long jobId);
-
-    @Query(value = "SELECT id, title, category FROM jobs WHERE id IN :jobIds", nativeQuery = true)
-    List<Object[]> findJobDetailsByIds(@Param("jobIds") List<Long> jobIds);
-
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Proposal p
+            SET p.status = :newStatus
+            WHERE p.freelancerId = :freelancerId
+              AND p.status = :currentStatus
+            """)
+    int updateStatusForFreelancerAndStatus(@Param("freelancerId") Long freelancerId,
+                                           @Param("currentStatus") ProposalStatus currentStatus,
+                                           @Param("newStatus") ProposalStatus newStatus);
 }

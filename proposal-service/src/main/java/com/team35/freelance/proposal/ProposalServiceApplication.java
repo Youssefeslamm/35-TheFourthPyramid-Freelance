@@ -3,11 +3,15 @@ package com.team35.freelance.proposal;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.data.neo4j.repository.config.EnableNeo4jRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 
 @EnableCaching
+@EnableScheduling
+@EnableFeignClients(basePackages = "com.team35.freelance.contracts.feign")
 @SpringBootApplication
 @EnableNeo4jRepositories(basePackages = "com.team35.freelance.proposal.repository")
 @EnableJpaRepositories(basePackages = "com.team35.freelance.proposal.repository")

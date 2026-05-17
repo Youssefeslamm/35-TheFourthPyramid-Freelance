@@ -1,14 +1,32 @@
 package com.team35.freelance.wallet.service;
 
-import com.team35.freelance.wallet.common.refund.RefundRequest;
-import com.team35.freelance.wallet.dto.*;
-import com.team35.freelance.wallet.model.Payout;
-import com.team35.freelance.wallet.model.PayoutStatus;
-import com.team35.freelance.wallet.repository.PayoutRepository;
-import com.team35.freelance.wallet.repository.PromoCodeRepository;
-import com.team35.freelance.wallet.common.refund.*;
+import com.team35.freelance.contracts.dto.ContractDTO;
+import com.team35.freelance.contracts.events.PaymentCompletedEvent;
+import com.team35.freelance.contracts.events.PaymentFailedEvent;
+import com.team35.freelance.contracts.events.PaymentInitiatedEvent;
+import com.team35.freelance.contracts.events.PaymentRefundedEvent;
+import com.team35.freelance.contracts.feign.ContractServiceClient;
 import com.team35.freelance.wallet.common.observer.EntityObserver;
 import com.team35.freelance.wallet.common.observer.MongoEventLogger;
+import com.team35.freelance.wallet.common.refund.NoReversalStrategy;
+import com.team35.freelance.wallet.common.refund.RefundResult;
+import com.team35.freelance.wallet.common.refund.RefundStrategy;
+import com.team35.freelance.wallet.common.refund.RefundStrategySelector;
+import com.team35.freelance.wallet.dto.CategoryRevenueDTO;
+import com.team35.freelance.wallet.dto.FreelancerPayoutSummaryDTO;
+import com.team35.freelance.wallet.dto.PayoutMethodDTO;
+import com.team35.freelance.wallet.dto.ProcessPayoutRequest;
+import com.team35.freelance.wallet.dto.PromoCodeUsage;
+import com.team35.freelance.wallet.dto.RevenueReportDTO;
+import com.team35.freelance.wallet.messaging.publisher.PaymentEventPublisher;
+import com.team35.freelance.wallet.model.Payout;
+import com.team35.freelance.wallet.model.PayoutStatus;
+import com.team35.freelance.wallet.repository.MongoEventRepository;
+import com.team35.freelance.wallet.repository.PayoutRepository;
+import com.team35.freelance.wallet.repository.PromoCodeRepository;
+import feign.FeignException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -19,26 +37,25 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import com.team35.freelance.wallet.dto.PayoutMethodDTO;
-import com.team35.freelance.wallet.common.event.PayoutAuditEvent;
-import com.team35.freelance.wallet.repository.MongoEventRepository;
-import java.time.LocalTime;
-import java.time.ZoneOffset;
-import java.util.stream.Collectors;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import com.team35.freelance.wallet.dto.CategoryRevenueDTO;
-import java.util.List;
-
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 @Service
 public class PayoutService {
+
+    private static final Logger log = LoggerFactory.getLogger(PayoutService.class);
 
     private final PayoutRepository payoutRepository;
     private final PromoCodeRepository promoCodeRepository;
@@ -48,6 +65,8 @@ public class PayoutService {
     private final WalletAnalyticsCacheService walletAnalyticsCacheService;
     private final StringRedisTemplate redisTemplate;
     private final MongoTemplate mongoTemplate;
+    private final PaymentEventPublisher paymentEventPublisher;
+    private final ContractServiceClient contractServiceClient;
 
     public PayoutService(PayoutRepository payoutRepository,
                          PromoCodeRepository promoCodeRepository,
@@ -56,8 +75,9 @@ public class PayoutService {
                          MongoEventRepository mongoEventRepository,
                          WalletAnalyticsCacheService walletAnalyticsCacheService,
                          StringRedisTemplate redisTemplate,
-                         MongoTemplate mongoTemplate) {
-
+                         MongoTemplate mongoTemplate,
+                         PaymentEventPublisher paymentEventPublisher,
+                         ContractServiceClient contractServiceClient) {
         this.payoutRepository = payoutRepository;
         this.promoCodeRepository = promoCodeRepository;
         this.refundStrategySelector = refundStrategySelector;
@@ -65,8 +85,11 @@ public class PayoutService {
         this.walletAnalyticsCacheService = walletAnalyticsCacheService;
         this.redisTemplate = redisTemplate;
         this.mongoTemplate = mongoTemplate;
+        this.paymentEventPublisher = paymentEventPublisher;
+        this.contractServiceClient = contractServiceClient;
         registerObserver(mongoEventLogger);
     }
+
     public void registerObserver(EntityObserver observer) {
         observers.add(observer);
     }
@@ -80,6 +103,7 @@ public class PayoutService {
             observer.onEvent(eventType, payload);
         }
     }
+
     @CacheEvict(value = {
             "wallet-service::payout",
             "wallet-service::promo-code",
@@ -88,11 +112,22 @@ public class PayoutService {
             "wallet-service::S5-F3",
             "wallet-service::S5-F6",
             "wallet-service::S5-F8",
-            "wallet-service::S5-F9"
+            "wallet-service::S5-F9",
+            "wallet-service::S5-F10",
+            "wallet-service::S5-F11"
     }, allEntries = true)
     public Payout createPayout(Payout payout) {
         payout.setCreatedAt(LocalDateTime.now());
         Payout saved = payoutRepository.save(payout);
+
+        paymentEventPublisher.publishInitiated(
+                new PaymentInitiatedEvent(
+                        saved.getId(),
+                        null,
+                        saved.getContractId(),
+                        BigDecimal.valueOf(saved.getAmount())
+                )
+        );
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "PAYOUT_CREATED");
@@ -101,7 +136,8 @@ public class PayoutService {
 
         notifyObservers("PAYOUT_AUDIT", payload);
 
-        return saved;    }
+        return saved;
+    }
 
     public List<Payout> getAllPayouts() {
         return payoutRepository.findAll();
@@ -121,7 +157,9 @@ public class PayoutService {
             "wallet-service::S5-F3",
             "wallet-service::S5-F6",
             "wallet-service::S5-F8",
-            "wallet-service::S5-F9"
+            "wallet-service::S5-F9",
+            "wallet-service::S5-F10",
+            "wallet-service::S5-F11"
     }, allEntries = true)
     public Payout updatePayout(Long id, Payout updatedPayout) {
         Payout existing = getPayoutById(id);
@@ -141,7 +179,8 @@ public class PayoutService {
 
         notifyObservers("PAYOUT_AUDIT", payload);
 
-        return saved;    }
+        return saved;
+    }
 
     @CacheEvict(value = {
             "wallet-service::payout",
@@ -151,19 +190,23 @@ public class PayoutService {
             "wallet-service::S5-F3",
             "wallet-service::S5-F6",
             "wallet-service::S5-F8",
-            "wallet-service::S5-F9"
+            "wallet-service::S5-F9",
+            "wallet-service::S5-F10",
+            "wallet-service::S5-F11"
     }, allEntries = true)
     public void deletePayout(Long id) {
         if (!payoutRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found");
         }
+
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "PAYOUT_DELETED");
         payload.put("payoutId", id);
 
         notifyObservers("PAYOUT_AUDIT", payload);
 
-        payoutRepository.deleteById(id);    }
+        payoutRepository.deleteById(id);
+    }
 
     public FreelancerPayoutSummaryDTO getFreelancerSummary(Long freelancerId) {
         List<Object[]> methodRows = payoutRepository.getFreelancerMethodBreakdown(freelancerId);
@@ -179,9 +222,10 @@ public class PayoutService {
             if (row == null || row.length < 3) {
                 continue;
             }
+
             String method = row[0].toString();
-            Long count = numberAsLong(row, 1);
-            Double amount = numberAsDouble(row, 2);
+            long count = numberAsLong(row, 1);
+            double amount = numberAsDouble(row, 2);
 
             methodBreakdown.put(method, amount);
             totalPayouts += count;
@@ -205,54 +249,106 @@ public class PayoutService {
             "wallet-service::S5-F3",
             "wallet-service::S5-F6",
             "wallet-service::S5-F8",
-            "wallet-service::S5-F9"
+            "wallet-service::S5-F9",
+            "wallet-service::S5-F10",
+            "wallet-service::S5-F11"
     }, allEntries = true)
-    public Payout processContractPayout(Long contractId, ProcessPayoutRequest request) {
-
-        String contractStatus = payoutRepository.getContractStatus(contractId);
-
-        if (contractStatus == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Contract not found");
+    public Payout processContractPayout(Long contractId,
+                                        ProcessPayoutRequest request,
+                                        Long callerId,
+                                        String callerRole,
+                                        boolean simulateFailure) {
+        if (request == null) {
+            request = new ProcessPayoutRequest();
         }
 
-        if (!"COMPLETED".equals(contractStatus)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contract is not completed");
+        if (Boolean.TRUE.equals(request.getSimulateFailure())) {
+            simulateFailure = true;
         }
 
-        Payout payout = payoutRepository.findByContractId(contractId);
+        log.info("simulateFailure received = {}", simulateFailure);
+
+        Payout payout = payoutRepository.findFirstByContractIdAndStatusOrderByCreatedAtDesc(
+                contractId,
+                PayoutStatus.PENDING
+        );
 
         if (payout == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found");
         }
 
-        if (payout.getStatus() == PayoutStatus.COMPLETED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "already paid");
+        ContractDTO contract = null;
+        long delay = 200;
+
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                contract = contractServiceClient.getContractById(contractId);
+                break;
+            } catch (FeignException.NotFound e) {
+                if (attempt == 3) {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Contract not found");
+                }
+
+                try {
+                    Thread.sleep(delay);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Retry interrupted");
+                }
+
+                delay *= 2;
+            }
         }
 
-        if (request == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payout request body is required");
+        if (contract == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Contract not found");
+        }
+
+        if (!"COMPLETED".equalsIgnoreCase(contract.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contract must be COMPLETED before payout");
+        }
+
+        if (callerRole != null && callerId != null
+                && !"ADMIN".equalsIgnoreCase(callerRole)
+                && !contract.getClientId().equals(callerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the contract client or ADMIN can release payout");
+        }
+
+        if (payout.getStatus() == PayoutStatus.COMPLETED || payout.getStatus() == PayoutStatus.FAILED) {
+            return payout;
         }
 
         if (request.getMethod() != null) {
             payout.setMethod(request.getMethod());
         }
 
-        Map<String, Object> details = new HashMap<>();
+        Map<String, Object> details = payout.getTransactionDetails();
+        if (details == null) {
+            details = new HashMap<>();
+        }
 
-        // existing fields
         if (request.getAccountLastFour() != null) {
             details.put("accountLastFour", request.getAccountLastFour());
         }
 
-        // ✅ NEW REQUIRED FIELD (Section 4.6)
         double platformFee = payout.getAmount() * 0.10;
         details.put("platformFee", platformFee);
 
-        if (Boolean.TRUE.equals(request.getSimulateFailure())) {
+        if (simulateFailure || "FAIL".equalsIgnoreCase(request.getAccountLastFour())) {
             details.put("gatewayResponse", "simulated failure");
             payout.setTransactionDetails(details);
             payout.setStatus(PayoutStatus.FAILED);
+
             Payout failed = payoutRepository.save(payout);
+
+            paymentEventPublisher.publishFailed(
+                    new PaymentFailedEvent(
+                            failed.getId(),
+                            extractProposalId(failed),
+                            failed.getContractId(),
+                            "Simulated payout failure"
+                    )
+            );
 
             Map<String, Object> payload = new HashMap<>();
             payload.put("action", "PAYOUT_FAILED");
@@ -260,21 +356,30 @@ public class PayoutService {
             payload.put("reason", "simulateFailure");
 
             notifyObservers("PAYOUT_AUDIT", payload);
+
             return failed;
         }
 
         payout.setStatus(PayoutStatus.COMPLETED);
-
         payout.setTransactionDetails(details);
 
         Payout saved = payoutRepository.save(payout);
 
-        // existing observer logic
+        paymentEventPublisher.publishCompleted(
+                new PaymentCompletedEvent(
+                        saved.getId(),
+                        extractProposalId(saved),
+                        saved.getContractId(),
+                        BigDecimal.valueOf(saved.getAmount())
+                )
+        );
+
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "PAYOUT_PROCESSED");
         payload.put("payoutId", saved.getId());
 
         notifyObservers("PAYOUT_AUDIT", payload);
+
         return saved;
     }
 
@@ -302,6 +407,7 @@ public class PayoutService {
         if (details == null) {
             details = new HashMap<>();
         }
+
         if (request.getAccountLastFour() != null) {
             details.put("accountLastFour", request.getAccountLastFour());
         }
@@ -310,22 +416,46 @@ public class PayoutService {
             details.put("gatewayResponse", "simulated failure");
             payout.setTransactionDetails(details);
             payout.setStatus(PayoutStatus.FAILED);
+
             Payout failed = payoutRepository.save(payout);
+
             notifyObservers("PAYOUT_AUDIT", Map.of(
                     "action", "PAYOUT_FAILED",
                     "payoutId", failed.getId(),
                     "reason", "simulateFailure"
             ));
+
+            paymentEventPublisher.publishFailed(
+                    new PaymentFailedEvent(
+                            failed.getId(),
+                            extractProposalId(failed),
+                            failed.getContractId(),
+                            "Simulated payout failure"
+                    )
+            );
+
             return failed;
         }
 
         payout.setTransactionDetails(details);
         payout.setStatus(PayoutStatus.COMPLETED);
+
         Payout saved = payoutRepository.save(payout);
+
         notifyObservers("PAYOUT_AUDIT", Map.of(
                 "action", "PAYOUT_PROCESSED",
                 "payoutId", saved.getId()
         ));
+
+        paymentEventPublisher.publishCompleted(
+                new PaymentCompletedEvent(
+                        saved.getId(),
+                        extractProposalId(saved),
+                        saved.getContractId(),
+                        BigDecimal.valueOf(saved.getAmount())
+                )
+        );
+
         return saved;
     }
 
@@ -333,7 +463,6 @@ public class PayoutService {
     public List<Payout> searchPayouts(PayoutStatus status,
                                       LocalDate startDate,
                                       LocalDate endDate) {
-
         LocalDateTime startDateTime = null;
         LocalDateTime endDateTime = null;
 
@@ -353,22 +482,18 @@ public class PayoutService {
             return payoutRepository.findByStatusOrderByCreatedAtDesc(status);
         }
 
-        if (status == null) {
-            if (startDateTime == null) {
-                startDateTime = LocalDateTime.of(1970, 1, 1, 0, 0);
-            }
-            if (endDateTime == null) {
-                endDateTime = LocalDateTime.now().plusDays(1);
-            }
-            return payoutRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(startDateTime, endDateTime);
-        }
-
         if (startDateTime == null) {
             startDateTime = LocalDateTime.of(1970, 1, 1, 0, 0);
         }
+
         if (endDateTime == null) {
             endDateTime = LocalDateTime.now().plusDays(1);
         }
+
+        if (status == null) {
+            return payoutRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(startDateTime, endDateTime);
+        }
+
         return payoutRepository.findByStatusAndCreatedAtBetweenOrderByCreatedAtDesc(
                 status, startDateTime, endDateTime
         );
@@ -378,11 +503,9 @@ public class PayoutService {
     public RevenueReportDTO getRevenueReport(LocalDate startDate, LocalDate endDate) {
         startDate = startDate == null ? LocalDate.of(1970, 1, 1) : startDate;
         endDate = endDate == null ? LocalDate.now().plusDays(1) : endDate;
+
         if (startDate.isAfter(endDate)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "startDate cannot be after endDate"
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate cannot be after endDate");
         }
 
         LocalDateTime start = startDate.atStartOfDay();
@@ -396,8 +519,7 @@ public class PayoutService {
         double refundedAmount = numberAsDouble(result, 2);
         long refundCount = numberAsLong(result, 3);
 
-        double averagePayout =
-                totalTransactions == 0 ? 0 : totalRevenue / totalTransactions;
+        double averagePayout = totalTransactions == 0 ? 0 : totalRevenue / totalTransactions;
 
         return RevenueReportDTO.builder()
                 .totalRevenue(totalRevenue)
@@ -464,7 +586,9 @@ public class PayoutService {
             "wallet-service::S5-F3",
             "wallet-service::S5-F6",
             "wallet-service::S5-F8",
-            "wallet-service::S5-F9"
+            "wallet-service::S5-F9",
+            "wallet-service::S5-F10",
+            "wallet-service::S5-F11"
     }, allEntries = true)
     public Payout retryFailedPayout(Long id) {
         Payout payout = payoutRepository.findById(id)
@@ -477,13 +601,23 @@ public class PayoutService {
         payout.setStatus(PayoutStatus.COMPLETED);
         Payout saved = payoutRepository.save(payout);
 
+        paymentEventPublisher.publishCompleted(
+                new PaymentCompletedEvent(
+                        saved.getId(),
+                        extractProposalId(saved),
+                        saved.getContractId(),
+                        BigDecimal.valueOf(saved.getAmount())
+                )
+        );
+
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "PAYOUT_RETRIED");
         payload.put("payoutId", saved.getId());
 
         notifyObservers("PAYOUT_AUDIT", payload);
 
-        return saved;    }
+        return saved;
+    }
 
     @CacheEvict(value = {
             "wallet-service::payout",
@@ -493,7 +627,9 @@ public class PayoutService {
             "wallet-service::S5-F3",
             "wallet-service::S5-F6",
             "wallet-service::S5-F8",
-            "wallet-service::S5-F9"
+            "wallet-service::S5-F9",
+            "wallet-service::S5-F10",
+            "wallet-service::S5-F11"
     }, allEntries = true)
     public Payout processRefund(Long id, String reason) {
         Payout payout = payoutRepository.findById(id)
@@ -522,7 +658,8 @@ public class PayoutService {
         } else if (retryValue instanceof String) {
             try {
                 retryAttempt = Integer.parseInt((String) retryValue);
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
 
         transactionDetails.put("retryAttempt", retryAttempt + 1);
@@ -534,6 +671,15 @@ public class PayoutService {
 
         Payout saved = payoutRepository.save(payout);
 
+        paymentEventPublisher.publishRefunded(
+                new PaymentRefundedEvent(
+                        saved.getId(),
+                        extractProposalId(saved),
+                        saved.getContractId(),
+                        BigDecimal.valueOf(saved.getAmount())
+                )
+        );
+
         Map<String, Object> eventPayload = new HashMap<>();
         eventPayload.put("action", "PAYOUT_REFUNDED");
         eventPayload.put("payoutId", payout.getId());
@@ -541,8 +687,8 @@ public class PayoutService {
 
         notifyObservers("PAYOUT_AUDIT", eventPayload);
 
-        return saved;    }
-
+        return saved;
+    }
 
     @Transactional
     @CacheEvict(value = {
@@ -551,32 +697,21 @@ public class PayoutService {
             "wallet-service::payout"
     }, allEntries = true)
     public Payout reversePayout(Long payoutId, String reversalScope, String reason) {
-
-        // 1. FIND
         Payout payout = payoutRepository.findById(payoutId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Payout not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found"));
 
-        // 2. VALIDATE
         if (payout.getStatus() != PayoutStatus.COMPLETED) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Only completed payouts can be reversed"
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only completed payouts can be reversed");
         }
 
-        // 3. STRATEGY
         com.team35.freelance.wallet.common.refund.RefundRequest internalRequest =
                 new com.team35.freelance.wallet.common.refund.RefundRequest(reversalScope);
 
         RefundStrategy strategy = refundStrategySelector.select(payout, internalRequest);
         RefundResult result = strategy.calculateRefund(payout, internalRequest);
-
         String strategyName = strategy.getClass().getSimpleName();
 
-        // 4. DENIED CASE
         if (strategy instanceof NoReversalStrategy) {
-
             Map<String, Object> payload = new HashMap<>();
             payload.put("action", "REFUND_DENIED");
             payload.put("payoutId", payout.getId());
@@ -586,17 +721,15 @@ public class PayoutService {
             notifyObservers("PAYOUT_AUDIT", payload);
             invalidateAnalyticsCacheMarkers();
 
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "reversal window expired"
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reversal window expired");
         }
 
-        // 5. SUCCESS
         payout.setStatus(PayoutStatus.REFUNDED);
 
         Map<String, Object> details = payout.getTransactionDetails();
-        if (details == null) details = new HashMap<>();
+        if (details == null) {
+            details = new HashMap<>();
+        }
 
         details.put("refundAmount", result.getAmount());
         details.put("reversalScope", reversalScope);
@@ -607,7 +740,15 @@ public class PayoutService {
 
         Payout saved = payoutRepository.save(payout);
 
-        // 6. AUDIT EVENT (FULL REQUIRED DATA)
+        paymentEventPublisher.publishRefunded(
+                new PaymentRefundedEvent(
+                        saved.getId(),
+                        extractProposalId(saved),
+                        saved.getContractId(),
+                        BigDecimal.valueOf(result.getAmount())
+                )
+        );
+
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "REFUNDED");
         payload.put("payoutId", payout.getId());
@@ -631,14 +772,16 @@ public class PayoutService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate cannot be after endDate");
         }
 
-        // ✅ ALWAYS runs
         logAnalyticsViewedEvent(startDate, endDate);
 
-        // ✅ cached logic
-        List<CategoryRevenueDTO> result = walletAnalyticsCacheService.getCategoryRevenueAnalyticsCached(startDate, endDate);
+        List<CategoryRevenueDTO> result =
+                walletAnalyticsCacheService.getCategoryRevenueAnalyticsCached(startDate, endDate);
+
         populateCategoryAnalyticsCacheKey(startDate, endDate);
+
         return result;
     }
+
     private void logAnalyticsViewedEvent(LocalDate startDate, LocalDate endDate) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "ANALYTICS_VIEWED");
@@ -659,34 +802,25 @@ public class PayoutService {
         }
     }
 
-
-    // S5-F11
     @Cacheable(value = "wallet-service::S5-F11", key = "#startDate + ':' + #endDate")
     public List<PayoutMethodDTO> getPayoutMethodBreakdown(LocalDate startDate, LocalDate endDate) {
         startDate = startDate == null ? LocalDate.of(1970, 1, 1) : startDate;
         endDate = endDate == null ? LocalDate.now().plusDays(1) : endDate;
-        if (startDate.isAfter(endDate))
+
+        if (startDate.isAfter(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must not be after endDate");
+        }
 
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(LocalTime.of(23, 59, 59, 999_000_000));
 
         List<PayoutMethodDTO> result = getPayoutMethodBreakdownFromMongo(start, end);
         if (result.isEmpty()) {
-            List<Object[]> rows = payoutRepository.getPayoutMethodBreakdown(start, end);
-            for (Object[] row : rows) {
-                String method = String.valueOf(row[0]);
-                long successCount = numberAsLong(row, 1);
-                long failureCount = numberAsLong(row, 2);
-                long denominator = successCount + failureCount;
-                double successRate = denominator == 0 ? 0.0 : (double) successCount / denominator;
-                double totalAmount = numberAsDouble(row, 3);
-                result.add(PayoutMethodDTO.builder()
-                        .method(method).successCount(successCount).failureCount(failureCount)
-                        .successRate(successRate).totalAmount(totalAmount).build());
-            }
+            result = getPayoutMethodBreakdownFromPostgres(start, end);
         }
+
         populateMethodAnalyticsCacheKey(startDate, endDate);
+
         return result;
     }
 
@@ -694,6 +828,7 @@ public class PayoutService {
         Query query = new Query(Criteria.where("action").in("COMPLETED", "FAILED")
                 .and("timestamp").gte(Date.from(start.toInstant(ZoneOffset.UTC)))
                 .lte(Date.from(end.toInstant(ZoneOffset.UTC))));
+
         List<org.bson.Document> docs = mongoTemplate.find(query, org.bson.Document.class, "payout_audit_trail");
 
         Map<String, MethodStats> byMethod = new TreeMap<>();
@@ -702,8 +837,10 @@ public class PayoutService {
             if (method == null || method.isBlank()) {
                 continue;
             }
+
             String action = doc.getString("action");
             MethodStats stats = byMethod.computeIfAbsent(method, ignored -> new MethodStats());
+
             if ("COMPLETED".equals(action)) {
                 stats.successCount++;
                 Object amount = doc.get("amount");
@@ -720,6 +857,7 @@ public class PayoutService {
                     MethodStats stats = entry.getValue();
                     long denominator = stats.successCount + stats.failureCount;
                     double successRate = denominator == 0 ? 0.0 : (double) stats.successCount / denominator;
+
                     return PayoutMethodDTO.builder()
                             .method(entry.getKey())
                             .successCount(stats.successCount)
@@ -766,6 +904,7 @@ public class PayoutService {
     private List<PayoutMethodDTO> getPayoutMethodBreakdownFromPostgres(LocalDateTime start, LocalDateTime end) {
         List<Object[]> rows = payoutRepository.getPayoutMethodBreakdown(start, end);
         List<PayoutMethodDTO> result = new ArrayList<>();
+
         for (Object[] row : rows) {
             String method = String.valueOf(row[0]);
             long successCount = numberAsLong(row, 1);
@@ -773,10 +912,16 @@ public class PayoutService {
             long denominator = successCount + failureCount;
             double successRate = denominator == 0 ? 0.0 : (double) successCount / denominator;
             double totalAmount = numberAsDouble(row, 3);
+
             result.add(PayoutMethodDTO.builder()
-                    .method(method).successCount(successCount).failureCount(failureCount)
-                    .successRate(successRate).totalAmount(totalAmount).build());
+                    .method(method)
+                    .successCount(successCount)
+                    .failureCount(failureCount)
+                    .successRate(successRate)
+                    .totalAmount(totalAmount)
+                    .build());
         }
+
         return result;
     }
 
@@ -784,6 +929,7 @@ public class PayoutService {
         if (row == null || row.length <= index || row[index] == null) {
             return 0L;
         }
+
         return ((Number) row[index]).longValue();
     }
 
@@ -791,6 +937,50 @@ public class PayoutService {
         if (row == null || row.length <= index || row[index] == null) {
             return 0.0;
         }
+
         return ((Number) row[index]).doubleValue();
+    }
+
+    private Long extractProposalId(Payout payout) {
+        if (payout == null || payout.getTransactionDetails() == null) {
+            return null;
+        }
+
+        Object rawProposalId = payout.getTransactionDetails().get("proposalId");
+        if (rawProposalId instanceof Number number) {
+            return number.longValue();
+        }
+
+        if (rawProposalId instanceof String value && !value.isBlank()) {
+            try {
+                return Long.valueOf(value);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    @Cacheable(value = "wallet-service::S5-READ-DB", key = "#freelancerId + ':' + #startDate + ':' + #endDate")
+    public BigDecimal getFreelancerPayoutTotal(Long freelancerId, LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate and endDate are required");
+        }
+
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate cannot be after endDate");
+        }
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(23, 59, 59);
+
+        Number total = payoutRepository.sumCompletedPayoutTotalByFreelancerAndDateRange(
+                freelancerId,
+                start,
+                end
+        );
+
+        return total == null ? BigDecimal.ZERO : BigDecimal.valueOf(total.doubleValue());
     }
 }

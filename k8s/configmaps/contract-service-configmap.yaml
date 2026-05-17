@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contract-service-configmap
+  namespace: freelance
+data:
+  SPRING_DATASOURCE_URL: jdbc:postgresql://contract-postgres:5432/freelancedb-contracts
+  SPRING_DATASOURCE_USERNAME: postgres
+  SPRING_RABBITMQ_HOST: rabbitmq
+  SPRING_RABBITMQ_PORT: "5672"
+  SPRING_RABBITMQ_USERNAME: guest
+  SPRING_RABBITMQ_PASSWORD: guest
+  SPRING_DATA_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
+  SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
+  SPRING_REDIS_HOST: redis
+  SPRING_REDIS_PORT: "6379"
+  SPRING_REDIS_PASSWORD: redispass
+  SPRING_CASSANDRA_CONTACT_POINTS: cassandra
+  SPRING_CASSANDRA_PORT: "9042"
+  SPRING_CASSANDRA_KEYSPACE_NAME: freelanceks
+  SPRING_CASSANDRA_LOCAL_DATACENTER: datacenter1
+  FEIGN_USER_SERVICE_URL: http://user-service:8080
+  FEIGN_JOB_SERVICE_URL: http://job-service:8080
+  FEIGN_PROPOSAL_SERVICE_URL: http://proposal-service:8080
+  FEIGN_CONTRACT_SERVICE_URL: http://contract-service:8080
+  FEIGN_WALLET_SERVICE_URL: http://wallet-service:8080

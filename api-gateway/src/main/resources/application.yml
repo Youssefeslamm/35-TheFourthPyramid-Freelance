@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: api-gateway
+  main:
+    web-application-type: reactive
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: user-service
+              uri: http://user-service:8080
+              predicates:
+                - Path=/api/users/**,/api/auth/**,/api/user-skills/**
+            - id: job-service-route
+              uri: http://job-service:8080
+              predicates:
+                - Path=/api/jobs/**
+            - id: proposal-service-route
+              uri: http://proposal-service:8080
+              predicates:
+                - Path=/api/proposals/**
+            - id: contract-service-route
+              uri: http://contract-service:8080
+              predicates:
+                - Path=/api/contracts/**
+            - id: wallet-service-payouts-route
+              uri: http://wallet-service:8080
+              predicates:
+                - Path=/api/payouts/**
+            - id: wallet-service-promocodes-route
+              uri: http://wallet-service:8080
+              predicates:
+                - Path=/api/promocodes/**
+            - id: wallet-service-payout-promos-route
+              uri: http://wallet-service:8080
+              predicates:
+                - Path=/api/payout-promos/**
+            - id: wallet-service-wallet-route
+              uri: http://wallet-service:8080
+              predicates:
+                - Path=/api/wallet/**
+
+server:
+  port: 8080
+
+jwt:
+  secret: ${JWT_SECRET:0123456789abcdef0123456789abcdef01234567}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway
+  endpoint:
+    health:
+      probes:
+        enabled: true
+

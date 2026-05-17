@@ -1,8 +1,26 @@
+CREATE DATABASE userdb;
+CREATE DATABASE proposaldb;
+CREATE DATABASE contractdb;
+CREATE DATABASE walletdb;
+CREATE DATABASE jobdb;
+
 CREATE TYPE user_role_enum AS ENUM ('ADMIN', 'CLIENT', 'FREELANCER');
 CREATE TYPE user_status_enum AS ENUM ('ACTIVE', 'DEACTIVATED');
 CREATE TYPE proficiency_level_enum AS ENUM ('BEGINNER', 'INTERMEDIATE', 'EXPERT');
 
-CREATE TYPE proposal_status_enum AS ENUM ('SUBMITTED', 'SHORTLISTED', 'ACCEPTED', 'REJECTED', 'WITHDRAWN');
+CREATE TYPE proposal_status_enum AS ENUM (
+    'SUBMITTED',
+    'SHORTLISTED',
+    'ACCEPTED',
+    'REJECTED',
+    'WITHDRAWN',
+    'COMPLETING',
+    'PAYMENT_PENDING',
+    'PAID',
+    'PAYMENT_FAILED',
+    'REFUNDED'
+);
+
 CREATE TYPE milestone_status_enum AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'APPROVED');
 
 CREATE TYPE payout_method_enum AS ENUM (
@@ -10,16 +28,19 @@ CREATE TYPE payout_method_enum AS ENUM (
     'PAYPAL',
     'CRYPTO'
 );
+
 CREATE TYPE payout_status_enum AS ENUM (
     'PENDING',
     'COMPLETED',
     'FAILED',
     'REFUNDED'
 );
+
 CREATE TYPE discount_type_enum AS ENUM (
     'PERCENTAGE',
     'FIXED'
 );
+
 CREATE TYPE contract_status_enum AS ENUM (
     'ACTIVE', 'COMPLETED', 'TERMINATED', 'DISPUTED'
 );
@@ -85,6 +106,7 @@ CREATE TABLE IF NOT EXISTS proposals (
     job_id BIGINT NOT NULL,
     job_relation_id BIGINT,
     freelancer_id BIGINT NOT NULL,
+    contract_id BIGINT,
     cover_letter TEXT NOT NULL,
     bid_amount DOUBLE PRECISION NOT NULL,
     estimated_days INTEGER NOT NULL,
@@ -120,6 +142,43 @@ CREATE TABLE IF NOT EXISTS contracts (
     metadata JSONB,
     created_at TIMESTAMP NOT NULL
 );
+
+INSERT INTO contracts (
+    id,
+    job_id,
+    freelancer_id,
+    client_id,
+    proposal_id,
+    agreed_amount,
+    status,
+    start_date,
+    end_date,
+    metadata,
+    created_at
+) VALUES (
+    9006,
+    9002,
+    1,
+    1,
+    9006,
+    2000.0,
+    'COMPLETED',
+    '2026-03-01 00:00:00',
+    '2026-03-15 00:00:00',
+    '{}'::jsonb,
+    NOW()
+) ON CONFLICT (id) DO UPDATE SET
+    job_id = EXCLUDED.job_id,
+    freelancer_id = EXCLUDED.freelancer_id,
+    client_id = EXCLUDED.client_id,
+    proposal_id = EXCLUDED.proposal_id,
+    agreed_amount = EXCLUDED.agreed_amount,
+    status = EXCLUDED.status,
+    start_date = EXCLUDED.start_date,
+    end_date = EXCLUDED.end_date,
+    metadata = EXCLUDED.metadata;
+
+SELECT setval(pg_get_serial_sequence('contracts', 'id'), GREATEST((SELECT MAX(id) FROM contracts), 9006), true);
 
 CREATE TABLE IF NOT EXISTS payouts (
     id BIGSERIAL PRIMARY KEY,

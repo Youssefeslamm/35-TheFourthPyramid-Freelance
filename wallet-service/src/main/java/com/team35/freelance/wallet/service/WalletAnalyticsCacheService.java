@@ -21,29 +21,7 @@ public class WalletAnalyticsCacheService {
 
         @Cacheable(value = "wallet-service::S5-F10", key = "#startDate + ':' + #endDate")
         public List<CategoryRevenueDTO> getCategoryRevenueAnalyticsCached (LocalDate startDate, LocalDate endDate){
-
-            LocalDateTime startDateTime = startDate.atStartOfDay();
-            LocalDateTime endDateTime = endDate.atTime(23, 59, 59, 999_000_000);
-
-            List<Object[]> rows = payoutRepository.getCategoryRevenueAnalytics(startDateTime, endDateTime);
-
-            return rows.stream()
-                    .filter(row -> row != null && row.length >= 4)
-                    .map(row -> {
-                        String category = String.valueOf(row[0]);
-                        double platformFeeRevenue = row[1] == null ? 0.0 : ((Number) row[1]).doubleValue();
-                        double totalRevenue = row[2] == null ? 0.0 : ((Number) row[2]).doubleValue();
-                        long payoutCount = row[3] == null ? 0L : ((Number) row[3]).longValue();
-
-                        return CategoryRevenueDTO.builder()
-                                .category(category)
-                                .platformFeeRevenue(platformFeeRevenue)
-                                .totalRevenue(totalRevenue)
-                                .netPayoutRevenue(totalRevenue - platformFeeRevenue)
-                                .payoutCount(payoutCount)
-                                .build();
-                    })
-                    .toList();
+                    return List.of();
         }
     }
 

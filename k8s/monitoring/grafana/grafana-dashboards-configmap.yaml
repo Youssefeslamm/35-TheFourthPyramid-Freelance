@@ -1,0 +1,423 @@
+﻿apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+  labels:
+    app: grafana
+    grafana_dashboard: "1"
+data:
+  milestone3-overview.json: |
+    {
+      "title": "Freelance Marketplace Milestone 3",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "HTTP Requests Placeholder",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count[5m])) by (application)"
+            }
+          ],
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 8
+          }
+        }
+      ]
+    }
+  proposal-dashboard.json: |
+    {
+      "title": "Proposal Service Dashboard",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Error Rate - Proposal Service",
+          "description": "Count of ERROR-level log lines per minute",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({service=\"proposal-service\", level=\"ERROR\"}[1m]))",
+              "legendFormat": "Errors/min"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "RabbitMQ Event Audit - Proposal Service",
+          "description": "Events published vs consumed by proposal-service",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({service=\"proposal-service\"} |= \"Published\" [5m]))",
+              "legendFormat": "Published"
+            },
+            {
+              "expr": "sum(count_over_time({service=\"proposal-service\"} |= \"Consuming\" [5m]))",
+              "legendFormat": "Consumed"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Saga State Transitions - Proposal Service",
+          "description": "Saga state transitions for proposals",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({service=\"proposal-service\"} |= \"transitioning\" [5m]))",
+              "legendFormat": "Transitions/5m"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP Request Rate - Proposal Service",
+          "description": "Requests per second per endpoint",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{job=\"proposal-service\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP Latency P99 - Proposal Service",
+          "description": "P99 latency per endpoint",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"proposal-service\"}[5m])) by (le, uri))",
+              "legendFormat": "P99 {{uri}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "JVM Heap Usage - Proposal Service",
+          "description": "JVM heap memory usage",
+          "targets": [
+            {
+              "expr": "jvm_memory_used_bytes{job=\"proposal-service\", area=\"heap\"}",
+              "legendFormat": "Heap Used"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 }
+        }
+      ]
+    }
+  user-service-dashboard.json: |
+    {
+      "title": "User Service Dashboard",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "HTTP Request Rate - User Service",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{job=\"user-service\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "RabbitMQ Listener Rate - User Service",
+          "targets": [
+            {
+              "expr": "sum(rate(spring_rabbitmq_listener_seconds_count{job=\"user-service\"}[5m])) by (listener)",
+              "legendFormat": "{{listener}}"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "JVM Heap Usage - User Service",
+          "targets": [
+            {
+              "expr": "jvm_memory_used_bytes{job=\"user-service\", area=\"heap\"}",
+              "legendFormat": "Heap Used"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
+        }
+      ]
+    }
+  job-dashboard.json: |
+    {
+      "title": "Job Service Dashboard",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "tags": [
+        "freelance",
+        "job-service",
+        "S2-INFRA"
+      ],
+      "templating": {
+        "list": [
+          {
+            "name": "correlationId",
+            "type": "textbox",
+            "label": "Correlation ID",
+            "query": "",
+            "current": {
+              "text": ".*",
+              "value": ".*"
+            }
+          }
+        ]
+      },
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "LogQL - Error Rate",
+          "description": "ERROR-level job-service log lines per minute.",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({service=\"job-service\", level=\"ERROR\"}[1m]))",
+              "legendFormat": "errors/min"
+            }
+          ],
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 8,
+            "h": 8
+          }
+        },
+        {
+          "type": "logs",
+          "title": "LogQL - Correlation Trace",
+          "description": "Trace job-service log lines for a specific X-Correlation-ID.",
+          "targets": [
+            {
+              "expr": "{service=\"job-service\"} | json | correlationId=~\"$correlationId\"",
+              "legendFormat": "correlation"
+            }
+          ],
+          "gridPos": {
+            "x": 8,
+            "y": 0,
+            "w": 8,
+            "h": 8
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "LogQL - RabbitMQ Job Event Audit",
+          "description": "Job-service published/consumed event log volume.",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({service=\"job-service\"} |= \"Published\" [5m]))",
+              "legendFormat": "published"
+            },
+            {
+              "expr": "sum(count_over_time({service=\"job-service\"} |= \"Consuming\" [5m]))",
+              "legendFormat": "consumed"
+            }
+          ],
+          "gridPos": {
+            "x": 16,
+            "y": 0,
+            "w": 8,
+            "h": 8
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "PromQL - HTTP Request Rate",
+          "description": "Requests per second per job-service endpoint.",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{job=\"job-service\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ],
+          "gridPos": {
+            "x": 0,
+            "y": 8,
+            "w": 8,
+            "h": 8
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "PromQL - HTTP Latency P95",
+          "description": "P95 latency per job-service endpoint.",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"job-service\"}[5m])) by (le, uri))",
+              "legendFormat": "P95 {{uri}}"
+            }
+          ],
+          "gridPos": {
+            "x": 8,
+            "y": 8,
+            "w": 8,
+            "h": 8
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "PromQL - JVM Heap Usage",
+          "description": "Job-service JVM heap memory usage.",
+          "targets": [
+            {
+              "expr": "sum(jvm_memory_used_bytes{job=\"job-service\", area=\"heap\"})",
+              "legendFormat": "heap used"
+            }
+          ],
+          "gridPos": {
+            "x": 16,
+            "y": 8,
+            "w": 8,
+            "h": 8
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "PromQL - Redis Cache Hits vs Misses",
+          "description": "Cache effectiveness for cached job-service endpoints such as S2-F12.",
+          "targets": [
+            {
+              "expr": "sum(rate(cache_gets_total{job=\"job-service\", result=\"hit\"}[5m]))",
+              "legendFormat": "hits"
+            },
+            {
+              "expr": "sum(rate(cache_gets_total{job=\"job-service\", result=\"miss\"}[5m]))",
+              "legendFormat": "misses"
+            }
+          ],
+          "gridPos": {
+            "x": 0,
+            "y": 16,
+            "w": 12,
+            "h": 8
+          }
+        }
+      ]
+    }
+    
+
+
+  wallet-service-dashboard.json: |
+    {
+      "title": "Wallet Service Dashboard",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "HTTP Request Rate - Wallet Service",
+          "description": "Requests per second by endpoint and method",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{job=\"wallet-service\"}[5m])) by (uri, method)",
+              "legendFormat": "{{method}} {{uri}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Error Rate",
+          "description": "Count of ERROR-level log lines per minute",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json | level=\"ERROR\" [1m]))",
+              "legendFormat": "Errors/min"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP Error Rate - Wallet Service",
+          "description": "4xx and 5xx responses per second by status and endpoint",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{job=\"wallet-service\", status=~\"4..|5..\"}[5m])) by (status, uri)",
+              "legendFormat": "{{status}} {{uri}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Feign Call Outcomes",
+          "description": "Successful vs failed calls to contract-service and job-service",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json |= \"contract-service\" or |= \"job-service\" [5m]))",
+              "legendFormat": "Feign calls"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP Latency P95 - Wallet Service",
+          "description": "P95 request latency by endpoint",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"wallet-service\"}[5m])) by (le, uri))",
+              "legendFormat": "P95 {{uri}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Average HTTP Latency - Wallet Service",
+          "description": "Average request duration by endpoint",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_sum{job=\"wallet-service\"}[5m])) by (uri) / sum(rate(http_server_requests_seconds_count{job=\"wallet-service\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "JVM Heap Usage - Wallet Service",
+          "description": "Heap memory currently used",
+          "targets": [
+            {
+              "expr": "jvm_memory_used_bytes{job=\"wallet-service\", area=\"heap\"}",
+              "legendFormat": "Heap Used"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Slow Operation Warnings",
+          "description": "Log lines matching Slow.* message pattern",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json | message =~ \"Slow.*\" [5m]))",
+              "legendFormat": "Slow ops"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 }
+        }
+      ]
+    }

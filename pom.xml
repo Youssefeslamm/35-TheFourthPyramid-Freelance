@@ -22,6 +22,8 @@
         <module>proposal-service</module>
         <module>contract-service</module>
         <module>wallet-service</module>
+        <module>contracts</module>
+        <module>api-gateway</module>
     </modules>
 
 </project>

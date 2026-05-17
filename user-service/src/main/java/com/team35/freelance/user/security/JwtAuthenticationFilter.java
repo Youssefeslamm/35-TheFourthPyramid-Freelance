@@ -33,48 +33,45 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        String path = request.getRequestURI();
-
-        // ✅ Skip public endpoints
-        if (path.startsWith("/api/auth/") || path.contains("/health")) {
+        // ✅ 1. INTERNAL CALL BYPASS (MOST IMPORTANT)
+        String internal = request.getHeader("X-INTERNAL-CALL");
+        if ("true".equals(internal)) {
+            SecurityContextHolder.clearContext();
             filterChain.doFilter(request, response);
             return;
         }
 
-        // ✅ Create context
-        AuthContext ctx = new AuthContext(request);
+        String path = request.getRequestURI();
 
-        // ✅ Set required role (grader requirement)
-        String uri = request.getRequestURI();
-        if (uri.contains("/role")) {
-            ctx.setRequiredRole("ADMIN");
+        // ✅ 2. PUBLIC ENDPOINTS
+        if (path.startsWith("/api/auth/") || path.contains("/health")
+                || path.equals("/actuator/prometheus") || path.equals("/actuator/info")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        // ✅ Build chain
+        // ✅ 3. NORMAL AUTH FLOW (ONLY FOR REAL USERS)
+        AuthContext ctx = new AuthContext(request);
+
         AuthHandler chain = new TokenExtractionHandler();
         chain.setNext(new SignatureValidationHandler(jwtService))
                 .setNext(new UserLoaderHandler(jwtService, userRepository))
                 .setNext(new RoleAuthorizationHandler());
 
-        // ✅ Execute chain
         boolean success = chain.handle(ctx, response);
+        if (!success) return;
 
-        if (!success) {
-            return;
-        }
-
-        // ✅ Set Spring Security context
+        // ✅ 4. SET SECURITY CONTEXT
         String email = ctx.getUser().getEmail();
         String role = ctx.getUser().getRole().name();
 
-        UsernamePasswordAuthenticationToken authentication =
+        SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         email,
                         null,
                         List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                );
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+                )
+        );
 
         filterChain.doFilter(request, response);
     }

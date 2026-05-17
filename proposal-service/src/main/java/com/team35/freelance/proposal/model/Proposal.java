@@ -25,11 +25,6 @@ public class Proposal implements Serializable {
     @Column(name = "job_id", nullable = false)
     private Long jobId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "job_id", insertable = false, updatable = false)
-    @JsonIgnore
-    private Job job;
-
     @Column(name = "freelancer_id", nullable = false)
     private Long freelancerId;
 
@@ -54,6 +49,11 @@ public class Proposal implements Serializable {
     private LocalDateTime submittedAt;
 
     private LocalDateTime acceptedAt;
+    /**
+     * Set by SagaFeedbackConsumer when contract.created event is received.
+     */
+    @Column(name = "contract_id")
+    private Long contractId;
 
     @OneToMany(mappedBy = "proposal", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
@@ -74,9 +74,6 @@ public class Proposal implements Serializable {
 
     public Long getJobId() { return jobId; }
     public void setJobId(Long jobId) { this.jobId = jobId; }
-
-    public Job getJob() { return job; }
-    public void setJob(Job job) { this.job = job; }
 
     public Long getFreelancerId() { return freelancerId; }
     public void setFreelancerId(Long freelancerId) { this.freelancerId = freelancerId; }
@@ -101,6 +98,8 @@ public class Proposal implements Serializable {
 
     public LocalDateTime getAcceptedAt() { return acceptedAt; }
     public void setAcceptedAt(LocalDateTime acceptedAt) { this.acceptedAt = acceptedAt; }
+    public Long getContractId() { return contractId; }
+    public void setContractId(Long contractId) { this.contractId = contractId; }
 
     public List<ProposalMilestone> getProposalMilestones() { return proposalMilestones; }
     public void setProposalMilestones(List<ProposalMilestone> proposalMilestones) { this.proposalMilestones = proposalMilestones; }
