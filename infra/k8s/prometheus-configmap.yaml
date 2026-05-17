@@ -41,7 +41,10 @@ data:
         static_configs:
           - targets:
               - wallet-service:8080
+            labels:
+              application: wallet-service
       - job_name: rabbitmq
+        metrics_path: /metrics
         static_configs:
           - targets:
               - rabbitmq:15692

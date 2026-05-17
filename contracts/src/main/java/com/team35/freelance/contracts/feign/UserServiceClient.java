@@ -9,13 +9,42 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 @FeignClient(name = "user-service", url = "${feign.user-service.url}")
 public interface UserServiceClient {
-
+    default UserProfileDTO getUserById(Long id) {
+        return getUserById(id, null, null);
+    }
     @GetMapping("/api/users/{id}")
-    UserProfileDTO getUserById(@PathVariable("id") Long id,
-                               @RequestHeader(value = "Authorization", required = false) String authorization);
+    UserProfileDTO getUserByIdInternal(@PathVariable("id") Long id,
+                                       @RequestHeader(value = "Authorization", required = false) String authorization,
+                                       @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId);
 
     @GetMapping("/api/users/{id}/contract-summary")
-    UserContractSummaryDTO getUserContractSummary(@PathVariable("id") Long id,
-                                                  @RequestHeader(value = "Authorization", required = false) String authorization);
-}
+    UserContractSummaryDTO getUserContractSummaryInternal(@PathVariable("id") Long id,
+                                                          @RequestHeader(value = "Authorization", required = false) String authorization,
+                                                          @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId);
 
+    default UserProfileDTO getUserById(Long id, String authorization) {
+        return getUserById(id, authorization, null);
+    }
+
+    default UserProfileDTO getUserById(Long id, String authorization, String correlationId) {
+        return FeignClientSupport.execute(
+                "user-service",
+                "getUserById",
+                () -> getUserByIdInternal(id, authorization, correlationId),
+                null
+        );
+    }
+
+    default UserContractSummaryDTO getUserContractSummary(Long id, String authorization) {
+        return getUserContractSummary(id, authorization, null);
+    }
+
+    default UserContractSummaryDTO getUserContractSummary(Long id, String authorization, String correlationId) {
+        return FeignClientSupport.execute(
+                "user-service",
+                "getUserContractSummary",
+                () -> getUserContractSummaryInternal(id, authorization, correlationId),
+                null
+        );
+    }
+}

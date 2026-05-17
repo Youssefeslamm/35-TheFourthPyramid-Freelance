@@ -314,3 +314,109 @@ data:
     }
     
 
+
+  wallet-service-dashboard.json: |
+    {
+      "title": "Wallet Service Dashboard",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "HTTP Request Rate - Wallet Service",
+          "description": "Requests per second by endpoint and method",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{job=\"wallet-service\"}[5m])) by (uri, method)",
+              "legendFormat": "{{method}} {{uri}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Error Rate",
+          "description": "Count of ERROR-level log lines per minute",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json | level=\"ERROR\" [1m]))",
+              "legendFormat": "Errors/min"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP Error Rate - Wallet Service",
+          "description": "4xx and 5xx responses per second by status and endpoint",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{job=\"wallet-service\", status=~\"4..|5..\"}[5m])) by (status, uri)",
+              "legendFormat": "{{status}} {{uri}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Feign Call Outcomes",
+          "description": "Successful vs failed calls to contract-service and job-service",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json |= \"contract-service\" or |= \"job-service\" [5m]))",
+              "legendFormat": "Feign calls"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP Latency P95 - Wallet Service",
+          "description": "P95 request latency by endpoint",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"wallet-service\"}[5m])) by (le, uri))",
+              "legendFormat": "P95 {{uri}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Average HTTP Latency - Wallet Service",
+          "description": "Average request duration by endpoint",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_sum{job=\"wallet-service\"}[5m])) by (uri) / sum(rate(http_server_requests_seconds_count{job=\"wallet-service\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "JVM Heap Usage - Wallet Service",
+          "description": "Heap memory currently used",
+          "targets": [
+            {
+              "expr": "jvm_memory_used_bytes{job=\"wallet-service\", area=\"heap\"}",
+              "legendFormat": "Heap Used"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Slow Operation Warnings",
+          "description": "Log lines matching Slow.* message pattern",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json | message =~ \"Slow.*\" [5m]))",
+              "legendFormat": "Slow ops"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 }
+        }
+      ]
+    }

@@ -36,8 +36,29 @@ public interface PayoutRepository extends JpaRepository<Payout, Long> {
 """, nativeQuery = true)
     List<Object[]> getFreelancerMethodBreakdown(@Param("freelancerId") Long freelancerId);
 
+    // ---------- S5-READ-DB: FREELANCER COMPLETED PAYOUT TOTAL IN DATE RANGE ----------
+    @Query(value = """
+        SELECT COALESCE(SUM(p.amount), 0)
+        FROM payouts p
+        WHERE p.freelancer_id = :freelancerId
+          AND p.status = 'COMPLETED'
+          AND p.created_at BETWEEN :startDate AND :endDate
+        """, nativeQuery = true)
+    Number sumCompletedPayoutTotalByFreelancerAndDateRange(
+            @Param("freelancerId") Long freelancerId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
     // ---------- EXISTING METHODS ----------
     Payout findByContractId(Long contractId);
+
+    Payout findFirstByContractIdAndStatusOrderByCreatedAtDesc(Long contractId, PayoutStatus status);
+
+    List<Payout> findByFreelancerIdAndStatusIn(
+            Long freelancerId,
+            List<PayoutStatus> statuses
+    );
 
     List<Payout> findByStatusOrderByCreatedAtDesc(PayoutStatus status);
 
@@ -84,5 +105,7 @@ public interface PayoutRepository extends JpaRepository<Payout, Long> {
             @Param("startDateTime") LocalDateTime startDateTime,
             @Param("endDateTime") LocalDateTime endDateTime
     );
+
+
 
 }
