@@ -13,9 +13,7 @@ import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.contracts.events.PaymentRefundedEvent;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -112,9 +110,6 @@ public class PaymentSagaConsumer {
 
         payout.setStatus(PayoutStatus.PENDING);
         payout.setMethod(PayoutMethod.BANK_TRANSFER);
-        Map<String, Object> transactionDetails = new HashMap<>();
-        transactionDetails.put("proposalId", event.proposalId());
-        payout.setTransactionDetails(transactionDetails);
 
         payout.setCreatedAt(LocalDateTime.now());
 

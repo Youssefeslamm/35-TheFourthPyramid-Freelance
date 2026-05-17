@@ -38,6 +38,9 @@ spring:
       port: ${SPRING_REDIS_PORT:6379}
       password: ${SPRING_REDIS_PASSWORD:redispass}
 
+  mongodb:
+    uri: ${SPRING_DATA_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin&serverSelectionTimeoutMS=1000&connectTimeoutMS=1000&socketTimeoutMS=1000}
+
 server:
   port: 8080
 
@@ -52,10 +55,14 @@ cache:
 feign:
   user-service:
     url: http://user-service:8080
-feign.job-service.url: http://job-service:8080
-feign.proposal-service.url: http://proposal-service:8080
-feign.contract-service.url: http://contract-service:8080
-feign.wallet-service.url: http://wallet-service:8080
+  job-service:
+    url: http://job-service:8080
+  proposal-service:
+    url: http://proposal-service:8080
+  contract-service:
+    url: http://contract-service:8080
+  wallet-service:
+    url: http://wallet-service:8080
 
 management:
   server:

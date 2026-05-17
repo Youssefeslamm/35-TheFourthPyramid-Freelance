@@ -15,6 +15,8 @@ import com.team35.freelance.wallet.dto.RefundRequest;
 import com.team35.freelance.wallet.dto.RevenueReportDTO;
 import com.team35.freelance.wallet.dto.PayoutMethodDTO;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -26,6 +28,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/payouts")
 public class PayoutController {
+
+    private static final Logger log = LoggerFactory.getLogger(PayoutController.class);
 
     private final PayoutService payoutService;
     private final PayoutPromoService payoutPromoService;
@@ -176,11 +180,13 @@ public class PayoutController {
     @PostMapping("/contract/{contractId}")
     public ResponseEntity<Payout> processContractPayout(
             @PathVariable Long contractId,
+            @RequestParam(name = "simulateFailure", defaultValue = "false") boolean simulateFailure,
             @RequestBody ProcessPayoutRequest request,
             @RequestHeader("X-User-Id") Long callerId,
             @RequestHeader("X-User-Role") String callerRole
     ) {
-        Payout payout = payoutService.processContractPayout(contractId, request, callerId, callerRole);
+        log.info("simulateFailure received = {}", simulateFailure);
+        Payout payout = payoutService.processContractPayout(contractId, request, callerId, callerRole, simulateFailure);
 
         if (payout.getStatus() == PayoutStatus.COMPLETED || payout.getStatus() == PayoutStatus.FAILED) {
             return ResponseEntity.ok(payout);
