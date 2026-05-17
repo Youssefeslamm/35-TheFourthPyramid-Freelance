@@ -7,13 +7,13 @@ public class ContractMilestoneDTO {
     private Instant timestamp;
     private Integer milestoneOrder;
     private String status;
-    private String recordedBy;
+    private Long recordedBy;
     private String notes;
 
     public ContractMilestoneDTO() {
     }
 
-    public ContractMilestoneDTO(Instant timestamp, Integer milestoneOrder, String status, String recordedBy, String notes) {
+    public ContractMilestoneDTO(Instant timestamp, Integer milestoneOrder, String status, Long recordedBy, String notes) {
         this.timestamp = timestamp;
         this.milestoneOrder = milestoneOrder;
         this.status = status;
@@ -45,11 +45,11 @@ public class ContractMilestoneDTO {
         this.status = status;
     }
 
-    public String getRecordedBy() {
+    public Long getRecordedBy() {
         return recordedBy;
     }
 
-    public void setRecordedBy(String recordedBy) {
+    public void setRecordedBy(Long recordedBy) {
         this.recordedBy = recordedBy;
     }
 

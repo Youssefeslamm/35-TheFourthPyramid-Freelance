@@ -53,7 +53,7 @@ public class PayoutController {
     }
 
     // -------- S5-F10: PLATFORM FEE ANALYTICS BY CATEGORY --------
-    @GetMapping("/analytics/category")
+    @GetMapping({"/analytics/category", "/analytics/categories", "/analytics/category-revenue"})
     public ResponseEntity<List<CategoryRevenueDTO>> getCategoryRevenueAnalytics(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -181,10 +181,14 @@ public class PayoutController {
     public ResponseEntity<Payout> processContractPayout(
             @PathVariable Long contractId,
             @RequestParam(name = "simulateFailure", defaultValue = "false") boolean simulateFailure,
-            @RequestBody ProcessPayoutRequest request,
-            @RequestHeader("X-User-Id") Long callerId,
-            @RequestHeader("X-User-Role") String callerRole
+            @RequestBody(required = false) ProcessPayoutRequest request,
+            @RequestHeader(value = "X-User-Id", required = false) Long callerId,
+            @RequestHeader(value = "X-User-Role", required = false) String callerRole
     ) {
+        if (request == null) {
+            request = new ProcessPayoutRequest();
+        }
+        request.setSimulateFailure(simulateFailure || Boolean.TRUE.equals(request.getSimulateFailure()));
         log.info("simulateFailure received = {}", simulateFailure);
         Payout payout = payoutService.processContractPayout(contractId, request, callerId, callerRole, simulateFailure);
 
@@ -193,6 +197,14 @@ public class PayoutController {
         }
 
         return ResponseEntity.status(201).body(payout);
+    }
+
+    @PostMapping("/{id}/process")
+    public ResponseEntity<Payout> processPayout(
+            @PathVariable Long id,
+            @RequestBody ProcessPayoutRequest request
+    ) {
+        return ResponseEntity.ok(payoutService.processPayout(id, request));
     }
 
 
@@ -214,7 +226,7 @@ public class PayoutController {
         );
     }
     // S5-F11
-    @GetMapping("/analytics/methods")
+    @GetMapping({"/analytics/methods", "/analytics/method-breakdown", "/analytics/payment-methods"})
     public ResponseEntity<List<PayoutMethodDTO>> getPayoutMethodBreakdown(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {

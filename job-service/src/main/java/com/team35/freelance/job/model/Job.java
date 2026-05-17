@@ -12,6 +12,7 @@ import org.hibernate.type.SqlTypes;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -37,6 +38,7 @@ public class Job implements Serializable {
     private Long clientId;
 
     @Column(nullable = false)
+    @JsonAlias("name")
     private String title;
 
     @Column(nullable = false, columnDefinition = "TEXT")
@@ -110,8 +112,17 @@ public class Job implements Serializable {
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
 
+    public String getName() { return title; }
+    public void setName(String name) { this.title = name; }
+
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public void setDetails(Map<String, Object> details) {
+        if (details != null && details.get("description") != null) {
+            this.description = String.valueOf(details.get("description"));
+        }
+    }
 
     public JobCategory getCategory() { return category; }
     public void setCategory(JobCategory category) { this.category = category; }

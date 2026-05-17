@@ -2,6 +2,7 @@ package com.team35.freelance.job.service;
 
 import feign.FeignException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.data.elasticsearch.core.query.StringQuery;
 import org.springframework.http.HttpEntity;
@@ -53,8 +55,6 @@ import com.team35.freelance.job.messaging.publisher.JobEventPublisher;
 import com.team35.freelance.contracts.events.JobClosedEvent;
 import com.team35.freelance.contracts.events.JobRatedEvent;
 import com.team35.freelance.contracts.events.JobStatusChangedEvent;
-import com.team35.freelance.contracts.feign.ProposalServiceClient;
-import com.team35.freelance.contracts.feign.ContractServiceClient;
 
 @Service
 public class JobService {
@@ -320,8 +320,8 @@ public class JobService {
         notifyObservers("JOB_DELETED", payload);
     }
 
-    @Cacheable(value = "job-service::S2-F1", key = "#status + ':' + #minBudget + ':' + #maxBudget")
-    public List<Job> searchJobs(String status, Double minBudget, Double maxBudget) {
+    public List<Job> searchJobs(String query, String status, Double minBudget, Double maxBudget) {
+        JobStatus statusFilter = parseStatus(status);
         if (minBudget != null && maxBudget != null && minBudget > maxBudget) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -329,7 +329,11 @@ public class JobService {
             );
         }
 
-        return jobRepository.searchJobs(status, minBudget, maxBudget);
+        return jobRepository.searchJobs(
+                query == null || query.isBlank() ? null : query.trim(),
+                statusFilter == null ? null : statusFilter.name(),
+                minBudget,
+                maxBudget);
     }
 
     @Cacheable(
@@ -533,6 +537,10 @@ public class JobService {
     private void saveJobDocumentDirectly(Job job) {
         createJobsIndexDirectly();
 
+        JobSearchDocument searchDocument = toSearchDocument(job);
+        elasticsearchOperations.save(searchDocument, IndexCoordinates.of("jobs"));
+        elasticsearchOperations.indexOps(IndexCoordinates.of("jobs")).refresh();
+
         Map<String, Object> document = new HashMap<>();
         document.put("id", job.getId());
         document.put("title", job.getTitle());
@@ -555,6 +563,22 @@ public class JobService {
                 new HttpEntity<>(document, headers),
                 String.class
         );
+    }
+
+    private LocalDateTime parseSummaryDate(String value, boolean startOfDay) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date range is required");
+        }
+        try {
+            return LocalDateTime.parse(value.trim());
+        } catch (Exception ignored) {
+            try {
+                LocalDate date = LocalDate.parse(value.trim());
+                return startOfDay ? date.atStartOfDay() : date.atTime(23, 59, 59, 999_000_000);
+            } catch (Exception ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid date format");
+            }
+        }
     }
 
     private String getRootCauseMessage(Exception ex) {
@@ -906,6 +930,10 @@ public class JobService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status must be CLOSED");
         }
 
+        if (job.getStatus() == JobStatus.CLOSED) {
+            return job;
+        }
+
         Integer activeContractCount;
 
         try {
@@ -957,11 +985,15 @@ public class JobService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "value is required");
         }
 
-        return jobRepository.findByRequirementAndOptionalStatus(
+        List<Job> jobs = jobRepository.findByRequirementAndOptionalStatus(
                 key.trim(),
                 value.trim(),
                 status
         );
+        if (jobs.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No jobs found for requirement");
+        }
+        return jobs;
     }
 
     @Cacheable(value = "job-service::S2-F6", key = "#limit")

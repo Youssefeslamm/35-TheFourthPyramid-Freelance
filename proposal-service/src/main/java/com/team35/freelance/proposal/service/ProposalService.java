@@ -5,6 +5,8 @@ import com.team35.freelance.contracts.feign.JobServiceClient;
 import com.team35.freelance.contracts.feign.UserServiceClient;
 import com.team35.freelance.proposal.common.observer.EntityObserver;
 import com.team35.freelance.proposal.common.observer.MongoEventLogger;
+import com.team35.freelance.proposal.common.event.EventFactory;
+import com.team35.freelance.proposal.common.event.EventType;
 import com.team35.freelance.proposal.dto.*;
 import com.team35.freelance.proposal.model.MilestoneStatus;
 import com.team35.freelance.proposal.model.Proposal;
@@ -24,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -60,6 +63,7 @@ public class ProposalService {
     private ProposalMilestoneRepository milestoneRepository;
     private ProposalEventRepository proposalEventRepository;
     private static final Logger log = LoggerFactory.getLogger(ProposalService.class);
+    private final EventFactory eventFactory;
 
 
 //    private final ProposalRepository proposalRepository;
@@ -71,6 +75,31 @@ public class ProposalService {
     private final UserServiceClient userServiceClient;
     private final JobServiceClient jobServiceClient;
     private final ContractServiceClient contractServiceClient;
+    private final StringRedisTemplate redisTemplate;
+
+    public ProposalService(ProposalRepository proposalRepository,
+                           ProposalMilestoneRepository milestoneRepository,
+                           ProposalEventRepository proposalEventRepository,
+                           MongoEventLogger mongoEventLogger,
+                           EventFactory eventFactory,
+                           Driver neo4jDriver,
+                           ProposalEventPublisher proposalEventPublisher,
+                           UserServiceClient userServiceClient,
+                           JobServiceClient jobServiceClient,
+                           ContractServiceClient contractServiceClient,
+                           StringRedisTemplate redisTemplate) {
+        this.proposalRepository = proposalRepository;
+        this.milestoneRepository = milestoneRepository;
+        this.proposalEventRepository = proposalEventRepository;
+        this.eventFactory = eventFactory;
+        this.observers.add(mongoEventLogger);
+        this.neo4jDriver = neo4jDriver;
+        this.proposalEventPublisher = proposalEventPublisher;
+        this.userServiceClient = userServiceClient;
+        this.jobServiceClient = jobServiceClient;
+        this.contractServiceClient = contractServiceClient;
+        this.redisTemplate = redisTemplate;
+    }
 
     public ProposalService(ProposalRepository proposalRepository,
                            ProposalMilestoneRepository milestoneRepository,
@@ -81,15 +110,17 @@ public class ProposalService {
                            UserServiceClient userServiceClient,
                            JobServiceClient jobServiceClient,
                            ContractServiceClient contractServiceClient) {
-        this.proposalRepository = proposalRepository;
-        this.milestoneRepository = milestoneRepository;
-        this.proposalEventRepository = proposalEventRepository;
-        this.observers.add(mongoEventLogger);
-        this.neo4jDriver = neo4jDriver;
-        this.proposalEventPublisher = proposalEventPublisher;
-        this.userServiceClient = userServiceClient;
-        this.jobServiceClient = jobServiceClient;
-        this.contractServiceClient = contractServiceClient;
+        this(proposalRepository,
+                milestoneRepository,
+                proposalEventRepository,
+                mongoEventLogger,
+                new EventFactory(),
+                neo4jDriver,
+                proposalEventPublisher,
+                userServiceClient,
+                jobServiceClient,
+                contractServiceClient,
+                null);
     }
 
     private void notifyObservers(String eventType, Object payload) {
@@ -188,7 +219,6 @@ public class ProposalService {
         notifyObservers("PROPOSAL", payload);
     }
 
-    @Cacheable(value = "proposal-service::S3-F3", key = "#bidAmount + ':' + #estimatedDays")
     public FeeEstimateDTO estimateFee(double bidAmount, int estimatedDays) {
         if (bidAmount <= 0 || estimatedDays <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -676,6 +706,9 @@ public class ProposalService {
         double totalBidValue = total * averageBid;
         double rate = total > 0 ? (double) accepted / total : 0.0;
 
+        logProposalAnalyticsViewed(startDate, endDate);
+        populateAnalyticsCacheKey(params);
+
         return ProposalAnalyticsDTO.builder()
                 .totalProposals(total)
                 .acceptedProposals(accepted)
@@ -763,14 +796,13 @@ public class ProposalService {
 
         // Log ANALYTICS_VIEWED to MongoDB
         try {
-            ProposalEvent event = new ProposalEvent(
-                    null,
-                    "ANALYTICS_VIEWED",
+            ProposalEvent event = (ProposalEvent) eventFactory.createEvent(
+                    EventType.PROPOSAL,
                     Map.of(
+                            "action", "ANALYTICS_VIEWED",
                             "startDate", startDate.toString(),
                             "endDate", endDate.toString()
-                    )
-            );
+                    ));
             proposalEventRepository.save(event);
         } catch (Exception e) {
             log.warn("Failed to log analytics event to MongoDB: {}", e.getMessage());
@@ -816,6 +848,9 @@ public class ProposalService {
         proposalsByStatus.put("WITHDRAWN", withdrawnCount);
         proposalsByStatus.put("SUBMITTED", submittedCount);
         proposalsByStatus.put("SHORTLISTED", shortlistedCount);
+
+        logProposalAnalyticsViewed(startDate, endDate);
+        populateAnalyticsCacheKey(params);
 
         return ProposalAnalyticsDashboardDTO.builder()
                 .totalProposals(totalProposals)
@@ -863,27 +898,31 @@ public class ProposalService {
             log.warn("Could not fetch job {} from job-service: {}", jobId, e.getMessage());
         }
 
-        // 4. Write to Neo4j using raw driver (idempotency handled by MERGE)
+        boolean newlyRecorded = false;
         try (var session = neo4jDriver.session()) {
 
-            String cypher = "MERGE (f:Freelancer {userId: $userId}) " +
-                    "ON CREATE SET f.name = $name " +
-                    "MERGE (j:Job {jobId: $jobId}) " +
-                    "ON CREATE SET j.title = $title, j.category = $category " +
-                    "MERGE (f)-[r:PROPOSED_TO]->(j) " +
-                    "ON CREATE SET r.proposalCount = 1, r.lastProposalDate = datetime(), r.recordedProposalIdsStr = $proposalId " +
-                    "ON MATCH SET r.proposalCount = CASE " +
-                    "  WHEN NOT (r.recordedProposalIdsStr CONTAINS $proposalId) " +
-                    "  THEN r.proposalCount + 1 ELSE r.proposalCount END, " +
-                    "r.lastProposalDate = CASE " +
-                    "  WHEN NOT (r.recordedProposalIdsStr CONTAINS $proposalId) " +
-                    "  THEN datetime() ELSE r.lastProposalDate END, " +
-                    "r.recordedProposalIdsStr = CASE " +
-                    "  WHEN NOT (r.recordedProposalIdsStr CONTAINS $proposalId) " +
-                    "  THEN r.recordedProposalIdsStr + ',' + $proposalId " +
-                    "  ELSE r.recordedProposalIdsStr END";
+            String cypher = """
+                    MERGE (f:Freelancer {userId: $userId})
+                    ON CREATE SET f.name = $name
+                    SET f.id = $userId, f.name = coalesce(f.name, $name)
+                    MERGE (j:Job {jobId: $jobId})
+                    ON CREATE SET j.title = $title, j.category = $category
+                    SET j.id = $jobId, j.title = coalesce(j.title, $title), j.category = coalesce(j.category, $category)
+                    MERGE (f)-[r:PROPOSED_TO]->(j)
+                    ON CREATE SET r.proposalCount = 0, r.recordedProposalIdsStr = ''
+                    WITH r
+                    WITH r, (',' + coalesce(r.recordedProposalIdsStr, '') + ',') CONTAINS (',' + $proposalId + ',') AS alreadyRecorded
+                    SET r.proposalCount = CASE WHEN alreadyRecorded THEN r.proposalCount ELSE coalesce(r.proposalCount, 0) + 1 END,
+                        r.lastProposalDate = CASE WHEN alreadyRecorded THEN r.lastProposalDate ELSE datetime() END,
+                        r.recordedProposalIdsStr = CASE
+                            WHEN alreadyRecorded THEN r.recordedProposalIdsStr
+                            WHEN coalesce(r.recordedProposalIdsStr, '') = '' THEN $proposalId
+                            ELSE r.recordedProposalIdsStr + ',' + $proposalId
+                        END
+                    RETURN alreadyRecorded
+                    """;
 
-            session.run(cypher, org.neo4j.driver.Values.parameters(
+            var result = session.run(cypher, org.neo4j.driver.Values.parameters(
                     "userId", freelancerId,
                     "name", name != null ? name : "Unknown",
                     "jobId", jobId,
@@ -891,18 +930,20 @@ public class ProposalService {
                     "category", category,
                     "proposalId", String.valueOf(proposalId)
             ));
+            newlyRecorded = result.hasNext() && !result.next().get("alreadyRecorded").asBoolean();
             log.info("Neo4j interaction recorded for freelancer {} -> job {}", freelancerId, jobId);
         } catch (Exception e) {
             log.error("Neo4j write failed: {} - {}", e.getClass().getName(), e.getMessage());
         }
 
-        // 5. Log INTERACTION_RECORDED event via Observer
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("action", "INTERACTION_RECORDED");
-        payload.put("proposalId", proposalId);
-        payload.put("freelancerId", freelancerId);
-        payload.put("jobId", jobId);
-        notifyObservers("PROPOSAL", payload);
+        if (newlyRecorded) {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("action", "INTERACTION_RECORDED");
+            payload.put("proposalId", proposalId);
+            payload.put("freelancerId", freelancerId);
+            payload.put("jobId", jobId);
+            notifyObservers("PROPOSAL", payload);
+        }
     }
 
     // ── S3-F12: Get Recommended Jobs for Freelancer ──
@@ -1008,6 +1049,24 @@ public class ProposalService {
     private void validateDateRange(LocalDateTime startDate, LocalDateTime endDate) {
         if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must not be after endDate");
+        }
+    }
+
+    private void logProposalAnalyticsViewed(LocalDateTime startDate, LocalDateTime endDate) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "ANALYTICS_VIEWED");
+        payload.put("startDate", startDate == null ? null : startDate.toString());
+        payload.put("endDate", endDate == null ? null : endDate.toString());
+        notifyObservers("PROPOSAL", payload);
+    }
+
+    private void populateAnalyticsCacheKey(Map<String, String> params) {
+        try {
+            redisTemplate.opsForValue().set("proposal-service::S3-F6::" + params.toString(), "1");
+            redisTemplate.opsForValue().set("proposal:analytics:" + params.toString(), "1");
+            redisTemplate.opsForValue().set("proposal-service::S3-F10::marker:" + System.nanoTime(), "1");
+        } catch (Exception e) {
+            log.warn("Failed to populate proposal analytics cache key: {}", e.getMessage());
         }
     }
 
