@@ -6,7 +6,7 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @EnableCaching
-@EnableFeignClients
+@EnableFeignClients(basePackages = "com.team35")
 @SpringBootApplication
 public class UserServiceApplication {
 

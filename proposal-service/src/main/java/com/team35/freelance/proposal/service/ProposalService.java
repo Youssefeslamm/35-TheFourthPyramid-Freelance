@@ -314,23 +314,34 @@ public class ProposalService {
             "proposal-service::S3-F9"
     }, allEntries = true)
     public Proposal acceptProposal(Long proposalId) {
+        log.info("===== S3-F2: acceptProposal START for proposalId={}", proposalId);
         Proposal proposal = getById(proposalId);
+        log.debug("Loaded proposal: id={}, status={}, freelancerId={}, jobId={}", 
+                proposal.getId(), proposal.getStatus(), proposal.getFreelancerId(), proposal.getJobId());
 
         if (proposal.getStatus() != ProposalStatus.SUBMITTED &&
                 proposal.getStatus() != ProposalStatus.SHORTLISTED) {
+            log.warn("Cannot accept proposal: invalid status. proposalId={}, currentStatus={}", proposalId, proposal.getStatus());
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Proposal must be SUBMITTED or SHORTLISTED to be accepted");
         }
 
         UserProfileDTO freelancer;
         try {
+            log.debug("Fetching freelancer details from user-service. freelancerId={}", proposal.getFreelancerId());
             freelancer = userServiceClient.getUserById(proposal.getFreelancerId(), null);
+            log.debug("Successfully fetched freelancer: id={}, name={}, role={}, status={}", 
+                    freelancer.getUserId(), freelancer.getName(), freelancer.getRole(), freelancer.getStatus());
         } catch (FeignException.NotFound e) {
+            log.error("Freelancer not found in user-service. freelancerId={}, error={}", 
+                    proposal.getFreelancerId(), e.getMessage());
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "Freelancer not found: " + proposal.getFreelancerId()
             );
         } catch (FeignException e) {
+            log.error("User service call failed. freelancerId={}, error={}, status={}", 
+                    proposal.getFreelancerId(), e.getMessage(), e.status(), e);
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
                     "User service temporarily unavailable"
@@ -339,6 +350,8 @@ public class ProposalService {
 
         if (freelancer.getRole() == null ||
                 !"FREELANCER".equalsIgnoreCase(freelancer.getRole())) {
+            log.warn("Freelancer does not have FREELANCER role. freelancerId={}, role={}", 
+                    proposal.getFreelancerId(), freelancer.getRole());
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Proposal freelancer must have FREELANCER role"
@@ -349,8 +362,12 @@ public class ProposalService {
         proposal.setAcceptedAt(LocalDateTime.now());
 
         Proposal saved = proposalRepository.save(proposal);
+        log.info("Proposal accepted and saved. proposalId={}, status={}, acceptedAt={}", 
+                saved.getId(), saved.getStatus(), saved.getAcceptedAt());
 
-         try {
+        try {
+            log.debug("Publishing proposal.accepted event. proposalId={}, jobId={}, freelancerId={}, bidAmount={}", 
+                    saved.getId(), saved.getJobId(), saved.getFreelancerId(), saved.getBidAmount());
             proposalEventPublisher.publishAccepted(
                     new ProposalAcceptedEvent(
                             saved.getId(),
@@ -359,8 +376,10 @@ public class ProposalService {
                             BigDecimal.valueOf(saved.getBidAmount())
                     )
             );
+            log.info("Successfully published proposal.accepted event. proposalId={}", saved.getId());
         } catch (Exception e) {
-            log.error("Failed to publish proposal.accepted for proposalId={}: {}", saved.getId(), e.getMessage());
+            log.error("Failed to publish proposal.accepted for proposalId={}: {}", saved.getId(), e.getMessage(), e);
+            // Note: We don't re-throw here because proposal is already saved. The event publishing should be retried.
         }
 
         Map<String, Object> payload = new HashMap<>();
@@ -368,6 +387,7 @@ public class ProposalService {
         payload.put("proposalId", saved.getId());
 
         notifyObservers("PROPOSAL", payload);
+        log.info("===== S3-F2: acceptProposal END. Success for proposalId={}", proposalId);
 
         return saved;
     }
@@ -383,9 +403,14 @@ public class ProposalService {
             "proposal-service::S3-F9"
     }, allEntries = true)
     public Proposal completeProposal(Long proposalId, Long callerUserId, String callerRole) {
+        log.info("===== S3-F4: completeProposal START for proposalId={}, callerUserId={}, callerRole={}", 
+                proposalId, callerUserId, callerRole);
         Proposal proposal = getById(proposalId);
+        log.debug("Loaded proposal: id={}, status={}, freelancerId={}, jobId={}", 
+                proposal.getId(), proposal.getStatus(), proposal.getFreelancerId(), proposal.getJobId());
 
         if (proposal.getStatus() != ProposalStatus.ACCEPTED) {
+            log.warn("Cannot complete proposal: not ACCEPTED. proposalId={}, currentStatus={}", proposalId, proposal.getStatus());
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Proposal must be ACCEPTED to be completed"
@@ -395,8 +420,11 @@ public class ProposalService {
         boolean isAdmin = callerRole != null && "ADMIN".equalsIgnoreCase(callerRole);
         boolean isProposalFreelancer = callerUserId != null &&
                 callerUserId.equals(proposal.getFreelancerId());
+        log.debug("Authorization check: isAdmin={}, isProposalFreelancer={}", isAdmin, isProposalFreelancer);
 
         if (!isAdmin && !isProposalFreelancer) {
+            log.warn("Unauthorized attempt to complete proposal. proposalId={}, callerUserId={}, callerRole={}", 
+                    proposalId, callerUserId, callerRole);
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "Only the proposal's freelancer or an ADMIN can complete this proposal"
@@ -404,21 +432,27 @@ public class ProposalService {
         }
 
         // Pre-check 1: job must exist and must not be CLOSED.
+        log.debug("Pre-check 1: Validating job. jobId={}", proposal.getJobId());
         try {
             JobDTO job = jobServiceClient.getJobById(proposal.getJobId());
+            log.debug("Job fetched: id={}, status={}, title={}", job.getId(), job.getStatus(), job.getTitle());
 
             if (job.getStatus() != null && "CLOSED".equalsIgnoreCase(job.getStatus())) {
+                log.warn("Cannot complete: job is already CLOSED. jobId={}", proposal.getJobId());
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
                         "Cannot complete proposal because job is already CLOSED"
                 );
             }
         } catch (FeignException.NotFound e) {
+            log.error("Job not found in job-service. jobId={}", proposal.getJobId());
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Job not found: " + proposal.getJobId()
             );
         } catch (FeignException e) {
+            log.error("Job service call failed. jobId={}, error={}, status={}", 
+                    proposal.getJobId(), e.getMessage(), e.status());
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
                     "Job service temporarily unavailable"
@@ -426,15 +460,20 @@ public class ProposalService {
         }
 
         // Pre-check 2: freelancer must exist and must be ACTIVE.
+        log.debug("Pre-check 2: Validating freelancer. freelancerId={}", proposal.getFreelancerId());
         UserProfileDTO freelancer;
         try {
             freelancer = userServiceClient.getUserById(proposal.getFreelancerId(), null);
+            log.debug("Freelancer fetched: id={}, status={}, role={}", freelancer.getUserId(), freelancer.getStatus(), freelancer.getRole());
         } catch (FeignException.NotFound e) {
+            log.error("Freelancer not found in user-service. freelancerId={}", proposal.getFreelancerId());
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Freelancer not found: " + proposal.getFreelancerId()
             );
         } catch (FeignException e) {
+            log.error("User service call failed. freelancerId={}, error={}, status={}", 
+                    proposal.getFreelancerId(), e.getMessage(), e.status());
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
                     "User service temporarily unavailable"
@@ -444,6 +483,8 @@ public class ProposalService {
         if (freelancer == null ||
                 freelancer.getStatus() == null ||
                 !"ACTIVE".equalsIgnoreCase(freelancer.getStatus())) {
+            log.warn("Freelancer is not ACTIVE. freelancerId={}, status={}", 
+                    proposal.getFreelancerId(), freelancer != null ? freelancer.getStatus() : "null");
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Cannot complete proposal because freelancer is not ACTIVE"
@@ -451,15 +492,23 @@ public class ProposalService {
         }
 
         // Pre-check 3: active contract must exist for this proposal.
+        log.debug("Pre-check 3: Validating active contract. proposalId={}", proposalId);
         ContractDTO activeContract;
         try {
             activeContract = contractServiceClient.getActiveContractForProposal(proposalId);
+            log.debug("Active contract fetched: id={}, status={}, agreedAmount={}", 
+                    activeContract != null ? activeContract.getId() : "null", 
+                    activeContract != null ? activeContract.getStatus() : "null",
+                    activeContract != null ? activeContract.getAgreedAmount() : "null");
         } catch (FeignException.NotFound e) {
+            log.error("No active contract found for proposal. proposalId={}", proposalId);
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "No active contract found for this proposal"
             );
         } catch (FeignException e) {
+            log.error("Contract service call failed. proposalId={}, error={}, status={}", 
+                    proposalId, e.getMessage(), e.status());
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
                     "Contract service temporarily unavailable"
@@ -467,6 +516,7 @@ public class ProposalService {
         }
 
         if (activeContract == null || activeContract.getId() == null) {
+            log.error("Active contract is null or missing id. proposalId={}", proposalId);
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "No active contract found for this proposal"
@@ -481,8 +531,12 @@ public class ProposalService {
         proposal.setStatus(ProposalStatus.COMPLETING);
 
         Proposal saved = proposalRepository.save(proposal);
+        log.info("Proposal marked as COMPLETING. proposalId={}, contractId={}, status={}", 
+                saved.getId(), saved.getContractId(), saved.getStatus());
 
         try {
+            log.debug("Publishing proposal.completed event. proposalId={}, contractId={}, agreedAmount={}", 
+                    saved.getId(), activeContract.getId(), agreedAmount);
             proposalEventPublisher.publishCompleted(
                     new ProposalCompletedEvent(
                             saved.getId(),
@@ -492,9 +546,10 @@ public class ProposalService {
                             agreedAmount
                     )
             );
+            log.info("Successfully published proposal.completed event. proposalId={}", saved.getId());
         } catch (Exception e) {
-            log.error("Failed to publish proposal.completed for proposalId={}: {}",
-                    saved.getId(), e.getMessage());
+            log.error("Failed to publish proposal.completed for proposalId={}: {}", 
+                    saved.getId(), e.getMessage(), e);
         }
 
         Map<String, Object> payload = new HashMap<>();
