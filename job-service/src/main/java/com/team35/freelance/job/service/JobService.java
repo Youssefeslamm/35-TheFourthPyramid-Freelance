@@ -7,7 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
+import com.team35.freelance.contracts.feign.ContractServiceClient;
+import com.team35.freelance.contracts.feign.ProposalServiceClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -80,6 +81,7 @@ public class JobService {
     private final JobDashboardCacheService jobDashboardCacheService;
     private final RestTemplate elasticsearchRestTemplate = new RestTemplate();
     private final JobEventPublisher jobEventPublisher;
+
     private final ProposalServiceClient proposalServiceClient;
     private final ContractServiceClient contractServiceClient;
 
@@ -93,6 +95,9 @@ public class JobService {
                       MongoEventLogger mongoEventLogger,
                       JobDashboardCacheService jobDashboardCacheService,
                       JobEventPublisher jobEventPublisher,
+
+                       
+
                       ProposalServiceClient proposalServiceClient,
                       ContractServiceClient contractServiceClient) {
 
@@ -102,8 +107,10 @@ public class JobService {
         this.elasticsearchHitAdapter = elasticsearchHitAdapter;
         this.jobDashboardCacheService = jobDashboardCacheService;
         this.jobEventPublisher = jobEventPublisher;
+
         this.proposalServiceClient = proposalServiceClient;
         this.contractServiceClient = contractServiceClient;
+
 
         this.observers.add(mongoEventLogger);
     }
