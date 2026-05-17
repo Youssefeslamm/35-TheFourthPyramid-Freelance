@@ -30,6 +30,7 @@ data:
         }
       ]
     }
+
   proposal-dashboard.json: |
     {
       "title": "Proposal Service Dashboard",
@@ -115,6 +116,7 @@ data:
         }
       ]
     }
+
   user-service-dashboard.json: |
     {
       "title": "User Service Dashboard",
@@ -157,6 +159,7 @@ data:
         }
       ]
     }
+
   wallet-service-dashboard.json: |
     {
       "title": "Wallet Service Dashboard",
@@ -178,6 +181,18 @@ data:
         },
         {
           "type": "timeseries",
+          "title": "Error Rate",
+          "description": "Count of ERROR-level log lines per minute",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json | level=\"ERROR\" [1m]))",
+              "legendFormat": "Errors/min"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
           "title": "HTTP Error Rate - Wallet Service",
           "description": "4xx and 5xx responses per second by status and endpoint",
           "targets": [
@@ -186,7 +201,19 @@ data:
               "legendFormat": "{{status}} {{uri}}"
             }
           ],
-          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Feign Call Outcomes",
+          "description": "Successful vs failed calls to contract-service and job-service",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json |= \"contract-service\" or |= \"job-service\" [5m]))",
+              "legendFormat": "Feign calls"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 }
         },
         {
           "type": "timeseries",
@@ -198,7 +225,7 @@ data:
               "legendFormat": "P95 {{uri}}"
             }
           ],
-          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
+          "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 }
         },
         {
           "type": "timeseries",
@@ -210,7 +237,7 @@ data:
               "legendFormat": "{{uri}}"
             }
           ],
-          "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 }
+          "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 }
         },
         {
           "type": "timeseries",
@@ -222,7 +249,19 @@ data:
               "legendFormat": "Heap Used"
             }
           ],
-          "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 }
+          "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Slow Operation Warnings",
+          "description": "Log lines matching Slow.* message pattern",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json | message =~ \"Slow.*\" [5m]))",
+              "legendFormat": "Slow ops"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 }
         }
       ]
     }

@@ -219,19 +219,62 @@ services:
       timeout: 5s
       retries: 5
 
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: freelance-loki
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "3100:3100"
+    volumes:
+      - ./infra/docker/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
     healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3100/ready || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 20s
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: freelance-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./infra/docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/k8s/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  wallet-postgres:
+    image: postgres:17
+    container_name: wallet-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: freelancedb-wallet
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./wallet-service/docker/postgres/init-wallet.sql:/docker-entrypoint-initdb.d/init-wallet.sql:ro
+      - wallet-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d freelancedb-wallet"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
   redis:
     image: redis:latest
@@ -413,16 +456,19 @@ services:
     ports:
       - "8085:8080"
     depends_on:
-      postgres:
+      wallet-postgres:
         condition: service_healthy
       mongo:
         condition: service_started
       redis:
         condition: service_started
+      loki:
+        condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/freelancedb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://wallet-postgres:5432/freelancedb-wallet
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATA_MONGODB_URI: mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000
@@ -430,6 +476,8 @@ services:
 
 volumes:
   pgdata:
+  wallet-pgdata:
+  loki-data:
   mongo-data:
   es-data:
   neo4j-data:

@@ -15,4 +15,3 @@ public interface WalletServiceClient {
     @GetMapping("/api/payouts/freelancer/{freelancerId}/summary")
     FreelancerPayoutSummaryDTO getFreelancerSummary(@PathVariable("freelancerId") Long freelancerId);
 }
-

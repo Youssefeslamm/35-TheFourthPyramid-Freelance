@@ -22,7 +22,8 @@ public class CacheConfig {
                 "wallet-service::S5-F8",
                 "wallet-service::S5-F9",
                 "wallet-service::S5-F10",
-                "wallet-service::S5-F11"
+                "wallet-service::S5-F11",
+                "wallet-service::S5-READ-DB"
         );
     }
 }

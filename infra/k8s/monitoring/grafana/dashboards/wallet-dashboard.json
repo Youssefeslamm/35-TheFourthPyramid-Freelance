@@ -1,0 +1,44 @@
+{
+  "title": "Wallet Service Dashboard",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Error Rate",
+      "description": "Count of ERROR-level log lines per minute",
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json | level=\"ERROR\" [1m]))",
+          "legendFormat": "Errors/min"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Feign Call Outcomes",
+      "description": "Successful vs failed calls to contract-service and job-service",
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json |= \"contract-service\" or |= \"job-service\" [5m]))",
+          "legendFormat": "Feign calls"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Slow Operation Warnings",
+      "description": "Log lines matching Slow.* message pattern",
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=\"freelance\", service=\"wallet-service\"} | json | message =~ \"Slow.*\" [5m]))",
+          "legendFormat": "Slow ops"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 }
+    }
+  ]
+}
