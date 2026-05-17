@@ -3,11 +3,13 @@ package com.team35.freelance.proposal.messaging.consumer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.team35.freelance.contracts.events.ContractCreatedEvent;
 import com.team35.freelance.contracts.events.ContractStatusChangedEvent;
+import com.team35.freelance.contracts.events.JobClosedEvent;
 import com.team35.freelance.contracts.events.PaymentCompletedEvent;
 import com.team35.freelance.contracts.events.PaymentFailedEvent;
 import com.team35.freelance.contracts.events.PaymentInitiatedEvent;
 import com.team35.freelance.contracts.events.PaymentRefundedEvent;
 import com.team35.freelance.contracts.events.ProposalCancelledEvent;
+import com.team35.freelance.contracts.events.UserDeactivatedEvent;
 import com.team35.freelance.proposal.config.ProposalRabbitConfig;
 import com.team35.freelance.proposal.messaging.publisher.ProposalEventPublisher;
 import com.team35.freelance.proposal.model.Proposal;
@@ -77,6 +79,14 @@ public class SagaFeedbackConsumer {
                     PaymentRefundedEvent event = readEvent(message, PaymentRefundedEvent.class);
                     onPaymentRefunded(event);
                 }
+                case "job.closed" -> {
+                    JobClosedEvent event = readEvent(message, JobClosedEvent.class);
+                    onJobClosed(event);
+                }
+                case "user.deactivated" -> {
+                    UserDeactivatedEvent event = readEvent(message, UserDeactivatedEvent.class);
+                    onUserDeactivated(event);
+                }
                 default -> log.warn("Ignoring unsupported saga feedback routingKey={}", routingKey);
             }
         } catch (Exception e) {
@@ -87,6 +97,8 @@ public class SagaFeedbackConsumer {
             MDC.remove("proposalId");
             MDC.remove("contractId");
             MDC.remove("payoutId");
+            MDC.remove("jobId");
+            MDC.remove("userId");
         }
     }
 
@@ -211,5 +223,31 @@ public class SagaFeedbackConsumer {
 
         proposal.setStatus(ProposalStatus.REFUNDED);
         proposalRepository.save(proposal);
+    }
+
+    private void onJobClosed(JobClosedEvent event) {
+        MDC.put("jobId", String.valueOf(event.jobId()));
+
+        int rejected = proposalRepository.updateStatusForJobAndStatus(
+                event.jobId(),
+                ProposalStatus.SUBMITTED,
+                ProposalStatus.REJECTED
+        );
+
+        log.info("Consuming job.closed jobId={} rejectedSubmittedProposals={}",
+                event.jobId(), rejected);
+    }
+
+    private void onUserDeactivated(UserDeactivatedEvent event) {
+        MDC.put("userId", String.valueOf(event.userId()));
+
+        int withdrawn = proposalRepository.updateStatusForFreelancerAndStatus(
+                event.userId(),
+                ProposalStatus.SUBMITTED,
+                ProposalStatus.WITHDRAWN
+        );
+
+        log.info("Consuming user.deactivated userId={} withdrawnSubmittedProposals={}",
+                event.userId(), withdrawn);
     }
 }

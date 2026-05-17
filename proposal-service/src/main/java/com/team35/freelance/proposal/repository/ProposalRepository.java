@@ -160,4 +160,26 @@ AND submitted_at BETWEEN :startDate AND :endDate
 
     // Saga abandonment reaper — finds proposals stuck in PAYMENT_PENDING past the cutoff
     List<Proposal> findByStatusAndAcceptedAtBefore(ProposalStatus status, LocalDateTime cutoff);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Proposal p
+            SET p.status = :newStatus
+            WHERE p.jobId = :jobId
+              AND p.status = :currentStatus
+            """)
+    int updateStatusForJobAndStatus(@Param("jobId") Long jobId,
+                                    @Param("currentStatus") ProposalStatus currentStatus,
+                                    @Param("newStatus") ProposalStatus newStatus);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Proposal p
+            SET p.status = :newStatus
+            WHERE p.freelancerId = :freelancerId
+              AND p.status = :currentStatus
+            """)
+    int updateStatusForFreelancerAndStatus(@Param("freelancerId") Long freelancerId,
+                                           @Param("currentStatus") ProposalStatus currentStatus,
+                                           @Param("newStatus") ProposalStatus newStatus);
 }

@@ -476,6 +476,8 @@ public class UserService {
                 .name(user.getName())
                 .email(user.getEmail())
                 .phone(user.getPhone())
+                .role(user.getRole() == null ? null : user.getRole().name())
+                .status(user.getStatus() == null ? null : user.getStatus().name())
                 .preferences(user.getPreferences())
                 .skills(skillDTOs)
                 .totalSkills(skillDTOs.size())

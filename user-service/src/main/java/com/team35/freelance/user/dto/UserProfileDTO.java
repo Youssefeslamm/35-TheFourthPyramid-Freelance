@@ -12,6 +12,8 @@ public class UserProfileDTO implements Serializable {  // ✅ ADD THIS
     private String name;
     private String email;
     private String phone;
+    private String role;
+    private String status;
     private Map<String, Object> preferences;
     private List<UserSkillProfileDTO> skills;
     private Integer totalSkills;
@@ -22,6 +24,8 @@ public class UserProfileDTO implements Serializable {  // ✅ ADD THIS
         this.name = builder.name;
         this.email = builder.email;
         this.phone = builder.phone;
+        this.role = builder.role;
+        this.status = builder.status;
         this.preferences = builder.preferences;
         this.skills = builder.skills;
         this.totalSkills = builder.totalSkills;
@@ -38,6 +42,8 @@ public class UserProfileDTO implements Serializable {  // ✅ ADD THIS
         private String name;
         private String email;
         private String phone;
+        private String role;
+        private String status;
         private Map<String, Object> preferences;
         private List<UserSkillProfileDTO> skills;
         private Integer totalSkills;
@@ -59,6 +65,16 @@ public class UserProfileDTO implements Serializable {  // ✅ ADD THIS
 
         public Builder phone(String phone) {
             this.phone = phone;
+            return this;
+        }
+
+        public Builder role(String role) {
+            this.role = role;
+            return this;
+        }
+
+        public Builder status(String status) {
+            this.status = status;
             return this;
         }
 
@@ -89,6 +105,8 @@ public class UserProfileDTO implements Serializable {  // ✅ ADD THIS
     public String getName() { return name; }
     public String getEmail() { return email; }
     public String getPhone() { return phone; }
+    public String getRole() { return role; }
+    public String getStatus() { return status; }
     public Map<String, Object> getPreferences() { return preferences; }
     public List<UserSkillProfileDTO> getSkills() { return skills; }
     public Integer getTotalSkills() { return totalSkills; }

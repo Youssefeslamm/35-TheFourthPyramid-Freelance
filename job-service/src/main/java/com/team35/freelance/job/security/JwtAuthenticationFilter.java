@@ -32,6 +32,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
+        if ("true".equals(request.getHeader("X-INTERNAL-CALL"))) {
+            SecurityContextHolder.clearContext();
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (path.equals("/actuator/health")
                 || path.equals("/actuator/prometheus")
                 || path.equals("/actuator/info")

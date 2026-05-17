@@ -32,7 +32,7 @@ spring:
 
   data:
     mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin}
+      uri: ${SPRING_DATA_MONGODB_URI:${SPRING_MONGODB_URI:mongodb://root:rootpass@mongo:27017/freelancemongo?authSource=admin}}
     redis:
       host: ${SPRING_REDIS_HOST:redis}
       port: ${SPRING_REDIS_PORT:6379}
@@ -65,6 +65,10 @@ feign.job-service.url: http://job-service:8080
 feign.proposal-service.url: http://proposal-service:8080
 feign.contract-service.url: http://contract-service:8080
 feign.wallet-service.url: http://wallet-service:8080
+
+loki:
+  push-url: ${LOKI_PUSH_URL:http://loki:3100/loki/api/v1/push}
+  env: ${LOKI_ENV:docker}
 
 # ── Saga Configuration ──
 saga:

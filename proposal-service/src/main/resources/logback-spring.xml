@@ -2,6 +2,9 @@
 <configuration>
 
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="proposal-service"/>
+    <springProperty scope="context" name="LOKI_PUSH_URL" source="loki.push-url"
+                    defaultValue="http://loki:3100/loki/api/v1/push"/>
+    <springProperty scope="context" name="LOKI_ENV" source="loki.env" defaultValue="docker"/>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
@@ -11,11 +14,11 @@
 
     <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
         <http>
-            <url>http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push</url>
+            <url>${LOKI_PUSH_URL}</url>
         </http>
         <format>
             <label>
-                <pattern>app=freelance,service=${APP_NAME},level=%level,env=k8s</pattern>
+                <pattern>app=freelance,service=${APP_NAME},level=%level,env=${LOKI_ENV}</pattern>
             </label>
             <message>
                 <pattern><![CDATA[{ "timestamp": "%d{ISO8601}", "level": "%level", "service": "${APP_NAME}", "thread": "%thread", "logger": "%logger{36}", "correlationId": "%X{correlationId:-}", "userId": "%X{userId:-}", "jobId": "%X{jobId:-}", "proposalId": "%X{proposalId:-}", "contractId": "%X{contractId:-}", "payoutId": "%X{payoutId:-}", "routingKey": "%X{routingKey:-}", "message": "%msg" }]]></pattern>
