@@ -25,6 +25,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(request -> "true".equals(request.getHeader("X-INTERNAL-CALL"))).permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/prometheus").permitAll()
+                        .requestMatchers("/actuator/info").permitAll()
                         .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/api/proposals/health").permitAll()
                         .requestMatchers("/api/auth/register").permitAll()

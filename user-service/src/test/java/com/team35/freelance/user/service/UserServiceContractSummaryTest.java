@@ -1,6 +1,7 @@
 package com.team35.freelance.user.service;
 
 import com.team35.freelance.contracts.feign.ContractServiceClient;
+import com.team35.freelance.contracts.feign.WalletServiceClient;
 import com.team35.freelance.user.dto.UserContractSummaryDTO;
 import com.team35.freelance.user.model.Status;
 import com.team35.freelance.user.model.User;
@@ -49,6 +50,9 @@ class UserServiceContractSummaryTest {
     @Mock
     private ContractServiceClient contractServiceClient;
 
+    @Mock
+    private WalletServiceClient walletServiceClient;
+
     private UserService userService;
 
     @BeforeEach
@@ -61,7 +65,8 @@ class UserServiceContractSummaryTest {
                 authEventRepository,
                 jwtService,
                 userEventPublisher,
-                contractServiceClient
+                contractServiceClient,
+                walletServiceClient
         );
     }
 

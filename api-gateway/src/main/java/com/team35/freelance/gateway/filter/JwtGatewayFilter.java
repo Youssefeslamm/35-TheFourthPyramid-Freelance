@@ -75,6 +75,8 @@ public class JwtGatewayFilter implements GlobalFilter, Ordered {
                 || path.startsWith("/api/auth/")
                 || path.equals("/actuator/health")
                 || path.startsWith("/actuator/health/")
+                || path.equals("/actuator/prometheus")
+                || path.equals("/actuator/info")
                 || path.contains("/health");
     }
 
