@@ -17,12 +17,12 @@
     </properties>
 
     <modules>
+        <module>contracts</module>
         <module>user-service</module>
         <module>job-service</module>
         <module>proposal-service</module>
         <module>contract-service</module>
         <module>wallet-service</module>
-        <module>contracts</module>
         <module>api-gateway</module>
     </modules>
 
