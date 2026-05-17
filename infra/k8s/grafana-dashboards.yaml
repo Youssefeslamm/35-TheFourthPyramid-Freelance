@@ -1,4 +1,4 @@
-apiVersion: v1
+﻿apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-dashboards
@@ -30,7 +30,6 @@ data:
         }
       ]
     }
-
   proposal-dashboard.json: |
     {
       "title": "Proposal Service Dashboard",
@@ -116,7 +115,6 @@ data:
         }
       ]
     }
-
   user-service-dashboard.json: |
     {
       "title": "User Service Dashboard",
@@ -159,6 +157,163 @@ data:
         }
       ]
     }
+  job-dashboard.json: |
+    {
+      "title": "Job Service Dashboard",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "tags": [
+        "freelance",
+        "job-service",
+        "S2-INFRA"
+      ],
+      "templating": {
+        "list": [
+          {
+            "name": "correlationId",
+            "type": "textbox",
+            "label": "Correlation ID",
+            "query": "",
+            "current": {
+              "text": ".*",
+              "value": ".*"
+            }
+          }
+        ]
+      },
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "LogQL - Error Rate",
+          "description": "ERROR-level job-service log lines per minute.",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({service=\"job-service\", level=\"ERROR\"}[1m]))",
+              "legendFormat": "errors/min"
+            }
+          ],
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 8,
+            "h": 8
+          }
+        },
+        {
+          "type": "logs",
+          "title": "LogQL - Correlation Trace",
+          "description": "Trace job-service log lines for a specific X-Correlation-ID.",
+          "targets": [
+            {
+              "expr": "{service=\"job-service\"} | json | correlationId=~\"$correlationId\"",
+              "legendFormat": "correlation"
+            }
+          ],
+          "gridPos": {
+            "x": 8,
+            "y": 0,
+            "w": 8,
+            "h": 8
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "LogQL - RabbitMQ Job Event Audit",
+          "description": "Job-service published/consumed event log volume.",
+          "targets": [
+            {
+              "expr": "sum(count_over_time({service=\"job-service\"} |= \"Published\" [5m]))",
+              "legendFormat": "published"
+            },
+            {
+              "expr": "sum(count_over_time({service=\"job-service\"} |= \"Consuming\" [5m]))",
+              "legendFormat": "consumed"
+            }
+          ],
+          "gridPos": {
+            "x": 16,
+            "y": 0,
+            "w": 8,
+            "h": 8
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "PromQL - HTTP Request Rate",
+          "description": "Requests per second per job-service endpoint.",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{job=\"job-service\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ],
+          "gridPos": {
+            "x": 0,
+            "y": 8,
+            "w": 8,
+            "h": 8
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "PromQL - HTTP Latency P95",
+          "description": "P95 latency per job-service endpoint.",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"job-service\"}[5m])) by (le, uri))",
+              "legendFormat": "P95 {{uri}}"
+            }
+          ],
+          "gridPos": {
+            "x": 8,
+            "y": 8,
+            "w": 8,
+            "h": 8
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "PromQL - JVM Heap Usage",
+          "description": "Job-service JVM heap memory usage.",
+          "targets": [
+            {
+              "expr": "sum(jvm_memory_used_bytes{job=\"job-service\", area=\"heap\"})",
+              "legendFormat": "heap used"
+            }
+          ],
+          "gridPos": {
+            "x": 16,
+            "y": 8,
+            "w": 8,
+            "h": 8
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "PromQL - Redis Cache Hits vs Misses",
+          "description": "Cache effectiveness for cached job-service endpoints such as S2-F12.",
+          "targets": [
+            {
+              "expr": "sum(rate(cache_gets_total{job=\"job-service\", result=\"hit\"}[5m]))",
+              "legendFormat": "hits"
+            },
+            {
+              "expr": "sum(rate(cache_gets_total{job=\"job-service\", result=\"miss\"}[5m]))",
+              "legendFormat": "misses"
+            }
+          ],
+          "gridPos": {
+            "x": 0,
+            "y": 16,
+            "w": 12,
+            "h": 8
+          }
+        }
+      ]
+    }
+    
+
 
   wallet-service-dashboard.json: |
     {
