@@ -30,7 +30,8 @@ data:
         }
       ]
     }
-    proposal-dashboard.json: |
+
+  proposal-dashboard.json: |
     {
       "title": "Proposal Service Dashboard",
       "schemaVersion": 39,
@@ -115,13 +116,69 @@ data:
         }
       ]
     }
-  wallet-dashboard.json: |
+
+  user-service-dashboard.json: |
+    {
+      "title": "User Service Dashboard",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "HTTP Request Rate - User Service",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{job=\"user-service\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "RabbitMQ Listener Rate - User Service",
+          "targets": [
+            {
+              "expr": "sum(rate(spring_rabbitmq_listener_seconds_count{job=\"user-service\"}[5m])) by (listener)",
+              "legendFormat": "{{listener}}"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "JVM Heap Usage - User Service",
+          "targets": [
+            {
+              "expr": "jvm_memory_used_bytes{job=\"user-service\", area=\"heap\"}",
+              "legendFormat": "Heap Used"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
+        }
+      ]
+    }
+
+  wallet-service-dashboard.json: |
     {
       "title": "Wallet Service Dashboard",
       "schemaVersion": 39,
       "version": 1,
       "refresh": "30s",
       "panels": [
+        {
+          "type": "timeseries",
+          "title": "HTTP Request Rate - Wallet Service",
+          "description": "Requests per second by endpoint and method",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{job=\"wallet-service\"}[5m])) by (uri, method)",
+              "legendFormat": "{{method}} {{uri}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+        },
         {
           "type": "timeseries",
           "title": "Error Rate",
@@ -132,7 +189,19 @@ data:
               "legendFormat": "Errors/min"
             }
           ],
-          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP Error Rate - Wallet Service",
+          "description": "4xx and 5xx responses per second by status and endpoint",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{job=\"wallet-service\", status=~\"4..|5..\"}[5m])) by (status, uri)",
+              "legendFormat": "{{status}} {{uri}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
         },
         {
           "type": "timeseries",
@@ -144,7 +213,43 @@ data:
               "legendFormat": "Feign calls"
             }
           ],
-          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+          "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP Latency P95 - Wallet Service",
+          "description": "P95 request latency by endpoint",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"wallet-service\"}[5m])) by (le, uri))",
+              "legendFormat": "P95 {{uri}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Average HTTP Latency - Wallet Service",
+          "description": "Average request duration by endpoint",
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_sum{job=\"wallet-service\"}[5m])) by (uri) / sum(rate(http_server_requests_seconds_count{job=\"wallet-service\"}[5m])) by (uri)",
+              "legendFormat": "{{uri}}"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "JVM Heap Usage - Wallet Service",
+          "description": "Heap memory currently used",
+          "targets": [
+            {
+              "expr": "jvm_memory_used_bytes{job=\"wallet-service\", area=\"heap\"}",
+              "legendFormat": "Heap Used"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 }
         },
         {
           "type": "timeseries",
@@ -156,7 +261,7 @@ data:
               "legendFormat": "Slow ops"
             }
           ],
-          "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 }
+          "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 }
         }
       ]
     }

@@ -8,6 +8,7 @@ public class ContractDTO {
     private Long jobId;
     private Long freelancerId;
     private Long clientId;
+    private Long proposalId;
     private Double agreedAmount;
     private String status;
     private LocalDateTime startDate;
@@ -21,6 +22,7 @@ public class ContractDTO {
                        Long jobId,
                        Long freelancerId,
                        Long clientId,
+                       Long proposalId,
                        Double agreedAmount,
                        String status,
                        LocalDateTime startDate,
@@ -30,6 +32,7 @@ public class ContractDTO {
         this.jobId = jobId;
         this.freelancerId = freelancerId;
         this.clientId = clientId;
+        this.proposalId = proposalId;
         this.agreedAmount = agreedAmount;
         this.status = status;
         this.startDate = startDate;
@@ -67,6 +70,14 @@ public class ContractDTO {
 
     public void setClientId(Long clientId) {
         this.clientId = clientId;
+    }
+
+    public Long getProposalId() {
+        return proposalId;
+    }
+
+    public void setProposalId(Long proposalId) {
+        this.proposalId = proposalId;
     }
 
     public Double getAgreedAmount() {
@@ -109,4 +120,3 @@ public class ContractDTO {
         this.metadata = metadata;
     }
 }
-

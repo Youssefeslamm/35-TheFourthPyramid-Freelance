@@ -1,5 +1,8 @@
 package com.team35.freelance.proposal.service;
 
+import com.team35.freelance.contracts.feign.ContractServiceClient;
+import com.team35.freelance.contracts.feign.JobServiceClient;
+import com.team35.freelance.contracts.feign.UserServiceClient;
 import com.team35.freelance.proposal.common.observer.EntityObserver;
 import com.team35.freelance.proposal.common.observer.MongoEventLogger;
 import com.team35.freelance.proposal.dto.*;
@@ -43,19 +46,18 @@ import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.data.neo4j.core.Neo4jClient;
-
-import org.springframework.data.neo4j.core.Neo4jClient;
+import com.team35.freelance.contracts.dto.UserProfileDTO;
+import com.team35.freelance.contracts.dto.JobDTO;
+import com.team35.freelance.contracts.dto.ContractDTO;
+import feign.FeignException;
 import java.math.BigDecimal;
 
 @Service
 public class ProposalService {
 
 
-    @Autowired
     private ProposalRepository proposalRepository;
-    @Autowired
     private ProposalMilestoneRepository milestoneRepository;
-    @Autowired
     private ProposalEventRepository proposalEventRepository;
     private static final Logger log = LoggerFactory.getLogger(ProposalService.class);
 
@@ -66,19 +68,28 @@ public class ProposalService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final Driver neo4jDriver;
     private final ProposalEventPublisher proposalEventPublisher;
+    private final UserServiceClient userServiceClient;
+    private final JobServiceClient jobServiceClient;
+    private final ContractServiceClient contractServiceClient;
 
     public ProposalService(ProposalRepository proposalRepository,
                            ProposalMilestoneRepository milestoneRepository,
                            ProposalEventRepository proposalEventRepository,
                            MongoEventLogger mongoEventLogger,
                            Driver neo4jDriver,
-                           ProposalEventPublisher proposalEventPublisher) {
+                           ProposalEventPublisher proposalEventPublisher,
+                           UserServiceClient userServiceClient,
+                           JobServiceClient jobServiceClient,
+                           ContractServiceClient contractServiceClient) {
         this.proposalRepository = proposalRepository;
         this.milestoneRepository = milestoneRepository;
         this.proposalEventRepository = proposalEventRepository;
         this.observers.add(mongoEventLogger);
         this.neo4jDriver = neo4jDriver;
         this.proposalEventPublisher = proposalEventPublisher;
+        this.userServiceClient = userServiceClient;
+        this.jobServiceClient = jobServiceClient;
+        this.contractServiceClient = contractServiceClient;
     }
 
     private void notifyObservers(String eventType, Object payload) {
@@ -218,11 +229,15 @@ public class ProposalService {
             "proposal-service::S3-F6",
             "proposal-service::S3-F9"
     }, allEntries = true)
-    public Proposal withdrawProposal(Long id) {
+    public Proposal withdrawProposal(Long id, Long callerUserId, String callerRole) {
         Proposal proposal = proposalRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Proposal not found"));
-
+        if (!"ADMIN".equals(callerRole) &&
+                (callerUserId == null || !callerUserId.equals(proposal.getFreelancerId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Only the proposal's freelancer or an ADMIN can withdraw this proposal");
+        }
         if (proposal.getStatus() != ProposalStatus.SUBMITTED &&
                 proposal.getStatus() != ProposalStatus.SHORTLISTED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -231,13 +246,15 @@ public class ProposalService {
 
         proposal.setStatus(ProposalStatus.WITHDRAWN);
 
-        proposalRepository.countOtherActiveProposalsForJob(proposal.getJobId(), id);
-
         Proposal saved = proposalRepository.save(proposal);
 
-        proposalEventPublisher.publishWithdrawn(
-                new ProposalWithdrawnEvent(saved.getId(), saved.getJobId(), saved.getFreelancerId())
-        );
+        try {
+            proposalEventPublisher.publishWithdrawn(
+                    new ProposalWithdrawnEvent(saved.getId(), saved.getJobId(), saved.getFreelancerId())
+            );
+        } catch (Exception e) {
+            log.error("Failed to publish proposal.withdrawn for proposalId={}: {}", saved.getId(), e.getMessage());
+        }
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "WITHDRAWN");
@@ -297,37 +314,85 @@ public class ProposalService {
             "proposal-service::S3-F9"
     }, allEntries = true)
     public Proposal acceptProposal(Long proposalId) {
+        log.info("===== S3-F2: acceptProposal START for proposalId={}", proposalId);
         Proposal proposal = getById(proposalId);
+        log.debug("Loaded proposal: id={}, status={}, freelancerId={}, jobId={}", 
+                proposal.getId(), proposal.getStatus(), proposal.getFreelancerId(), proposal.getJobId());
 
         if (proposal.getStatus() != ProposalStatus.SUBMITTED &&
                 proposal.getStatus() != ProposalStatus.SHORTLISTED) {
+            log.warn("Cannot accept proposal: invalid status. proposalId={}, currentStatus={}", proposalId, proposal.getStatus());
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Proposal must be SUBMITTED or SHORTLISTED to be accepted");
+        }
+
+        UserProfileDTO freelancer;
+        try {
+            log.debug("Fetching freelancer details from user-service. freelancerId={}", proposal.getFreelancerId());
+            freelancer = userServiceClient.getUserById(proposal.getFreelancerId(), null);
+            log.debug("Successfully fetched freelancer: id={}, name={}, role={}, status={}", 
+                    freelancer.getUserId(), freelancer.getName(), freelancer.getRole(), freelancer.getStatus());
+        } catch (FeignException.NotFound e) {
+            log.error("Freelancer not found in user-service. freelancerId={}, error={}", 
+                    proposal.getFreelancerId(), e.getMessage());
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Freelancer not found: " + proposal.getFreelancerId()
+            );
+        } catch (FeignException e) {
+            log.error("User service call failed. freelancerId={}, error={}, status={}", 
+                    proposal.getFreelancerId(), e.getMessage(), e.status(), e);
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "User service temporarily unavailable"
+            );
+        }
+
+        if (freelancer.getRole() == null ||
+                !"FREELANCER".equalsIgnoreCase(freelancer.getRole())) {
+            log.warn("Freelancer does not have FREELANCER role. freelancerId={}, role={}", 
+                    proposal.getFreelancerId(), freelancer.getRole());
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Proposal freelancer must have FREELANCER role"
+            );
         }
 
         proposal.setStatus(ProposalStatus.ACCEPTED);
         proposal.setAcceptedAt(LocalDateTime.now());
 
         Proposal saved = proposalRepository.save(proposal);
+        log.info("Proposal accepted and saved. proposalId={}, status={}, acceptedAt={}", 
+                saved.getId(), saved.getStatus(), saved.getAcceptedAt());
 
-        proposalEventPublisher.publishAccepted(
-                new ProposalAcceptedEvent(
-                        saved.getId(),
-                        saved.getJobId(),
-                        saved.getFreelancerId(),
-                        BigDecimal.valueOf(saved.getBidAmount())
-                )
-        );
+        try {
+            log.debug("Publishing proposal.accepted event. proposalId={}, jobId={}, freelancerId={}, bidAmount={}", 
+                    saved.getId(), saved.getJobId(), saved.getFreelancerId(), saved.getBidAmount());
+            proposalEventPublisher.publishAccepted(
+                    new ProposalAcceptedEvent(
+                            saved.getId(),
+                            saved.getJobId(),
+                            saved.getFreelancerId(),
+                            BigDecimal.valueOf(saved.getBidAmount())
+                    )
+            );
+            log.info("Successfully published proposal.accepted event. proposalId={}", saved.getId());
+        } catch (Exception e) {
+            log.error("Failed to publish proposal.accepted for proposalId={}: {}", saved.getId(), e.getMessage(), e);
+            // Note: We don't re-throw here because proposal is already saved. The event publishing should be retried.
+        }
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "ACCEPTED");
         payload.put("proposalId", saved.getId());
 
         notifyObservers("PROPOSAL", payload);
+        log.info("===== S3-F2: acceptProposal END. Success for proposalId={}", proposalId);
 
         return saved;
     }
-    // S3-F4: Complete Proposal's Contract
+
+    // S3-F4: Complete Proposal's Contract / Saga trigger
     @Transactional
     @CacheEvict(value = {
             "proposal-service::proposal",
@@ -337,34 +402,166 @@ public class ProposalService {
             "proposal-service::S3-F6",
             "proposal-service::S3-F9"
     }, allEntries = true)
-    public Proposal completeProposal(Long proposalId) {
+    public Proposal completeProposal(Long proposalId, Long callerUserId, String callerRole) {
+        log.info("===== S3-F4: completeProposal START for proposalId={}, callerUserId={}, callerRole={}", 
+                proposalId, callerUserId, callerRole);
         Proposal proposal = getById(proposalId);
+        log.debug("Loaded proposal: id={}, status={}, freelancerId={}, jobId={}", 
+                proposal.getId(), proposal.getStatus(), proposal.getFreelancerId(), proposal.getJobId());
 
         if (proposal.getStatus() != ProposalStatus.ACCEPTED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Proposal must be ACCEPTED to be completed");
+            log.warn("Cannot complete proposal: not ACCEPTED. proposalId={}, currentStatus={}", proposalId, proposal.getStatus());
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Proposal must be ACCEPTED to be completed"
+            );
         }
 
-        Proposal saved = proposalRepository.save(proposal);
+        boolean isAdmin = callerRole != null && "ADMIN".equalsIgnoreCase(callerRole);
+        boolean isProposalFreelancer = callerUserId != null &&
+                callerUserId.equals(proposal.getFreelancerId());
+        log.debug("Authorization check: isAdmin={}, isProposalFreelancer={}", isAdmin, isProposalFreelancer);
 
-        proposalEventPublisher.publishCompleted(
-                new ProposalCompletedEvent(
-                        saved.getId(),
-                        saved.getJobId(),
-                        saved.getFreelancerId(),
-                        null,
-                        BigDecimal.valueOf(saved.getBidAmount())
-                )
-        );
+        if (!isAdmin && !isProposalFreelancer) {
+            log.warn("Unauthorized attempt to complete proposal. proposalId={}, callerUserId={}, callerRole={}", 
+                    proposalId, callerUserId, callerRole);
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the proposal's freelancer or an ADMIN can complete this proposal"
+            );
+        }
+
+        // Pre-check 1: job must exist and must not be CLOSED.
+        log.debug("Pre-check 1: Validating job. jobId={}", proposal.getJobId());
+        try {
+            JobDTO job = jobServiceClient.getJobById(proposal.getJobId());
+            log.debug("Job fetched: id={}, status={}, title={}", job.getId(), job.getStatus(), job.getTitle());
+
+            if (job.getStatus() != null && "CLOSED".equalsIgnoreCase(job.getStatus())) {
+                log.warn("Cannot complete: job is already CLOSED. jobId={}", proposal.getJobId());
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Cannot complete proposal because job is already CLOSED"
+                );
+            }
+        } catch (FeignException.NotFound e) {
+            log.error("Job not found in job-service. jobId={}", proposal.getJobId());
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Job not found: " + proposal.getJobId()
+            );
+        } catch (FeignException e) {
+            log.error("Job service call failed. jobId={}, error={}, status={}", 
+                    proposal.getJobId(), e.getMessage(), e.status());
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Job service temporarily unavailable"
+            );
+        }
+
+        // Pre-check 2: freelancer must exist and must be ACTIVE.
+        log.debug("Pre-check 2: Validating freelancer. freelancerId={}", proposal.getFreelancerId());
+        UserProfileDTO freelancer;
+        try {
+            freelancer = userServiceClient.getUserById(proposal.getFreelancerId(), null);
+            log.debug("Freelancer fetched: id={}, status={}, role={}", freelancer.getUserId(), freelancer.getStatus(), freelancer.getRole());
+        } catch (FeignException.NotFound e) {
+            log.error("Freelancer not found in user-service. freelancerId={}", proposal.getFreelancerId());
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Freelancer not found: " + proposal.getFreelancerId()
+            );
+        } catch (FeignException e) {
+            log.error("User service call failed. freelancerId={}, error={}, status={}", 
+                    proposal.getFreelancerId(), e.getMessage(), e.status());
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "User service temporarily unavailable"
+            );
+        }
+
+        if (freelancer == null ||
+                freelancer.getStatus() == null ||
+                !"ACTIVE".equalsIgnoreCase(freelancer.getStatus())) {
+            log.warn("Freelancer is not ACTIVE. freelancerId={}, status={}", 
+                    proposal.getFreelancerId(), freelancer != null ? freelancer.getStatus() : "null");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot complete proposal because freelancer is not ACTIVE"
+            );
+        }
+
+        // Pre-check 3: active contract must exist for this proposal.
+        log.debug("Pre-check 3: Validating active contract. proposalId={}", proposalId);
+        ContractDTO activeContract;
+        try {
+            activeContract = contractServiceClient.getActiveContractForProposal(proposalId);
+            log.debug("Active contract fetched: id={}, status={}, agreedAmount={}", 
+                    activeContract != null ? activeContract.getId() : "null", 
+                    activeContract != null ? activeContract.getStatus() : "null",
+                    activeContract != null ? activeContract.getAgreedAmount() : "null");
+        } catch (FeignException.NotFound e) {
+            log.error("No active contract found for proposal. proposalId={}", proposalId);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "No active contract found for this proposal"
+            );
+        } catch (FeignException e) {
+            log.error("Contract service call failed. proposalId={}, error={}, status={}", 
+                    proposalId, e.getMessage(), e.status());
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Contract service temporarily unavailable"
+            );
+        }
+
+        if (activeContract == null || activeContract.getId() == null) {
+            log.error("Active contract is null or missing id. proposalId={}", proposalId);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "No active contract found for this proposal"
+            );
+        }
+
+        BigDecimal agreedAmount = activeContract.getAgreedAmount() != null
+                ? BigDecimal.valueOf(activeContract.getAgreedAmount())
+                : BigDecimal.valueOf(proposal.getBidAmount());
+
+        proposal.setContractId(activeContract.getId());
+        proposal.setStatus(ProposalStatus.COMPLETING);
+
+        Proposal saved = proposalRepository.save(proposal);
+        log.info("Proposal marked as COMPLETING. proposalId={}, contractId={}, status={}", 
+                saved.getId(), saved.getContractId(), saved.getStatus());
+
+        try {
+            log.debug("Publishing proposal.completed event. proposalId={}, contractId={}, agreedAmount={}", 
+                    saved.getId(), activeContract.getId(), agreedAmount);
+            proposalEventPublisher.publishCompleted(
+                    new ProposalCompletedEvent(
+                            saved.getId(),
+                            saved.getJobId(),
+                            saved.getFreelancerId(),
+                            activeContract.getId(),
+                            agreedAmount
+                    )
+            );
+            log.info("Successfully published proposal.completed event. proposalId={}", saved.getId());
+        } catch (Exception e) {
+            log.error("Failed to publish proposal.completed for proposalId={}: {}", 
+                    saved.getId(), e.getMessage(), e);
+        }
 
         Map<String, Object> payload = new HashMap<>();
-        payload.put("action", "COMPLETED");
+        payload.put("action", "COMPLETING");
         payload.put("proposalId", saved.getId());
+        payload.put("contractId", activeContract.getId());
 
         notifyObservers("PROPOSAL", payload);
 
         return saved;
     }
+
     // S3-F8: Add Milestones to Proposal
     @Transactional
     @CacheEvict(value = {
@@ -645,10 +842,26 @@ public class ProposalService {
         Long freelancerId = proposal.getFreelancerId();
         Long jobId = proposal.getJobId();
 
-        // 3. Use placeholders for isolated DB mode
         String name = "Unknown";
         String title = "Unknown";
         String category = "Unknown";
+
+        try {
+            UserProfileDTO user = userServiceClient.getUserById(freelancerId, null);
+            if (user != null && user.getName() != null) name = user.getName();
+        } catch (FeignException e) {
+            log.warn("Could not fetch user {} from user-service: {}", freelancerId, e.getMessage());
+        }
+
+        try {
+            JobDTO job = jobServiceClient.getJobById(jobId);
+            if (job != null) {
+                if (job.getTitle() != null) title = job.getTitle();
+                if (job.getCategory() != null) category = job.getCategory();
+            }
+        } catch (FeignException e) {
+            log.warn("Could not fetch job {} from job-service: {}", jobId, e.getMessage());
+        }
 
         // 4. Write to Neo4j using raw driver (idempotency handled by MERGE)
         try (var session = neo4jDriver.session()) {
@@ -769,16 +982,28 @@ public class ProposalService {
 
         if (topJobIds.isEmpty()) return List.of();
 
-        // 6. Build DTOs with placeholders in isolated DB mode
         return topJobIds.stream()
-                .map(jid -> JobRecommendationDTO.builder()
-                        .jobId(jid)
-                        .title("Unknown")
-                        .category("Unknown")
-                        .score(scores.get(jid))
-                        .build())
+                .map(jid -> {
+                    String jobTitle = "Unknown";
+                    String jobCategory = "Unknown";
+                    try {
+                        JobDTO job = jobServiceClient.getJobById(jid);
+                        if (job != null) {
+                            if (job.getTitle() != null) jobTitle = job.getTitle();
+                            if (job.getCategory() != null) jobCategory = job.getCategory();
+                        }
+                    } catch (FeignException e) {
+                        log.warn("Could not fetch job {} from job-service: {}", jid, e.getMessage());
+                    }
+                    return JobRecommendationDTO.builder()
+                            .jobId(jid)
+                            .title(jobTitle)
+                            .category(jobCategory)
+                            .score(scores.get(jid))
+                            .build();
+                })
                 .collect(Collectors.toList());
-    }
+        }
 
     private void validateDateRange(LocalDateTime startDate, LocalDateTime endDate) {
         if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
@@ -878,5 +1103,37 @@ public class ProposalService {
             return 0.0;
         }
         return ((Number) row[index]).doubleValue();
+    }
+
+    // S3-READ-DB: Get Job Proposal Summary
+    @Cacheable(value = "proposal-service::S3-READ-DB", key = "#jobId + ':' + #startDate + ':' + #endDate")
+    public com.team35.freelance.contracts.dto.JobProposalSummaryDTO getJobProposalSummary(
+            Long jobId, String startDate, String endDate) {
+
+        LocalDateTime start = parseStartDate(startDate);
+        LocalDateTime end = parseEndDate(endDate);
+
+        Object[] raw = proposalRepository.getJobProposalSummary(jobId, start, end);
+
+        // Unwrap if nested
+        Object[] row = (raw.length == 1 && raw[0] instanceof Object[])
+                ? (Object[]) raw[0] : raw;
+
+        long totalProposals = row[0] != null ? ((Number) row[0]).longValue() : 0L;
+        long acceptedProposals = row[1] != null ? ((Number) row[1]).longValue() : 0L;
+        double averageBidAmount = row[2] != null ? ((Number) row[2]).doubleValue() : 0.0;
+        double lowestBid = row[3] != null ? ((Number) row[3]).doubleValue() : 0.0;
+        double highestBid = row[4] != null ? ((Number) row[4]).doubleValue() : 0.0;
+
+        com.team35.freelance.contracts.dto.JobProposalSummaryDTO dto =
+                new com.team35.freelance.contracts.dto.JobProposalSummaryDTO();
+        dto.setJobId(jobId);
+        dto.setTotalProposals(totalProposals);
+        dto.setAcceptedProposals(acceptedProposals);
+        dto.setAverageBidAmount(averageBidAmount);
+        dto.setLowestBid(lowestBid);
+        dto.setHighestBid(highestBid);
+
+        return dto;
     }
 }
