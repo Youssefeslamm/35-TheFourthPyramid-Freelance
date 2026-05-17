@@ -8,11 +8,14 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 import com.team35.freelance.contracts.events.PaymentInitiatedEvent;
 import com.team35.freelance.wallet.model.Payout;
+import com.team35.freelance.wallet.model.PayoutMethod;
 import com.team35.freelance.wallet.model.PayoutStatus;
 import com.team35.freelance.contracts.events.PaymentRefundedEvent;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -108,7 +111,10 @@ public class PaymentSagaConsumer {
         payout.setAmount(event.agreedAmount().doubleValue());
 
         payout.setStatus(PayoutStatus.PENDING);
-        payout.setMethod(null);
+        payout.setMethod(PayoutMethod.BANK_TRANSFER);
+        Map<String, Object> transactionDetails = new HashMap<>();
+        transactionDetails.put("proposalId", event.proposalId());
+        payout.setTransactionDetails(transactionDetails);
 
         payout.setCreatedAt(LocalDateTime.now());
 

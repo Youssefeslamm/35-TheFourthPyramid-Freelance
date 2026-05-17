@@ -375,10 +375,48 @@ class SagaFeedbackConsumerTest {
 
     @Test
     void multipleUnknownRoutingKeys_allIgnoredGracefully() throws Exception {
-        for (String key : new String[]{"user.registered", "job.closed", "random.key", ""}) {
+        for (String key : new String[]{"user.registered", "random.key", ""}) {
             consumer.onSagaFeedback(buildMessage("{}", key), key);
         }
         verifyNoInteractions(proposalRepository);
         verifyNoInteractions(proposalEventPublisher);
+    }
+
+    @Test
+    void jobClosed_rejectsSubmittedProposalsForJob() throws Exception {
+        JobClosedEvent event = new JobClosedEvent(10L, 3L);
+        when(proposalRepository.updateStatusForJobAndStatus(
+                10L,
+                ProposalStatus.SUBMITTED,
+                ProposalStatus.REJECTED
+        )).thenReturn(2);
+
+        consumer.onSagaFeedback(buildMessage(event, "job.closed"), "job.closed");
+
+        verify(proposalRepository).updateStatusForJobAndStatus(
+                10L,
+                ProposalStatus.SUBMITTED,
+                ProposalStatus.REJECTED
+        );
+        verify(proposalRepository, never()).save(any());
+    }
+
+    @Test
+    void userDeactivated_withdrawsSubmittedProposalsForFreelancer() throws Exception {
+        UserDeactivatedEvent event = new UserDeactivatedEvent(5L);
+        when(proposalRepository.updateStatusForFreelancerAndStatus(
+                5L,
+                ProposalStatus.SUBMITTED,
+                ProposalStatus.WITHDRAWN
+        )).thenReturn(3);
+
+        consumer.onSagaFeedback(buildMessage(event, "user.deactivated"), "user.deactivated");
+
+        verify(proposalRepository).updateStatusForFreelancerAndStatus(
+                5L,
+                ProposalStatus.SUBMITTED,
+                ProposalStatus.WITHDRAWN
+        );
+        verify(proposalRepository, never()).save(any());
     }
 }

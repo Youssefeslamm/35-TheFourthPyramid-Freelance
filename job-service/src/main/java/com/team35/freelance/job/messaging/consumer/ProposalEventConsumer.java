@@ -1,6 +1,7 @@
 package com.team35.freelance.job.messaging.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.team35.freelance.contracts.events.JobClosedEvent;
 import com.team35.freelance.contracts.events.JobStatusChangedEvent;
 import com.team35.freelance.contracts.events.ProposalAcceptedEvent;
 import com.team35.freelance.contracts.events.ProposalCancelledEvent;
@@ -200,6 +201,10 @@ public class ProposalEventConsumer {
         jobEventPublisher.publishStatusChanged(
                 new JobStatusChangedEvent(job.getId(), oldStatus == null ? null : oldStatus.name(), newStatus.name())
         );
+
+        if (newStatus == JobStatus.CLOSED) {
+            jobEventPublisher.publishJobClosed(new JobClosedEvent(job.getId(), job.getClientId()));
+        }
 
         log.info("Job {} status changed from {} to {} after {}", jobId, oldStatus, newStatus, sourceRoutingKey);
     }

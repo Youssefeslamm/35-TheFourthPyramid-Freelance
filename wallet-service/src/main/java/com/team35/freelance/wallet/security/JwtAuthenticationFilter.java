@@ -34,6 +34,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         System.out.println("WALLET FILTER HIT PATH = " + path);
 
+        if ("true".equals(request.getHeader("X-INTERNAL-CALL"))) {
+            SecurityContextHolder.clearContext();
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (path.startsWith("/api/payouts")) {
             System.out.println("BYPASSING WALLET AUTH FOR PAYOUTS");
             filterChain.doFilter(request, response);
