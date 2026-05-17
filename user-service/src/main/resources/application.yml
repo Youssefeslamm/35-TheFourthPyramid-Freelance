@@ -67,11 +67,19 @@ feign.proposal-service.url: http://proposal-service:8080
 feign.contract-service.url: http://contract-service:8080
 feign.wallet-service.url: http://wallet-service:8080
 
+loki:
+  push-url: ${LOKI_PUSH_URL:http://loki:3100/loki/api/v1/push}
+  env: ${LOKI_ENV:docker}
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: "prometheus,health,info"
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
   endpoint:
     health:
       probes:

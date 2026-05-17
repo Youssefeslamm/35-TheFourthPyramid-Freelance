@@ -4,7 +4,7 @@
     <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="proposal-service"/>
-    <springProperty scope="context" name="LOKI_PUSH_URL" source="loki.push-url"
+    <springProperty scope="context" name="LOKI_PUSH_URL" source="LOKI_PUSH_URL"
                     defaultValue="http://loki:3100/loki/api/v1/push"/>
     <springProperty scope="context" name="LOKI_ENV" source="loki.env" defaultValue="docker"/>
 
@@ -12,15 +12,14 @@
         <http>
             <url>${LOKI_PUSH_URL}</url>
         </http>
-        <labels>
-            app = freelance
-            service = ${APP_NAME}
-            env = ${LOKI_ENV}
-            level = %level
-        </labels>
-        <message>
-            <pattern>{"timestamp":"%d{ISO8601}","level":"%level","logger":"%logger{36}","message":"%msg","correlationId":"%mdc{correlationId:-}","userId":"%mdc{userId:-}","jobId":"%mdc{jobId:-}","proposalId":"%mdc{proposalId:-}","contractId":"%mdc{contractId:-}","payoutId":"%mdc{payoutId:-}","routingKey":"%mdc{routingKey:-}"}</pattern>
-        </message>
+        <format>
+            <label>
+                <pattern>app=freelance,service=${APP_NAME},level=%level,env=${LOKI_ENV}</pattern>
+            </label>
+            <message>
+                <pattern>{"timestamp":"%d{ISO8601}","level":"%level","service":"${APP_NAME}","thread":"%thread","logger":"%logger{36}","correlationId":"%X{correlationId:-}","proposalId":"%X{proposalId:-}","userId":"%X{userId:-}","jobId":"%X{jobId:-}","contractId":"%X{contractId:-}","payoutId":"%X{payoutId:-}","routingKey":"%X{routingKey:-}","message":"%replace(%msg){'\"','\\\"'}"}%n</pattern>
+            </message>
+        </format>
     </appender>
 
     <root level="INFO">

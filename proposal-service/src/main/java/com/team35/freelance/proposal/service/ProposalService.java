@@ -358,10 +358,13 @@ public class ProposalService {
             );
         }
 
+        ProposalStatus previousStatus = proposal.getStatus();
         proposal.setStatus(ProposalStatus.ACCEPTED);
+        log.info("Proposal {} transitioning {} -> {}", proposal.getId(), previousStatus, ProposalStatus.ACCEPTED);
         proposal.setAcceptedAt(LocalDateTime.now());
 
         Proposal saved = proposalRepository.save(proposal);
+        log.info("Proposal {} saved with status={}", saved.getId(), saved.getStatus());
         log.info("Proposal accepted and saved. proposalId={}, status={}, acceptedAt={}", 
                 saved.getId(), saved.getStatus(), saved.getAcceptedAt());
 

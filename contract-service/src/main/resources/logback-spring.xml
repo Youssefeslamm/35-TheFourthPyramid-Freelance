@@ -3,28 +3,31 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
-    <springProperty name="LOKI_PUSH_URL" scope="context" source="loki.push-url"
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="contract-service"/>
+    <springProperty scope="context" name="LOKI_PUSH_URL" source="LOKI_PUSH_URL"
                     defaultValue="http://loki:3100/loki/api/v1/push"/>
-    <springProperty name="SPRING_APP_NAME" scope="context" source="spring.application.name"
-                    defaultValue="contract-service"/>
+    <springProperty scope="context" name="LOKI_ENV" source="loki.env" defaultValue="docker"/>
 
     <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
         <http>
             <url>${LOKI_PUSH_URL}</url>
         </http>
-        <labels>
-            app = freelance
-            service = ${SPRING_APP_NAME}
-            env = docker
-            level = %level
-        </labels>
-        <message>
-            <pattern>{"timestamp":"%d{ISO8601}","level":"%level","logger":"%logger{36}","message":"%msg","correlationId":"%mdc{correlationId:-}","contractId":"%mdc{contractId:-}","proposalId":"%mdc{proposalId:-}","jobId":"%mdc{jobId:-}","userId":"%mdc{userId:-}","routingKey":"%mdc{routingKey:-}"}</pattern>
-        </message>
+        <format>
+            <label>
+                <pattern>app=freelance,service=${APP_NAME},level=%level,env=${LOKI_ENV}</pattern>
+            </label>
+            <message>
+                <pattern>{"timestamp":"%d{ISO8601}","level":"%level","service":"${APP_NAME}","thread":"%thread","logger":"%logger{36}","correlationId":"%X{correlationId:-}","contractId":"%X{contractId:-}","proposalId":"%X{proposalId:-}","jobId":"%X{jobId:-}","userId":"%X{userId:-}","routingKey":"%X{routingKey:-}","message":"%replace(%msg){'\"','\\\"'}"}%n</pattern>
+            </message>
+        </format>
     </appender>
 
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="LOKI"/>
     </root>
+
+    <logger name="org.springframework" level="WARN"/>
+    <logger name="org.hibernate" level="WARN"/>
+    <logger name="com.team35.freelance.contract" level="INFO"/>
 </configuration>

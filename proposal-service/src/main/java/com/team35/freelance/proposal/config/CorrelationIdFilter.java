@@ -17,8 +17,8 @@ import java.util.UUID;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class CorrelationIdFilter extends OncePerRequestFilter {
 
-    private static final String CORRELATION_HEADER = "X-Correlation-ID";
-    private static final String MDC_KEY = "correlationId";
+    public static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
+    public static final String MDC_KEY = "correlationId";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -26,12 +26,12 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            String correlationId = request.getHeader(CORRELATION_HEADER);
+            String correlationId = request.getHeader(CORRELATION_ID_HEADER);
             if (correlationId == null || correlationId.isBlank()) {
                 correlationId = UUID.randomUUID().toString();
             }
             MDC.put(MDC_KEY, correlationId);
-            response.setHeader(CORRELATION_HEADER, correlationId);
+            response.setHeader(CORRELATION_ID_HEADER, correlationId);
             filterChain.doFilter(request, response);
         } finally {
             MDC.remove(MDC_KEY);

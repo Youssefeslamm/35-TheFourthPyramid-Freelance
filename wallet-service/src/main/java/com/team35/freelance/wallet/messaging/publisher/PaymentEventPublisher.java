@@ -4,6 +4,7 @@ import com.team35.freelance.contracts.events.PaymentCompletedEvent;
 import com.team35.freelance.contracts.events.PaymentFailedEvent;
 import com.team35.freelance.contracts.events.PaymentInitiatedEvent;
 import com.team35.freelance.contracts.events.PaymentRefundedEvent;
+import com.team35.freelance.contracts.observability.RabbitObservability;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
@@ -19,19 +20,23 @@ public class PaymentEventPublisher {
     }
 
     public void publishInitiated(PaymentInitiatedEvent event) {
-        rabbitTemplate.convertAndSend(EXCHANGE, "payment.initiated", event);
+        publish("payment.initiated", event, "payoutId", event.payoutId());
     }
 
     public void publishCompleted(PaymentCompletedEvent event) {
-        rabbitTemplate.convertAndSend(EXCHANGE, "payment.completed", event);
+        publish("payment.completed", event, "payoutId", event.payoutId());
     }
 
     public void publishFailed(PaymentFailedEvent event) {
-        rabbitTemplate.convertAndSend(EXCHANGE, "payment.failed", event);
+        publish("payment.failed", event, "payoutId", event.payoutId());
     }
 
     public void publishRefunded(PaymentRefundedEvent event) {
-        rabbitTemplate.convertAndSend(EXCHANGE, "payment.refunded", event);
+        publish("payment.refunded", event, "payoutId", event.payoutId());
+    }
+
+    private void publish(String routingKey, Object payload, String entityKey, Long entityValue) {
+        RabbitObservability.publish(routingKey, entityKey, entityValue,
+                () -> rabbitTemplate.convertAndSend(EXCHANGE, routingKey, payload));
     }
 }
-

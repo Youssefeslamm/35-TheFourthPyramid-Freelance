@@ -14,13 +14,19 @@ public final class FeignClientSupport {
     }
 
     public static <T> T execute(String clientName, String operation, Supplier<T> call, T notFoundFallback) {
+        log.info("Calling {}.{} with args={}", clientName, operation, "none");
         try {
-            return call.get();
+            T result = call.get();
+            log.info("{}.{} returned successfully", clientName, operation);
+            return result;
         } catch (FeignException.NotFound e) {
-            log.warn("{} {} returned 404: {}", clientName, operation, e.getMessage());
+            log.warn("Feign call to {}.{} failed: {}", clientName, operation, e.status());
             return notFoundFallback;
         } catch (FeignException e) {
-            log.error("{} {} failed with status {}: {}", clientName, operation, e.status(), e.getMessage());
+            log.warn("Feign call to {}.{} failed: {}", clientName, operation, e.status());
+            throw e;
+        } catch (RuntimeException e) {
+            log.warn("Feign call to {}.{} failed: {}", clientName, operation, e.getMessage());
             throw e;
         }
     }

@@ -13,9 +13,11 @@ import com.team35.freelance.contracts.events.ProposalAcceptedEvent;
 import com.team35.freelance.contracts.events.ProposalCancelledEvent;
 import com.team35.freelance.contracts.events.ProposalCompletedEvent;
 import com.team35.freelance.contracts.events.UserDeactivatedEvent;
+import com.team35.freelance.contracts.observability.RabbitObservability;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,18 +43,15 @@ public class ContractEventConsumer {
         this.outboundFeignClients = outboundFeignClients;
     }
 
-    /**
-     * proposal.accepted -> create ACTIVE contract -> publish contract.created
-     */
     @Transactional
     @RabbitListener(queues = "proposal.accepted.contract.queue")
-    public void handleProposalAccepted(ProposalAcceptedEvent event) {
+    public void handleProposalAccepted(ProposalAcceptedEvent event, Message message) {
+        final String routingKey = "proposal.accepted";
+        RabbitObservability.applyInboundMdc(message);
         putProposalMdc(event.proposalId(), event.jobId(), event.freelancerId());
-
-        log.info("Received proposal.accepted event proposalId={} jobId={} freelancerId={}",
-                event.proposalId(), event.jobId(), event.freelancerId());
-
         try {
+            RabbitObservability.logConsuming(routingKey, "proposalId", event.proposalId());
+
             boolean alreadyExists = contractRepository
                     .findFirstByProposalIdAndStatusOrderByCreatedAtDesc(event.proposalId(), ContractStatus.ACTIVE)
                     .isPresent();
@@ -60,6 +59,7 @@ public class ContractEventConsumer {
             if (alreadyExists) {
                 log.warn("Skipping proposal.accepted because ACTIVE contract already exists proposalId={}",
                         event.proposalId());
+                RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
                 return;
             }
 
@@ -78,14 +78,12 @@ public class ContractEventConsumer {
             contract.setStatus(ContractStatus.ACTIVE);
             contract.setStartDate(LocalDateTime.now());
             contract.setMetadata(Map.of(
-                    "sourceEvent", "proposal.accepted",
+                    "sourceEvent", routingKey,
                     "createdBy", "contract-service-event-consumer"
             ));
 
             Contract saved = contractRepository.save(contract);
             MDC.put("contractId", String.valueOf(saved.getId()));
-
-            log.info("Created ACTIVE contract contractId={} proposalId={}", saved.getId(), saved.getProposalId());
 
             contractEventPublisher.publishCreated(new ContractCreatedEvent(
                     saved.getId(),
@@ -95,30 +93,27 @@ public class ContractEventConsumer {
                     BigDecimal.valueOf(saved.getAgreedAmount())
             ));
 
-            log.info("Published contract.created event contractId={}", saved.getId());
+            RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
         } catch (Exception e) {
-            log.error("Failed to process proposal.accepted proposalId={}", event.proposalId(), e);
+            RabbitObservability.logFailed(routingKey, e.getMessage(), e);
             throw e;
         } finally {
-            MDC.clear();
+            RabbitObservability.clearConsumerMdc("proposalId", "jobId", "userId", "contractId");
         }
     }
 
-    /**
-     * proposal.completed -> mark ACTIVE contract COMPLETED -> publish contract.status-changed
-     */
     @Transactional
     @RabbitListener(queues = "proposal.completed.contract.queue")
-    public void handleProposalCompleted(ProposalCompletedEvent event) {
+    public void handleProposalCompleted(ProposalCompletedEvent event, Message message) {
+        final String routingKey = "proposal.completed";
+        RabbitObservability.applyInboundMdc(message);
         putProposalMdc(event.proposalId(), event.jobId(), event.freelancerId());
         if (event.contractId() != null) {
             MDC.put("contractId", String.valueOf(event.contractId()));
         }
-
-        log.info("Received proposal.completed event proposalId={} contractId={}",
-                event.proposalId(), event.contractId());
-
         try {
+            RabbitObservability.logConsuming(routingKey, "proposalId", event.proposalId());
+
             Contract contract = contractRepository
                     .findFirstByProposalIdAndStatusOrderByCreatedAtDesc(event.proposalId(), ContractStatus.ACTIVE)
                     .orElse(null);
@@ -126,19 +121,16 @@ public class ContractEventConsumer {
             if (contract == null) {
                 log.warn("Skipping proposal.completed because no ACTIVE contract found proposalId={}",
                         event.proposalId());
+                RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
                 return;
             }
 
             ContractStatus oldStatus = contract.getStatus();
-
             contract.setStatus(ContractStatus.COMPLETED);
             contract.setEndDate(LocalDateTime.now());
 
             Contract saved = contractRepository.save(contract);
             MDC.put("contractId", String.valueOf(saved.getId()));
-
-            log.info("Marked contract COMPLETED contractId={} proposalId={}",
-                    saved.getId(), saved.getProposalId());
 
             contractEventPublisher.publishStatusChanged(new ContractStatusChangedEvent(
                     saved.getId(),
@@ -146,28 +138,24 @@ public class ContractEventConsumer {
                     ContractStatus.COMPLETED.name()
             ));
 
-            log.info("Published contract.status-changed event contractId={} oldStatus={} newStatus={}",
-                    saved.getId(), oldStatus.name(), ContractStatus.COMPLETED.name());
+            RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
         } catch (Exception e) {
-            log.error("Failed to process proposal.completed proposalId={}", event.proposalId(), e);
+            RabbitObservability.logFailed(routingKey, e.getMessage(), e);
             throw e;
         } finally {
-            MDC.clear();
+            RabbitObservability.clearConsumerMdc("proposalId", "jobId", "userId", "contractId");
         }
     }
 
-    /**
-     * proposal.cancelled -> mark ACTIVE contract TERMINATED -> publish contract.cancelled
-     */
     @Transactional
     @RabbitListener(queues = "proposal.cancelled.contract.queue")
-    public void handleProposalCancelled(ProposalCancelledEvent event) {
+    public void handleProposalCancelled(ProposalCancelledEvent event, Message message) {
+        final String routingKey = "proposal.cancelled";
+        RabbitObservability.applyInboundMdc(message);
         putProposalMdc(event.proposalId(), event.jobId(), event.freelancerId());
-
-        log.info("Received proposal.cancelled event proposalId={} reason={}",
-                event.proposalId(), event.reason());
-
         try {
+            RabbitObservability.logConsuming(routingKey, "proposalId", event.proposalId());
+
             Contract contract = contractRepository
                     .findFirstByProposalIdAndStatusOrderByCreatedAtDesc(event.proposalId(), ContractStatus.ACTIVE)
                     .orElse(null);
@@ -175,6 +163,7 @@ public class ContractEventConsumer {
             if (contract == null) {
                 log.warn("Skipping proposal.cancelled because no ACTIVE contract found proposalId={}",
                         event.proposalId());
+                RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
                 return;
             }
 
@@ -184,35 +173,34 @@ public class ContractEventConsumer {
             Contract saved = contractRepository.save(contract);
             MDC.put("contractId", String.valueOf(saved.getId()));
 
-            log.info("Marked contract TERMINATED contractId={} proposalId={}",
-                    saved.getId(), saved.getProposalId());
-
             contractEventPublisher.publishCancelled(new ContractCancelledEvent(
                     saved.getId(),
                     saved.getProposalId()
             ));
 
-            log.info("Published contract.cancelled event contractId={}", saved.getId());
+            RabbitObservability.logProcessed(routingKey, "proposalId", event.proposalId());
         } catch (Exception e) {
-            log.error("Failed to process proposal.cancelled proposalId={}", event.proposalId(), e);
+            RabbitObservability.logFailed(routingKey, e.getMessage(), e);
             throw e;
         } finally {
-            MDC.clear();
+            RabbitObservability.clearConsumerMdc("proposalId", "jobId", "userId", "contractId");
         }
     }
 
-    /**
-     * user.deactivated -> audit only.
-     * No hard state change here to avoid touching Ebrahim's read APIs or other members' business logic.
-     */
     @RabbitListener(queues = "user.deactivated.contract.queue")
-    public void handleUserDeactivated(UserDeactivatedEvent event) {
+    public void handleUserDeactivated(UserDeactivatedEvent event, Message message) {
+        final String routingKey = "user.deactivated";
+        RabbitObservability.applyInboundMdc(message);
         MDC.put("userId", String.valueOf(event.userId()));
         try {
-            log.info("Received user.deactivated event userId={} - audit logged by contract-service",
-                    event.userId());
+            RabbitObservability.logConsuming(routingKey, "userId", event.userId());
+            log.info("Audit logged user.deactivated userId={}", event.userId());
+            RabbitObservability.logProcessed(routingKey, "userId", event.userId());
+        } catch (Exception e) {
+            RabbitObservability.logFailed(routingKey, e.getMessage(), e);
+            throw e;
         } finally {
-            MDC.clear();
+            RabbitObservability.clearConsumerMdc("userId");
         }
     }
 

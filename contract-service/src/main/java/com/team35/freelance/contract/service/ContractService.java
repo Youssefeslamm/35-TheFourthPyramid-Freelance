@@ -236,6 +236,7 @@ public class ContractService {
     // S4-F3: Feign enrich freelancerName and jobTitle per row
     @Cacheable(value = "contract-service::S4-F3", key = "#minAmount + ':' + #maxAmount + ':' + #status")
     public List<ContractSummaryDTO> searchByBudgetRange(Double minAmount, Double maxAmount, String status) {
+        long startedAt = System.currentTimeMillis();
         double effectiveMin = minAmount == null ? 0.0 : minAmount;
         double effectiveMax = maxAmount == null ? 1_000_000_000_000.0 : maxAmount;
 
@@ -249,7 +250,7 @@ public class ContractService {
         Map<Long, String> userNameCache = new HashMap<>();
         Map<Long, String> jobTitleCache = new HashMap<>();
 
-        return rows.stream().map(row -> {
+        List<ContractSummaryDTO> summaries = rows.stream().map(row -> {
             long contractId   = ((Number) row[0]).longValue();
             Long freelancerId = ((Number) row[1]).longValue();
             Long jobId        = ((Number) row[2]).longValue();
@@ -274,6 +275,11 @@ public class ContractService {
                     .durationDays(duration)
                     .build();
         }).collect(Collectors.toList());
+        long elapsedMs = System.currentTimeMillis() - startedAt;
+        if (elapsedMs > 1000) {
+            log.warn("Slow S4-F3 contract enrichment took {}ms", elapsedMs);
+        }
+        return summaries;
     }
 
     @Transactional
