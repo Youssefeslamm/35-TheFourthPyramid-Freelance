@@ -3,23 +3,31 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="wallet-service"/>
+    <springProperty scope="context" name="LOKI_PUSH_URL" source="LOKI_PUSH_URL"
+                    defaultValue="http://loki:3100/loki/api/v1/push"/>
+    <springProperty scope="context" name="LOKI_ENV" source="loki.env" defaultValue="docker"/>
+
     <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
         <http>
-            <url>http://loki:3100/loki/api/v1/push</url>
+            <url>${LOKI_PUSH_URL}</url>
         </http>
-        <labels>
-            app = freelance
-            service = wallet-service
-            env = k8s
-            level = %level
-        </labels>
-        <message>
-            <pattern>{"timestamp":"%d{ISO8601}","level":"%level","logger":"%logger{36}","message":"%msg","correlationId":"%mdc{correlationId:-}","userId":"%mdc{userId:-}","payoutId":"%mdc{payoutId:-}","contractId":"%mdc{contractId:-}","proposalId":"%mdc{proposalId:-}","routingKey":"%mdc{routingKey:-}"}</pattern>
-        </message>
+        <format>
+            <label>
+                <pattern>app=freelance,service=${APP_NAME},level=%level,env=${LOKI_ENV}</pattern>
+            </label>
+            <message>
+                <pattern>{"timestamp":"%d{ISO8601}","level":"%level","service":"${APP_NAME}","thread":"%thread","logger":"%logger{36}","correlationId":"%X{correlationId:-}","payoutId":"%X{payoutId:-}","contractId":"%X{contractId:-}","proposalId":"%X{proposalId:-}","userId":"%X{userId:-}","routingKey":"%X{routingKey:-}","message":"%replace(%msg){'\"','\\\"'}"}%n</pattern>
+            </message>
+        </format>
     </appender>
 
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="LOKI"/>
     </root>
+
+    <logger name="org.springframework" level="WARN"/>
+    <logger name="org.hibernate" level="WARN"/>
+    <logger name="com.team35.freelance.wallet" level="INFO"/>
 </configuration>

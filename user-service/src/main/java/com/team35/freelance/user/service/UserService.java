@@ -48,9 +48,13 @@ import com.team35.freelance.contracts.feign.ContractServiceClient;
 import com.team35.freelance.contracts.feign.WalletServiceClient;
 
 import java.math.BigDecimal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
     private final UserSkillRepository userSkillRepository;
@@ -528,13 +532,14 @@ public class UserService {
 
     @Cacheable(value = "user-service::S1-F6:v2", key = "#startDate + ':' + #endDate + ':' + #limit")
     public List<TopFreelancerDTO> getTopFreelancersByEarnings(LocalDate startDate, LocalDate endDate, int limit) {
+        long startedAt = System.currentTimeMillis();
         if (limit < 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be greater than 0");
         }
         if (startDate.isAfter(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must not be after endDate");
         }
-        return userRepository.findAll().stream()
+        List<TopFreelancerDTO> result = userRepository.findAll().stream()
                 .filter(user -> user.getRole() == Role.FREELANCER)
                 .map(user -> {
                     com.team35.freelance.contracts.dto.FreelancerPerformanceDTO contractSummary =
@@ -560,6 +565,11 @@ public class UserService {
                 })
                 .limit(limit)
                 .toList();
+        long elapsedMs = System.currentTimeMillis() - startedAt;
+        if (elapsedMs > 1000) {
+            log.warn("Slow S1-F6 top freelancers report took {}ms", elapsedMs);
+        }
+        return result;
     }
 
     // ===================== USERS BY LANGUAGE + MIN COMPLETED CONTRACTS =====================

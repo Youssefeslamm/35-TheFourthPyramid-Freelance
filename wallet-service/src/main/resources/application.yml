@@ -64,6 +64,10 @@ feign:
   wallet-service:
     url: http://wallet-service:8080
 
+loki:
+  push-url: ${LOKI_PUSH_URL:http://loki:3100/loki/api/v1/push}
+  env: ${LOKI_ENV:docker}
+
 management:
   server:
     port: 8080
@@ -71,7 +75,7 @@ management:
     web:
       base-path: /actuator
       exposure:
-        include: health,info,prometheus,metrics
+        include: "prometheus,health,info"
   endpoint:
     health:
       show-details: always

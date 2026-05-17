@@ -12,11 +12,6 @@ data:
       evaluation_interval: 15s
 
     scrape_configs:
-      - job_name: api-gateway
-        metrics_path: /actuator/prometheus
-        static_configs:
-          - targets:
-              - api-gateway.freelance.svc.cluster.local:8080
       - job_name: user-service
         metrics_path: /actuator/prometheus
         static_configs:
@@ -42,8 +37,3 @@ data:
         static_configs:
           - targets:
               - wallet-service.freelance.svc.cluster.local:8080
-      - job_name: rabbitmq
-        metrics_path: /metrics
-        static_configs:
-          - targets:
-              - rabbitmq.freelance.svc.cluster.local:15692

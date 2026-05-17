@@ -267,6 +267,8 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000
+      LOKI_PUSH_URL: http://loki:3100/loki/api/v1/push
+      LOKI_ENV: docker
     healthcheck:
       test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080; printf \"GET /actuator/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n\" >&3; grep -q \"\\\"status\\\":\\\"UP\\\"\" <&3'"]
       interval: 10s
@@ -296,6 +298,8 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000
+      LOKI_PUSH_URL: http://loki:3100/loki/api/v1/push
+      LOKI_ENV: docker
     healthcheck:
       test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080; printf \"GET /actuator/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n\" >&3; grep -q \"\\\"status\\\":\\\"UP\\\"\" <&3'"]
       interval: 10s
@@ -330,6 +334,8 @@ services:
       SPRING_NEO4J_URI: bolt://neo4j:7687
       SPRING_NEO4J_USERNAME: neo4j
       SPRING_NEO4J_PASSWORD: neo4jpass
+      LOKI_PUSH_URL: http://loki:3100/loki/api/v1/push
+      LOKI_ENV: docker
     healthcheck:
       test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080; printf \"GET /actuator/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n\" >&3; grep -q \"\\\"status\\\":\\\"UP\\\"\" <&3'"]
       interval: 10s
@@ -370,6 +376,8 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000
+      LOKI_PUSH_URL: http://loki:3100/loki/api/v1/push
+      LOKI_ENV: docker
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
       interval: 10s
@@ -401,6 +409,8 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: 0123456789abcdef0123456789abcdef01234567
       JWT_EXPIRATION_MS: 86400000
+      LOKI_PUSH_URL: http://loki:3100/loki/api/v1/push
+      LOKI_ENV: docker
     healthcheck:
       test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080; printf \"GET /actuator/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n\" >&3; grep -q \"\\\"status\\\":\\\"UP\\\"\" <&3'"]
       interval: 10s
