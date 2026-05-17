@@ -123,6 +123,9 @@ spring:
     url: jdbc:postgresql://localhost:5432/freelancedb-proposals
     username: postgres
     password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: update
   rabbitmq:
     host: localhost
   data:

@@ -1104,4 +1104,36 @@ public class ProposalService {
         }
         return ((Number) row[index]).doubleValue();
     }
+
+    // S3-READ-DB: Get Job Proposal Summary
+    @Cacheable(value = "proposal-service::S3-READ-DB", key = "#jobId + ':' + #startDate + ':' + #endDate")
+    public com.team35.freelance.contracts.dto.JobProposalSummaryDTO getJobProposalSummary(
+            Long jobId, String startDate, String endDate) {
+
+        LocalDateTime start = parseStartDate(startDate);
+        LocalDateTime end = parseEndDate(endDate);
+
+        Object[] raw = proposalRepository.getJobProposalSummary(jobId, start, end);
+
+        // Unwrap if nested
+        Object[] row = (raw.length == 1 && raw[0] instanceof Object[])
+                ? (Object[]) raw[0] : raw;
+
+        long totalProposals = row[0] != null ? ((Number) row[0]).longValue() : 0L;
+        long acceptedProposals = row[1] != null ? ((Number) row[1]).longValue() : 0L;
+        double averageBidAmount = row[2] != null ? ((Number) row[2]).doubleValue() : 0.0;
+        double lowestBid = row[3] != null ? ((Number) row[3]).doubleValue() : 0.0;
+        double highestBid = row[4] != null ? ((Number) row[4]).doubleValue() : 0.0;
+
+        com.team35.freelance.contracts.dto.JobProposalSummaryDTO dto =
+                new com.team35.freelance.contracts.dto.JobProposalSummaryDTO();
+        dto.setJobId(jobId);
+        dto.setTotalProposals(totalProposals);
+        dto.setAcceptedProposals(acceptedProposals);
+        dto.setAverageBidAmount(averageBidAmount);
+        dto.setLowestBid(lowestBid);
+        dto.setHighestBid(highestBid);
+
+        return dto;
+    }
 }

@@ -1,9 +1,10 @@
 package com.team35.freelance.contracts.dto;
 
-public class JobProposalSummaryDTO {
+public class JobProposalSummaryDTO implements java.io.Serializable {
     private Long jobId;
     private String title;
     private Long totalProposals;
+    private Long acceptedProposals;
     private Double averageBidAmount;
     private Double lowestBid;
     private Double highestBid;
@@ -14,12 +15,14 @@ public class JobProposalSummaryDTO {
     public JobProposalSummaryDTO(Long jobId,
                                  String title,
                                  Long totalProposals,
+                                 Long acceptedProposals,
                                  Double averageBidAmount,
                                  Double lowestBid,
                                  Double highestBid) {
         this.jobId = jobId;
         this.title = title;
         this.totalProposals = totalProposals;
+        this.acceptedProposals = acceptedProposals;
         this.averageBidAmount = averageBidAmount;
         this.lowestBid = lowestBid;
         this.highestBid = highestBid;
@@ -48,6 +51,9 @@ public class JobProposalSummaryDTO {
     public void setTotalProposals(Long totalProposals) {
         this.totalProposals = totalProposals;
     }
+
+    public Long getAcceptedProposals() { return acceptedProposals; }
+    public void setAcceptedProposals(Long acceptedProposals) { this.acceptedProposals = acceptedProposals; }
 
     public Double getAverageBidAmount() {
         return averageBidAmount;
