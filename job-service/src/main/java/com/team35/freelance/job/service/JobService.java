@@ -6,7 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
+import com.team35.freelance.contracts.feign.ContractServiceClient;
+import com.team35.freelance.contracts.feign.ProposalServiceClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -77,6 +78,8 @@ public class JobService {
     private final JobDashboardCacheService jobDashboardCacheService;
     private final RestTemplate elasticsearchRestTemplate = new RestTemplate();
     private final JobEventPublisher jobEventPublisher;
+    private final ContractServiceClient contractServiceClient;
+    private final ProposalServiceClient  proposalServiceClient;
 
     @Value("${spring.elasticsearch.uris:http://elasticsearch:9200}")
     private String elasticsearchUris;
@@ -87,7 +90,9 @@ public class JobService {
                       ElasticsearchHitAdapter elasticsearchHitAdapter,
                       MongoEventLogger mongoEventLogger,
                       JobDashboardCacheService jobDashboardCacheService,
-                      JobEventPublisher jobEventPublisher) {
+                      JobEventPublisher jobEventPublisher,
+                      ContractServiceClient contractServiceClient,
+                      ProposalServiceClient  proposalServiceClient) {
 
         this.jobRepository = jobRepository;
         this.jobAttachmentRepository = jobAttachmentRepository;
@@ -95,6 +100,8 @@ public class JobService {
         this.elasticsearchHitAdapter = elasticsearchHitAdapter;
         this.jobDashboardCacheService = jobDashboardCacheService;
         this.jobEventPublisher = jobEventPublisher;
+        this.contractServiceClient = contractServiceClient;
+        this.proposalServiceClient  = proposalServiceClient;
 
         this.observers.add(mongoEventLogger);
     }
@@ -115,20 +122,39 @@ public class JobService {
 
     @Cacheable(value = "job-service::S2-F3", key = "#id + ':' + #startDate + ':' + #endDate")
     public JobProposalSummaryDTO getProposalSummary(Long id, String startDate, String endDate) {
-        if (!jobRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found");
-        }
-
         Job job = jobRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found"));
 
+        // Call proposal-service via Feign.
+        // Use fully-qualified type to avoid name clash with the local JobProposalSummaryDTO import.
+        com.team35.freelance.contracts.dto.JobProposalSummaryDTO remote;
+        try {
+            remote = proposalServiceClient.getJobProposalSummary(id, startDate, endDate);
+        } catch (feign.FeignException e) {
+            log.warn("ProposalServiceClient.getJobProposalSummary failed for jobId={}: {}", id, e.getMessage());
+            remote = new com.team35.freelance.contracts.dto.JobProposalSummaryDTO(
+                    id, job.getTitle(), 0L, 0.0, 0.0, 0.0);
+        }
+
+        // Call contract-service via Feign — active contract count for this job's owner.
+        Long activeContracts = 0L;
+        try {
+            activeContracts = contractServiceClient.getActiveContractCount(job.getClientId());
+        } catch (feign.FeignException e) {
+            log.warn("ContractServiceClient.getActiveContractCount failed for jobId={}: {}", id, e.getMessage());
+        }
+
+        log.info("ProposalSummary fetched: jobId={} totalProposals={} activeContracts={}",
+                id, remote.getTotalProposals(), activeContracts);
+
+        // Map from the shared contracts DTO → the local job-service DTO that the controller expects.
         return new JobProposalSummaryDTOBuilder()
-                .jobId(job.getId())
+                .jobId(remote.getJobId())
                 .title(job.getTitle())
-                .totalProposals(0L)
-                .averageBidAmount(0.0)
-                .lowestBid(0.0)
-                .highestBid(0.0)
+                .totalProposals(remote.getTotalProposals())
+                .averageBidAmount(remote.getAverageBidAmount())
+                .lowestBid(remote.getLowestBid())
+                .highestBid(remote.getHighestBid())
                 .build();
     }
 
