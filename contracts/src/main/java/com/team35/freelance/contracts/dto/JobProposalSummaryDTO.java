@@ -52,8 +52,13 @@ public class JobProposalSummaryDTO implements java.io.Serializable {
         this.totalProposals = totalProposals;
     }
 
-    public Long getAcceptedProposals() { return acceptedProposals; }
-    public void setAcceptedProposals(Long acceptedProposals) { this.acceptedProposals = acceptedProposals; }
+    public Long getAcceptedProposals() {
+        return acceptedProposals;
+    }
+
+    public void setAcceptedProposals(Long acceptedProposals) {
+        this.acceptedProposals = acceptedProposals;
+    }
 
     public Double getAverageBidAmount() {
         return averageBidAmount;

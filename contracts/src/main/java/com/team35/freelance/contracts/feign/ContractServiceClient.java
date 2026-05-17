@@ -12,7 +12,7 @@ public interface ContractServiceClient {
 
     @GetMapping("/api/contracts/{id}")
     ContractDTO getContractByIdInternal(@PathVariable("id") Long id,
-                                          @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId);
+                                        @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId);
 
     @GetMapping("/api/contracts/user/{userId}/active")
     ContractDTO getActiveContractForUserInternal(@PathVariable("userId") Long userId,
@@ -32,6 +32,9 @@ public interface ContractServiceClient {
 
     @GetMapping("/api/contracts/proposal/{proposalId}/active")
     ContractDTO getActiveContractForProposal(@PathVariable("proposalId") Long proposalId);
+
+    @GetMapping("/api/contracts/{contractId}")
+    ContractDTO getContract(@PathVariable("contractId") Long contractId);
 
     default ContractDTO getContractById(Long id) {
         return getContractById(id, null);
