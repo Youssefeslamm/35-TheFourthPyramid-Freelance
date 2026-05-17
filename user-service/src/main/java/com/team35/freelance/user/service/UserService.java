@@ -368,9 +368,31 @@ public class UserService {
                         HttpStatus.NOT_FOUND, "User not found"
                 ));
 
-        Object[] row = new Object[] {user.getId(), user.getName(), 0L, 0L, 0L, 0.0, 0.0};
-        UserContractSummaryAdapter adapter = new UserContractSummaryAdapter();
-        return adapter.adapt(row);
+        com.team35.freelance.contracts.dto.UserContractSummaryDTO contractSummary = null;
+        try {
+            contractSummary = contractServiceClient.getUserContractSummary(userId);
+        } catch (Exception e) {
+            // Return user data with zero contract stats if contract-service is unavailable
+            return UserContractSummaryDTO.builder()
+                    .userId(user.getId())
+                    .name(user.getName())
+                    .totalContracts(0L)
+                    .completedContracts(0L)
+                    .terminatedContracts(0L)
+                    .totalEarnings(0.0)
+                    .averageContractValue(0.0)
+                    .build();
+        }
+
+        return UserContractSummaryDTO.builder()
+                .userId(user.getId())
+                .name(user.getName())
+                .totalContracts(contractSummary.getTotalContracts())
+                .completedContracts(contractSummary.getCompletedContracts())
+                .terminatedContracts(contractSummary.getTerminatedContracts())
+                .totalEarnings(contractSummary.getTotalEarnings())
+                .averageContractValue(contractSummary.getAverageContractValue())
+                .build();
     }
 
     @Transactional

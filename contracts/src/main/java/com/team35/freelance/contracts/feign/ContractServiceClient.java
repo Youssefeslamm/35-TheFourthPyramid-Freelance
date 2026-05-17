@@ -1,6 +1,7 @@
 package com.team35.freelance.contracts.feign;
 
 import com.team35.freelance.contracts.dto.ContractDTO;
+import com.team35.freelance.contracts.dto.UserContractSummaryDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,4 +20,7 @@ public interface ContractServiceClient {
 
     @GetMapping("/api/contracts/user/{userId}/active-count")
     Long getActiveContractCount(@PathVariable("userId") Long userId);
+
+    @GetMapping("/api/contracts/user/{userId}/summary")
+    UserContractSummaryDTO getUserContractSummary(@PathVariable("userId") Long userId);
 }
