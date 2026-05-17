@@ -76,7 +76,6 @@ management:
         enabled: true
       show-details: always
 
-        include: "prometheus,health,info"
   metrics:
     distribution:
       percentiles-histogram:
