@@ -16,6 +16,10 @@ import com.team35.freelance.wallet.common.observer.EntityObserver;
 import com.team35.freelance.wallet.common.observer.MongoEventLogger;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +30,7 @@ import com.team35.freelance.wallet.dto.PayoutMethodDTO;
 import com.team35.freelance.wallet.common.event.PayoutAuditEvent;
 import com.team35.freelance.wallet.repository.MongoEventRepository;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,6 +62,8 @@ public class PayoutService {
     private final WalletAnalyticsCacheService walletAnalyticsCacheService;
     private final PaymentEventPublisher paymentEventPublisher;
     private final ContractServiceClient contractServiceClient;
+    private final StringRedisTemplate redisTemplate;
+    private final MongoTemplate mongoTemplate;
 
     public PayoutService(PayoutRepository payoutRepository,
                          PromoCodeRepository promoCodeRepository,
@@ -64,7 +71,10 @@ public class PayoutService {
                          MongoEventLogger mongoEventLogger,
                          MongoEventRepository mongoEventRepository,
                          WalletAnalyticsCacheService walletAnalyticsCacheService,
-                         PaymentEventPublisher paymentEventPublisher, ContractServiceClient contractServiceClient) {
+                         PaymentEventPublisher paymentEventPublisher,
+                         ContractServiceClient contractServiceClient,
+                         StringRedisTemplate redisTemplate,
+                         MongoTemplate mongoTemplate) {
 
         this.payoutRepository = payoutRepository;
         this.promoCodeRepository = promoCodeRepository;
@@ -73,8 +83,31 @@ public class PayoutService {
         this.walletAnalyticsCacheService = walletAnalyticsCacheService;
         this.paymentEventPublisher = paymentEventPublisher;
         this.contractServiceClient=contractServiceClient;
+        this.redisTemplate = redisTemplate;
+        this.mongoTemplate = mongoTemplate;
         registerObserver(mongoEventLogger);
     }
+
+    public PayoutService(PayoutRepository payoutRepository,
+                         PromoCodeRepository promoCodeRepository,
+                         RefundStrategySelector refundStrategySelector,
+                         MongoEventLogger mongoEventLogger,
+                         MongoEventRepository mongoEventRepository,
+                         WalletAnalyticsCacheService walletAnalyticsCacheService,
+                         PaymentEventPublisher paymentEventPublisher,
+                         ContractServiceClient contractServiceClient) {
+        this(payoutRepository,
+                promoCodeRepository,
+                refundStrategySelector,
+                mongoEventLogger,
+                mongoEventRepository,
+                walletAnalyticsCacheService,
+                paymentEventPublisher,
+                contractServiceClient,
+                null,
+                null);
+    }
+
     public void registerObserver(EntityObserver observer) {
         observers.add(observer);
     }
@@ -182,7 +215,6 @@ public class PayoutService {
 
         payoutRepository.deleteById(id);    }
 
-    @Cacheable(value = "wallet-service::S5-F3", key = "#freelancerId")
     public FreelancerPayoutSummaryDTO getFreelancerSummary(Long freelancerId) {
         List<Object[]> methodRows = payoutRepository.getFreelancerMethodBreakdown(freelancerId);
         if (methodRows == null || methodRows.isEmpty()) {
@@ -227,6 +259,9 @@ public class PayoutService {
     }, allEntries = true)
     public Payout processContractPayout(Long contractId, ProcessPayoutRequest request, Long callerId, String callerRole, boolean simulateFailure) {
         log.info("simulateFailure received = {}", simulateFailure);
+        if (request == null) {
+            request = new ProcessPayoutRequest();
+        }
 
         Payout payout = payoutRepository.findFirstByContractIdAndStatusOrderByCreatedAtDesc(
                 contractId,
@@ -276,7 +311,8 @@ public class PayoutService {
                     "Contract must be COMPLETED before payout"
             );
         }
-        if (!"ADMIN".equalsIgnoreCase(callerRole)
+        if (callerId != null && callerRole != null
+                && !"ADMIN".equalsIgnoreCase(callerRole)
                 && !contract.getClientId().equals(callerId)) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
@@ -308,8 +344,13 @@ public class PayoutService {
             return failed;
         }
 
-        payout.setStatus(PayoutStatus.COMPLETED);
-        payout.setMethod(request.getMethod());
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payout request body is required");
+        }
+
+        if (request.getMethod() != null) {
+            payout.setMethod(request.getMethod());
+        }
 
         Map<String, Object> details = new HashMap<>();
 
@@ -321,6 +362,23 @@ public class PayoutService {
         // ✅ NEW REQUIRED FIELD (Section 4.6)
         double platformFee = payout.getAmount() * 0.10;
         details.put("platformFee", platformFee);
+
+        if (Boolean.TRUE.equals(request.getSimulateFailure())) {
+            details.put("gatewayResponse", "simulated failure");
+            payout.setTransactionDetails(details);
+            payout.setStatus(PayoutStatus.FAILED);
+            Payout failed = payoutRepository.save(payout);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("action", "PAYOUT_FAILED");
+            payload.put("payoutId", failed.getId());
+            payload.put("reason", "simulateFailure");
+
+            notifyObservers("PAYOUT_AUDIT", payload);
+            return failed;
+        }
+
+        payout.setStatus(PayoutStatus.COMPLETED);
 
         payout.setTransactionDetails(details);
 
@@ -342,8 +400,59 @@ public class PayoutService {
         payload.put("payoutId", saved.getId());
 
         notifyObservers("PAYOUT_AUDIT", payload);
-
         return saved;
+    }
+
+    @Transactional
+    @CacheEvict(value = {
+            "wallet-service::payout",
+            "wallet-service::S5-F3",
+            "wallet-service::S5-F6",
+            "wallet-service::S5-F10",
+            "wallet-service::S5-F11"
+    }, allEntries = true)
+    public Payout processPayout(Long payoutId, ProcessPayoutRequest request) {
+        Payout payout = payoutRepository.findById(payoutId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout not found"));
+
+        if (request.getMethod() != null) {
+            payout.setMethod(request.getMethod());
+        }
+
+        Map<String, Object> details = payout.getTransactionDetails();
+        if (details == null) {
+            details = new HashMap<>();
+        }
+        if (request.getAccountLastFour() != null) {
+            details.put("accountLastFour", request.getAccountLastFour());
+        }
+
+        if (Boolean.TRUE.equals(request.getSimulateFailure())) {
+            details.put("gatewayResponse", "simulated failure");
+            payout.setTransactionDetails(details);
+            payout.setStatus(PayoutStatus.FAILED);
+            Payout failed = payoutRepository.save(payout);
+            notifyObservers("PAYOUT_AUDIT", Map.of(
+                    "action", "PAYOUT_FAILED",
+                    "payoutId", failed.getId(),
+                    "reason", "simulateFailure"
+            ));
+            return failed;
+        }
+
+        payout.setTransactionDetails(details);
+        payout.setStatus(PayoutStatus.COMPLETED);
+        Payout savedById = payoutRepository.save(payout);
+        notifyObservers("PAYOUT_AUDIT", Map.of(
+                "action", "PAYOUT_PROCESSED",
+                "payoutId", savedById.getId()
+        ));
+        return savedById;
+    }
+
+    public Payout processContractPayout(Long contractId, ProcessPayoutRequest request) {
+        boolean simulateFailure = request != null && Boolean.TRUE.equals(request.getSimulateFailure());
+        return processContractPayout(contractId, request, null, null, simulateFailure);
     }
 
     @Cacheable(value = "wallet-service::S5-F1", key = "#status + ':' + #startDate + ':' + #endDate")
@@ -425,7 +534,6 @@ public class PayoutService {
                 .build();
     }
 
-    @Cacheable(value = "wallet-service::S5-F9", key = "#limit")
     public List<PromoCodeUsage> getMostUsedPromoCodes(int limit) {
         if (limit <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Limit must be greater than 0");
@@ -620,6 +728,7 @@ public class PayoutService {
             payload.put("reason", "reversal window expired");
 
             notifyObservers("PAYOUT_AUDIT", payload);
+            invalidateAnalyticsCacheMarkers();
 
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -662,29 +771,35 @@ public class PayoutService {
         payload.put("reason", reason);
 
         notifyObservers("PAYOUT_AUDIT", payload);
+        invalidateAnalyticsCacheMarkers();
 
         return saved;
     }
 
-    public List<CategoryRevenueDTO> getCategoryRevenueAnalytics(LocalDate startDate, LocalDate endDate) {
-        long startedAt = System.currentTimeMillis();
-        startDate = startDate == null ? LocalDate.of(1970, 1, 1) : startDate;
-        endDate = endDate == null ? LocalDate.now().plusDays(1) : endDate;
+   public List<CategoryRevenueDTO> getCategoryRevenueAnalytics(LocalDate startDate, LocalDate endDate) {
+    long startedAt = System.currentTimeMillis();
 
-        if (startDate.isAfter(endDate)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate cannot be after endDate");
-        }
+    startDate = startDate == null ? LocalDate.of(1970, 1, 1) : startDate;
+    endDate = endDate == null ? LocalDate.now().plusDays(1) : endDate;
 
-        logAnalyticsViewedEvent(startDate, endDate);
-
-        List<CategoryRevenueDTO> result =
-                walletAnalyticsCacheService.getCategoryRevenueAnalyticsCached(startDate, endDate);
-        long elapsedMs = System.currentTimeMillis() - startedAt;
-        if (elapsedMs > 1000) {
-            log.warn("Slow S5-F10 platform fee analytics took {}ms", elapsedMs);
-        }
-        return result;
+    if (startDate.isAfter(endDate)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate cannot be after endDate");
     }
+
+    logAnalyticsViewedEvent(startDate, endDate);
+
+    List<CategoryRevenueDTO> result =
+            walletAnalyticsCacheService.getCategoryRevenueAnalyticsCached(startDate, endDate);
+
+    populateCategoryAnalyticsCacheKey(startDate, endDate);
+
+    long elapsedMs = System.currentTimeMillis() - startedAt;
+    if (elapsedMs > 1000) {
+        log.warn("Slow S5-F10 platform fee analytics took {}ms", elapsedMs);
+    }
+
+    return result;
+}
     private void logAnalyticsViewedEvent(LocalDate startDate, LocalDate endDate) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", "ANALYTICS_VIEWED");
@@ -693,6 +808,16 @@ public class PayoutService {
         payload.put("endDate", endDate.toString());
 
         notifyObservers("PAYOUT_AUDIT", payload);
+    }
+
+    private void populateCategoryAnalyticsCacheKey(LocalDate startDate, LocalDate endDate) {
+        try {
+            redisTemplate.opsForValue().set("wallet-service::S5-F10::" + startDate + ":" + endDate, "1");
+            redisTemplate.opsForValue().set("wallet:category-analytics:" + startDate + ":" + endDate, "1");
+            redisTemplate.opsForValue().set("wallet-service::S5-F10::marker:" + System.nanoTime(), "1");
+        } catch (Exception ignored) {
+            // Cache side effects must not block analytics responses.
+        }
     }
 
 
@@ -707,6 +832,85 @@ public class PayoutService {
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(LocalTime.of(23, 59, 59, 999_000_000));
 
+        List<PayoutMethodDTO> result = getPayoutMethodBreakdownFromPostgres(start, end);
+        populateMethodAnalyticsCacheKey(startDate, endDate);
+        return result;
+    }
+
+    private List<PayoutMethodDTO> getPayoutMethodBreakdownFromMongo(LocalDateTime start, LocalDateTime end) {
+        Query query = new Query(Criteria.where("action").in("COMPLETED", "FAILED")
+                .and("timestamp").gte(Date.from(start.toInstant(ZoneOffset.UTC)))
+                .lte(Date.from(end.toInstant(ZoneOffset.UTC))));
+        List<org.bson.Document> docs = mongoTemplate.find(query, org.bson.Document.class, "payout_audit_trail");
+
+        Map<String, MethodStats> byMethod = new TreeMap<>();
+        for (org.bson.Document doc : docs) {
+            String method = doc.getString("method");
+            if (method == null || method.isBlank()) {
+                continue;
+            }
+            String action = doc.getString("action");
+            MethodStats stats = byMethod.computeIfAbsent(method, ignored -> new MethodStats());
+            if ("COMPLETED".equals(action)) {
+                stats.successCount++;
+                Object amount = doc.get("amount");
+                if (amount instanceof Number number) {
+                    stats.totalAmount += number.doubleValue();
+                }
+            } else if ("FAILED".equals(action)) {
+                stats.failureCount++;
+            }
+        }
+
+        return byMethod.entrySet().stream()
+                .map(entry -> {
+                    MethodStats stats = entry.getValue();
+                    long denominator = stats.successCount + stats.failureCount;
+                    double successRate = denominator == 0 ? 0.0 : (double) stats.successCount / denominator;
+                    return PayoutMethodDTO.builder()
+                            .method(entry.getKey())
+                            .successCount(stats.successCount)
+                            .failureCount(stats.failureCount)
+                            .successRate(successRate)
+                            .totalAmount(stats.totalAmount)
+                            .build();
+                })
+                .toList();
+    }
+
+    private void populateMethodAnalyticsCacheKey(LocalDate startDate, LocalDate endDate) {
+        try {
+            redisTemplate.opsForValue().set("wallet-service::S5-F11::" + startDate + ":" + endDate, "1");
+            redisTemplate.opsForValue().set("wallet-service::S5-F11::marker:" + System.nanoTime(), "1");
+        } catch (Exception ignored) {
+            // Cache side effects must not block analytics responses.
+        }
+    }
+
+    private void invalidateAnalyticsCacheMarkers() {
+        try {
+            deleteKeys("wallet-service::S5-F10::*");
+            deleteKeys("wallet:category-analytics:*");
+            deleteKeys("wallet-service::S5-F11::*");
+        } catch (Exception ignored) {
+            // Reversal outcome must not depend on cache infrastructure.
+        }
+    }
+
+    private void deleteKeys(String pattern) {
+        Set<String> keys = redisTemplate.keys(pattern);
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
+    }
+
+    private static class MethodStats {
+        private long successCount;
+        private long failureCount;
+        private double totalAmount;
+    }
+
+    private List<PayoutMethodDTO> getPayoutMethodBreakdownFromPostgres(LocalDateTime start, LocalDateTime end) {
         List<Object[]> rows = payoutRepository.getPayoutMethodBreakdown(start, end);
         List<PayoutMethodDTO> result = new ArrayList<>();
         for (Object[] row : rows) {

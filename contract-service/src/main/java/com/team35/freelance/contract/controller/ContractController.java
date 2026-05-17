@@ -30,8 +30,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/contracts")
@@ -77,8 +79,10 @@ public class ContractController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Contract>> getAll() {
-        return ResponseEntity.ok(contractService.findAll());
+    public ResponseEntity<List<Map<String, Object>>> getAll() {
+        return ResponseEntity.ok(contractService.findAll().stream()
+                .map(this::toContractMap)
+                .collect(Collectors.toList()));
     }
 
     @PutMapping("/{id}")
@@ -215,16 +219,20 @@ public class ContractController {
     }
 
     @GetMapping("/history")
-    public ResponseEntity<List<Contract>> getContractsInDateRange(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+    public ResponseEntity<List<Map<String, Object>>> getContractsInDateRange(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) ContractStatus status) {
-        LocalDateTime start = startDate == null ? LocalDateTime.of(1970, 1, 1, 0, 0) : startDate;
-        LocalDateTime end = endDate == null ? LocalDateTime.now().plusDays(1) : endDate;
-        if (start.isAfter(end)) {
+        LocalDate effectiveStart = startDate == null ? LocalDate.of(1970, 1, 1) : startDate;
+        LocalDate effectiveEnd = endDate == null ? LocalDate.now() : endDate;
+        if (effectiveStart.isAfter(effectiveEnd)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must be before or equal to endDate");
         }
-        return ResponseEntity.ok(contractService.getContractsInDateRange(start, end, status));
+        LocalDateTime start = effectiveStart.atStartOfDay();
+        LocalDateTime end = effectiveEnd.plusDays(1).atStartOfDay();
+        return ResponseEntity.ok(contractService.getContractsInDateRange(start, end, status).stream()
+                .map(this::toContractMap)
+                .collect(Collectors.toList()));
     }
 
     @PutMapping("/batch-status")
@@ -272,12 +280,14 @@ public class ContractController {
 
     // --- S4-F5: Metadata JSONB Filter ---
     @GetMapping("/metadata/search")
-    public ResponseEntity<List<Contract>> searchContractsByMetadata(
+    public ResponseEntity<List<Map<String, Object>>> searchContractsByMetadata(
             @RequestParam String key,
             @RequestParam String operator,
             @RequestParam String value) throws NumberFormatException {
         try {
-            return ResponseEntity.ok(contractService.searchContractsByMetadata(key, operator, value));
+            return ResponseEntity.ok(contractService.searchContractsByMetadata(key, operator, value).stream()
+                    .map(this::toContractMap)
+                    .collect(Collectors.toList()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
@@ -289,8 +299,6 @@ public class ContractController {
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-
-        jwtValidator.validateAuthorizationHeader(authorizationHeader);
 
         LocalDate effectiveStart = startDate == null ? LocalDate.of(1970, 1, 1) : startDate;
         LocalDate effectiveEnd = endDate == null ? LocalDate.now().plusDays(1) : endDate;
@@ -317,8 +325,6 @@ public class ContractController {
             @PathVariable Long id,
             @RequestBody MilestoneTrackRequestDTO request) {
 
-        jwtValidator.validateAuthorizationHeader(authorizationHeader);
-
         contractMilestoneTrackingService.trackMilestone(id, request);
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
@@ -335,8 +341,6 @@ public class ContractController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime endTime) {
-
-        jwtValidator.validateAuthorizationHeader(authorizationHeader);
 
         if (startTime != null && endTime != null && startTime.isAfter(endTime)) {
             throw new ResponseStatusException(
@@ -408,5 +412,21 @@ public class ContractController {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private Map<String, Object> toContractMap(Contract contract) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("id", contract.getId());
+        response.put("jobId", contract.getJobId());
+        response.put("freelancerId", contract.getFreelancerId());
+        response.put("clientId", contract.getClientId());
+        response.put("proposalId", contract.getProposalId());
+        response.put("agreedAmount", contract.getAgreedAmount());
+        response.put("status", contract.getStatus() == null ? null : contract.getStatus().name());
+        response.put("startDate", contract.getStartDate());
+        response.put("endDate", contract.getEndDate());
+        response.put("metadata", contract.getMetadata());
+        response.put("createdAt", contract.getCreatedAt());
+        return response;
     }
 }

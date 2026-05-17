@@ -1,6 +1,7 @@
 package com.team35.freelance.job.repository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -21,11 +22,15 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     @Query(value = """
         SELECT *
         FROM jobs j
-        WHERE (:status IS NULL OR j.status = CAST(:status AS job_status_enum))
-          AND j.budget_max BETWEEN :minBudget AND :maxBudget
+        WHERE (:query IS NULL OR LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%'))
+               OR LOWER(j.description) LIKE LOWER(CONCAT('%', :query, '%')))
+          AND (:status IS NULL OR j.status = CAST(:status AS job_status_enum))
+          AND (:minBudget IS NULL OR j.budget_max >= :minBudget)
+          AND (:maxBudget IS NULL OR j.budget_min <= :maxBudget)
         ORDER BY j.budget_max DESC
         """, nativeQuery = true)
-    List<Job> searchJobs(@Param("status") String status,
+    List<Job> searchJobs(@Param("query") String query,
+                         @Param("status") String status,
                          @Param("minBudget") Double minBudget,
                          @Param("maxBudget") Double maxBudget);
 
@@ -93,4 +98,24 @@ public interface JobRepository extends JpaRepository<Job, Long> {
                                          @Param("minBudget") Double minBudget,
                                          @Param("maxBudget") Double maxBudget);
 
+    @Query(value = """
+        SELECT
+            j.id AS job_id,
+            j.title AS title,
+            COUNT(p.id) AS total_proposals,
+            COALESCE(SUM(CASE WHEN p.status = 'ACCEPTED' THEN 1 ELSE 0 END), 0) AS accepted_proposals,
+            COALESCE(AVG(p.bid_amount), 0) AS average_bid_amount,
+            (
+                SELECT COUNT(*)
+                FROM job_attachments ja
+                WHERE ja.job_id = j.id
+                  AND ja.expiry_date >= CURRENT_DATE
+            ) AS active_attachments,
+            COALESCE(j.rating, 0) AS rating
+        FROM jobs j
+        LEFT JOIN proposals p ON p.job_id = j.id
+        WHERE j.id = :jobId
+        GROUP BY j.id, j.title, j.rating
+        """, nativeQuery = true)
+    Map<String, Object> getJobDashboardRaw(@Param("jobId") Long jobId);
 }

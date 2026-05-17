@@ -225,7 +225,6 @@ public class ContractService {
         return saved;
     }
 
-    @Cacheable(value = "contract-service::S4-F6", key = "#startDate + ':' + #endDate + ':' + #status")
     public List<Contract> getContractsInDateRange(LocalDateTime startDate,
                                                   LocalDateTime endDate,
                                                   ContractStatus status) {

@@ -97,17 +97,17 @@ CREATE TABLE IF NOT EXISTS job_attachments (
 );
 
 CREATE TABLE IF NOT EXISTS proposals (
-                                         id BIGSERIAL PRIMARY KEY,
-                                         job_id BIGINT NOT NULL,
-                                         freelancer_id BIGINT NOT NULL,
-                                         contract_id BIGINT,
-                                         cover_letter TEXT NOT NULL,
-                                         bid_amount DOUBLE PRECISION NOT NULL,
-                                         estimated_days INTEGER NOT NULL,
-                                         status proposal_status_enum NOT NULL,
-                                         metadata JSONB,
-                                         submitted_at TIMESTAMP NOT NULL,
-                                         accepted_at TIMESTAMP
+    id BIGSERIAL PRIMARY KEY,
+    job_id BIGINT NOT NULL,
+    freelancer_id BIGINT NOT NULL,
+    contract_id BIGINT,
+    cover_letter TEXT NOT NULL,
+    bid_amount DOUBLE PRECISION NOT NULL,
+    estimated_days INTEGER NOT NULL,
+    status proposal_status_enum NOT NULL,
+    metadata JSONB,
+    submitted_at TIMESTAMP NOT NULL,
+    accepted_at TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS proposal_milestones (
