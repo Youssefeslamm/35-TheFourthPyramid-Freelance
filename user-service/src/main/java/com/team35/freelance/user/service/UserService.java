@@ -497,8 +497,8 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        Long activeCount = contractServiceClient.getActiveContractCount(id);
-        if (activeCount != null && activeCount > 0) {
+        int activeCount = contractServiceClient.getActiveContractCount(id);
+        if (activeCount > 0)  {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User has active contracts");
         }
 

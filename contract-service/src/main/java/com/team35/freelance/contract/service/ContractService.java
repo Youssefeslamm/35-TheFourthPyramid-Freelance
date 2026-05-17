@@ -29,6 +29,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.team35.freelance.contracts.dto.UserContractSummaryDTO;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -529,4 +530,40 @@ public class ContractService {
                 .contractsByStatus(byStatus)
                 .build();
     }
+
+    @Cacheable(value = "contract-service::S1-F3", key = "#userId")
+    public UserContractSummaryDTO getUserContractSummaryForFreelancer(Long userId) {
+        List<Object[]> results = contractRepository.getUserContractSummaryAggregates(userId);
+        Object[] row = results == null || results.isEmpty() ? null : results.get(0);
+
+        return new UserContractSummaryDTO(
+                userId,
+                null,
+                numberAsLong(row, 0),
+                numberAsLong(row, 1),
+                numberAsLong(row, 2),
+                numberAsDouble(row, 3),
+                numberAsDouble(row, 4)
+        );
+    }
+
+    public int getActiveContractCountForFreelancer(Long userId) {
+        return contractRepository.countActiveByFreelancerId(userId);
+    }
+
+    public long getCompletedContractCountForFreelancer(Long userId) {
+        return contractRepository.countCompletedByFreelancerId(userId);
+    }
+
+    public int getActiveContractCountForJob(Long jobId) {
+        return contractRepository.countActiveByJobId(jobId);
+    }
+
+    public Optional<Contract> findActiveContractForProposal(Long proposalId) {
+        return contractRepository.findFirstByProposalIdAndStatusOrderByCreatedAtDesc(
+                proposalId,
+                ContractStatus.ACTIVE
+        );
+    }
+
 }
