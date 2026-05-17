@@ -18,9 +18,9 @@ public class ProposalRabbitConfig {
     public static final String JOB_EXCHANGE = "job.events";
     public static final String USER_EXCHANGE = "user.events";
 
-    public static final String SAGA_FEEDBACK_QUEUE = "proposal.saga-feedback";
-    public static final String SAGA_FEEDBACK_DLQ = "proposal.saga-feedback.dlq";
-    public static final String SAGA_FEEDBACK_DLX = "proposal.saga-feedback.dlx";
+    public static final String SAGA_FEEDBACK_QUEUE = "user.proposal.saga-listener";
+    public static final String SAGA_FEEDBACK_DLQ = "user.proposal.saga-listener.dlq";
+    public static final String SAGA_FEEDBACK_DLX = "user.proposal.saga-listener.dlx";
 
     @Bean
     public ObjectMapper objectMapper() {

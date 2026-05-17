@@ -45,6 +45,9 @@ import com.team35.freelance.user.messaging.publisher.UserEventPublisher;
 import com.team35.freelance.contracts.events.UserDeactivatedEvent;
 import com.team35.freelance.contracts.events.UserRegisteredEvent;
 import com.team35.freelance.contracts.feign.ContractServiceClient;
+import com.team35.freelance.contracts.feign.WalletServiceClient;
+
+import java.math.BigDecimal;
 
 @Service
 public class UserService {
@@ -58,6 +61,7 @@ public class UserService {
     private final JwtService jwtService;
     private final UserEventPublisher userEventPublisher;
     private final ContractServiceClient contractServiceClient;
+    private final WalletServiceClient walletServiceClient;
 
 
     public UserService(UserRepository userRepository,
@@ -67,7 +71,8 @@ public class UserService {
                        AuthEventRepository authEventRepository,
                        JwtService jwtService,
                        UserEventPublisher userEventPublisher,
-                       ContractServiceClient contractServiceClient) {
+                       ContractServiceClient contractServiceClient,
+                       WalletServiceClient walletServiceClient) {
 
         this.userRepository = userRepository;
         this.userSkillRepository = userSkillRepository;
@@ -77,6 +82,7 @@ public class UserService {
         this.jwtService = jwtService;
         this.userEventPublisher = userEventPublisher;
         this.contractServiceClient = contractServiceClient;
+        this.walletServiceClient = walletServiceClient;
 
         this.observers.add(mongoEventLogger);
     }
@@ -520,7 +526,7 @@ public class UserService {
 
     // ===================== TOP FREELANCERS BY EARNINGS =====================
 
-    @Cacheable(value = "user-service::S1-F6", key = "#startDate + ':' + #endDate + ':' + #limit")
+    @Cacheable(value = "user-service::S1-F6:v2", key = "#startDate + ':' + #endDate + ':' + #limit")
     public List<TopFreelancerDTO> getTopFreelancersByEarnings(LocalDate startDate, LocalDate endDate, int limit) {
         if (limit < 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be greater than 0");
@@ -528,17 +534,47 @@ public class UserService {
         if (startDate.isAfter(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must not be after endDate");
         }
-        return new ArrayList<>();
+        return userRepository.findAll().stream()
+                .filter(user -> user.getRole() == Role.FREELANCER)
+                .map(user -> {
+                    com.team35.freelance.contracts.dto.FreelancerPerformanceDTO contractSummary =
+                            contractServiceClient.getFreelancerPerformance(user.getId(), startDate, endDate);
+                    BigDecimal payoutTotal = walletServiceClient.getFreelancerPayoutTotal(user.getId(), startDate, endDate);
+                    long contractCount = contractSummary == null || contractSummary.getTotalContracts() == null
+                            ? 0L
+                            : contractSummary.getTotalContracts().longValue();
+                    double totalEarnings = payoutTotal == null ? 0.0 : payoutTotal.doubleValue();
+                    return TopFreelancerDTO.builder()
+                            .userId(user.getId())
+                            .name(user.getName())
+                            .totalEarnings(totalEarnings)
+                            .contractCount(contractCount)
+                            .build();
+                })
+                .sorted((left, right) -> {
+                    int earnings = Double.compare(right.getTotalEarnings(), left.getTotalEarnings());
+                    if (earnings != 0) {
+                        return earnings;
+                    }
+                    return Long.compare(right.getContractCount(), left.getContractCount());
+                })
+                .limit(limit)
+                .toList();
     }
 
     // ===================== USERS BY LANGUAGE + MIN COMPLETED CONTRACTS =====================
 
-    @Cacheable(value = "user-service::S1-F9", key = "#lang + ':' + #minContracts")
+    @Cacheable(value = "user-service::S1-F9:v2", key = "#lang + ':' + #minContracts")
     public List<User> findUsersByLanguageAndMinContracts(String lang, int minContracts) {
         if (lang == null || lang.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "lang must not be blank");
         }
-        return userRepository.findUsersByPreference("language", lang);
+        if (minContracts < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minContracts must be greater than or equal to 0");
+        }
+        return userRepository.findUsersByPreference("language", lang).stream()
+                .filter(user -> contractServiceClient.getCompletedContractCount(user.getId()) >= minContracts)
+                .toList();
     }
 
 

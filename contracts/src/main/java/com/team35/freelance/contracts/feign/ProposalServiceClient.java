@@ -2,6 +2,7 @@ package com.team35.freelance.contracts.feign;
 
 import com.team35.freelance.contracts.dto.JobProposalSummaryDTO;
 import com.team35.freelance.contracts.dto.ProposalDTO;
+import feign.FeignException;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,7 +14,7 @@ public interface ProposalServiceClient {
     @GetMapping("/api/proposals/{id}")
     ProposalDTO getProposalById(@PathVariable("id") Long id);
 
-    @GetMapping("/api/proposals/job/{jobId}/summary")
+@GetMapping("/api/proposals/job/{jobId}/summary")
     JobProposalSummaryDTO getJobProposalSummary(
             @PathVariable("jobId") Long jobId,
             @RequestParam("startDate") String startDate,

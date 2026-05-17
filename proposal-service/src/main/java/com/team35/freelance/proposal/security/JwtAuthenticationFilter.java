@@ -38,7 +38,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (path.contains("/health")) {
+        if (path.contains("/health")
+                || path.equals("/actuator/prometheus") || path.equals("/actuator/info")) {
             filterChain.doFilter(request, response);
             return;
         }

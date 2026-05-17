@@ -23,7 +23,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
@@ -68,7 +68,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: "prometheus,health,info"
+        include: "health,info,prometheus"
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
   metrics:
     distribution:
       percentiles-histogram:

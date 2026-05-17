@@ -1,12 +1,20 @@
 package com.team35.freelance.contract.dto;
 
-public class FreelancerPerformanceDTO {
+import java.io.Serializable;
+
+public class FreelancerPerformanceDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     private Long freelancerId;
     private Integer totalContracts;
     private Double averageContractValue;
     private Double completionRate;
     private Double averageDurationDays;
     private Double totalEarnings;
+
+    public FreelancerPerformanceDTO() {
+    }
 
     private FreelancerPerformanceDTO(Builder builder) {
         this.freelancerId = builder.freelancerId;
@@ -71,4 +79,11 @@ public class FreelancerPerformanceDTO {
     public Double getCompletionRate() { return completionRate; }
     public Double getAverageDurationDays() { return averageDurationDays; }
     public Double getTotalEarnings() { return totalEarnings; }
+
+    public void setFreelancerId(Long freelancerId) { this.freelancerId = freelancerId; }
+    public void setTotalContracts(Integer totalContracts) { this.totalContracts = totalContracts; }
+    public void setAverageContractValue(Double averageContractValue) { this.averageContractValue = averageContractValue; }
+    public void setCompletionRate(Double completionRate) { this.completionRate = completionRate; }
+    public void setAverageDurationDays(Double averageDurationDays) { this.averageDurationDays = averageDurationDays; }
+    public void setTotalEarnings(Double totalEarnings) { this.totalEarnings = totalEarnings; }
 }

@@ -136,6 +136,43 @@ CREATE TABLE IF NOT EXISTS contracts (
     created_at TIMESTAMP NOT NULL
 );
 
+INSERT INTO contracts (
+    id,
+    job_id,
+    freelancer_id,
+    client_id,
+    proposal_id,
+    agreed_amount,
+    status,
+    start_date,
+    end_date,
+    metadata,
+    created_at
+) VALUES (
+    9006,
+    9002,
+    1,
+    1,
+    9006,
+    2000.0,
+    'COMPLETED',
+    '2026-03-01 00:00:00',
+    '2026-03-15 00:00:00',
+    '{}'::jsonb,
+    NOW()
+) ON CONFLICT (id) DO UPDATE SET
+    job_id = EXCLUDED.job_id,
+    freelancer_id = EXCLUDED.freelancer_id,
+    client_id = EXCLUDED.client_id,
+    proposal_id = EXCLUDED.proposal_id,
+    agreed_amount = EXCLUDED.agreed_amount,
+    status = EXCLUDED.status,
+    start_date = EXCLUDED.start_date,
+    end_date = EXCLUDED.end_date,
+    metadata = EXCLUDED.metadata;
+
+SELECT setval(pg_get_serial_sequence('contracts', 'id'), GREATEST((SELECT MAX(id) FROM contracts), 9006), true);
+
 CREATE TABLE IF NOT EXISTS payouts (
     id BIGSERIAL PRIMARY KEY,
     contract_id BIGINT NOT NULL,

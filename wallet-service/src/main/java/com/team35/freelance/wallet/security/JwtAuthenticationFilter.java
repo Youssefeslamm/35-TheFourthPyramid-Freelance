@@ -32,8 +32,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        System.out.println("WALLET FILTER HIT PATH = " + path);
-
         if ("true".equals(request.getHeader("X-INTERNAL-CALL"))) {
             SecurityContextHolder.clearContext();
             filterChain.doFilter(request, response);
@@ -41,12 +39,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (path.startsWith("/api/payouts")) {
-            System.out.println("BYPASSING WALLET AUTH FOR PAYOUTS");
             filterChain.doFilter(request, response);
             return;
         }
 
-        if (path.contains("/health")) {
+        if (path.contains("/health")
+                || path.equals("/actuator/prometheus") || path.equals("/actuator/info")) {
             filterChain.doFilter(request, response);
             return;
         }
