@@ -61,8 +61,12 @@ public class ProposalController {
     }
 
     @PutMapping("/{id}/withdraw")
-    public ResponseEntity<Proposal> withdrawProposal(@PathVariable Long id) {
-        return ResponseEntity.ok(proposalService.withdrawProposal(id));
+    public ResponseEntity<Proposal> withdrawProposal(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        Long callerUserId = userIdHeader != null ? Long.parseLong(userIdHeader.trim()) : null;
+        return ResponseEntity.ok(proposalService.withdrawProposal(id, callerUserId, userRole));
     }
 
     @GetMapping("/{proposalId}/details")
@@ -74,11 +78,15 @@ public class ProposalController {
     public ResponseEntity<Proposal> acceptProposal(@PathVariable Long proposalId) {
         return ResponseEntity.ok(proposalService.acceptProposal(proposalId));
     }
-    // S3-F4: Complete Proposal's Contract
     @PutMapping("/{id}/complete")
-    public ResponseEntity<Proposal> completeProposal(@PathVariable Long id) {
-        return ResponseEntity.ok(proposalService.completeProposal(id));
+    public ResponseEntity<Proposal> completeProposal(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        Long callerUserId = userIdHeader != null ? Long.parseLong(userIdHeader.trim()) : null;
+        return ResponseEntity.ok(proposalService.completeProposal(id, callerUserId, userRole));
     }
+
     // S3-F8: Add Milestones to Proposal
     @PostMapping("/{proposalId}/milestones")
     public ResponseEntity<Proposal> addMilestones(@PathVariable Long proposalId,

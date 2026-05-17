@@ -140,5 +140,6 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
             @Param("jobId") Long jobId,
             @Param("status") String status
     );
-
+    // Saga abandonment reaper — finds proposals stuck in PAYMENT_PENDING past the cutoff
+    List<Proposal> findByStatusAndAcceptedAtBefore(ProposalStatus status, LocalDateTime cutoff);
 }

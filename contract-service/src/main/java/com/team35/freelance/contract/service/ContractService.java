@@ -447,6 +447,13 @@ public class ContractService {
         return ((Number) row[index]).doubleValue();
     }
 
+    private Long numberAsLong(Object[] row, int index) {
+        if (row == null || row.length <= index || row[index] == null) {
+            return 0L;
+        }
+        return ((Number) row[index]).longValue();
+    }
+
     @Cacheable(value = "contract-service::S4-F5", key = "#key + ':' + #operator + ':' + #value")
     public List<Contract> searchContractsByMetadata(String key, String operator, String value) {
         if ("eq".equalsIgnoreCase(operator)) {

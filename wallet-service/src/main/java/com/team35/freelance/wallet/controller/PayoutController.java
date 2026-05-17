@@ -161,15 +161,24 @@ public class PayoutController {
     // -------- PROCESS PAYOUT (S5-F4) --------
 
     @PostMapping("/contract/{contractId}")
-    public ResponseEntity<Void> processContractPayout(
+    public ResponseEntity<Payout> processContractPayout(
             @PathVariable Long contractId,
-            @RequestBody ProcessPayoutRequest request
+            @RequestBody ProcessPayoutRequest request,
+            @RequestHeader("X-User-Id") Long callerId,
+            @RequestHeader("X-User-Role") String callerRole
     ) {
-        payoutService.processContractPayout(contractId, request);
-        return ResponseEntity.status(201).build();
+        Payout payout = payoutService.processContractPayout(contractId, request, callerId, callerRole);
+
+        if (payout.getStatus() == PayoutStatus.COMPLETED || payout.getStatus() == PayoutStatus.FAILED) {
+            return ResponseEntity.ok(payout);
+        }
+
+        return ResponseEntity.status(201).body(payout);
     }
 
+
     // -------- S5-F6: REVENUE REPORT --------
+
 
     @GetMapping("/reports/revenue")
     public ResponseEntity<RevenueReportDTO> getRevenueReport(

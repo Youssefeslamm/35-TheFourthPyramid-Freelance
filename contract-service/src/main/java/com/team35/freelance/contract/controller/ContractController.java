@@ -376,7 +376,6 @@ public class ContractController {
         MDC.remove(MDC_CONTRACT_ID);
     }
 
-    // law el summary feeha null fel counts 7awelhom 0 — mesh 3ayzeen null fel JSON (Feign w el clients)
     private static void ensureNonNullSummaryCounts(UserContractSummaryDTO dto, Long userId) {
         if (dto.getUserId() == null) {
             dto.setUserId(userId);
