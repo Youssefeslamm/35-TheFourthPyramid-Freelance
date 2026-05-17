@@ -44,7 +44,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
 
         // ✅ 2. PUBLIC ENDPOINTS
-        if (path.startsWith("/api/auth/") || path.contains("/health")) {
+        if (path.startsWith("/api/auth/") || path.contains("/health")
+                || path.equals("/actuator/prometheus") || path.equals("/actuator/info")) {
             filterChain.doFilter(request, response);
             return;
         }

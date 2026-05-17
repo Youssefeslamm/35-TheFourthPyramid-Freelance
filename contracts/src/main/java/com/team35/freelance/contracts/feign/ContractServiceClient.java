@@ -1,11 +1,16 @@
 package com.team35.freelance.contracts.feign;
 
 import com.team35.freelance.contracts.dto.ContractDTO;
+import com.team35.freelance.contracts.dto.FreelancerPerformanceDTO;
 import com.team35.freelance.contracts.dto.UserContractSummaryDTO;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.time.LocalDate;
 
 @FeignClient(name = "contract-service", url = "${feign.contract-service.url}")
 public interface ContractServiceClient {
@@ -26,6 +31,12 @@ public interface ContractServiceClient {
 
     @GetMapping("/api/contracts/user/{userId}/completed-count")
     long getCompletedContractCount(@PathVariable("userId") Long userId);
+
+    @GetMapping("/api/contracts/freelancer/{freelancerId}/summary")
+    FreelancerPerformanceDTO getFreelancerPerformance(
+            @PathVariable("freelancerId") Long freelancerId,
+            @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate);
 
     @GetMapping("/api/contracts/job/{jobId}/active-count")
     int getActiveContractCountForJob(@PathVariable("jobId") Long jobId);
