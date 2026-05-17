@@ -140,13 +140,13 @@ try {
 
 if ($clusterOk) {
     kubectl apply --dry-run=client --validate=false `
-        -f infra/k8s/secrets/wallet-postgres-secret.yaml `
-        -f infra/k8s/pvcs/wallet-postgres-pvc.yaml `
-        -f infra/k8s/services/wallet-postgres-svc.yaml `
-        -f infra/k8s/statefulsets/wallet-postgres-statefulset.yaml 2>&1 | Out-Null
+        -f k8s/secrets/wallet-postgres-secret.yaml `
+        -f k8s/pvcs/wallet-postgres-pvc.yaml `
+        -f k8s/services/wallet-postgres-svc.yaml `
+        -f k8s/statefulsets/wallet-postgres-statefulset.yaml 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
         Write-Ok "wallet-postgres K8s manifests are valid (dry-run)"
-        Write-Host "  To deploy: kubectl apply -k infra/k8s  (coordinate with team for namespace)" -ForegroundColor Gray
+        Write-Host "  To deploy: see k8s/README.md (kubectl apply -f k8s/... in order)" -ForegroundColor Gray
     } else {
         $failures += "K8s dry-run failed"
     }

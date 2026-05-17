@@ -5,7 +5,7 @@ These checks are intended for a full integration environment after all service s
 ## Prerequisites
 
 - `mvn clean compile` passes from the repo root.
-- `kubectl kustomize infra/k8s` renders successfully.
+- `kubectl apply --dry-run=client -f k8s/` (per-directory; see `k8s/README.md`) validates Section 10 manifests.
 - `api-gateway`, all five services, RabbitMQ, PostgreSQL instances, Redis, MongoDB, Neo4j, Cassandra, and Elasticsearch are running.
 - `GATEWAY_URL` points at the gateway, for example `http://localhost:8080`.
 - `JWT` contains a valid bearer token.
