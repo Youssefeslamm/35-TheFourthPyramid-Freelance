@@ -2,18 +2,48 @@
 
 All workloads run in the `freelance` namespace. Only `api-gateway` is exposed externally (NodePort `30080`).
 
+## Local Kubernetes image build and deploy
+
+Build the Spring Boot service images with the same local tags used by the Kubernetes deployments:
+
+```bash
+docker compose build
+```
+
+Then apply Kubernetes manifests in this order:
+
+```bash
+kubectl apply -f k8s/namespaces/
+kubectl apply -f k8s/secrets/
+kubectl apply -f k8s/pvcs/
+kubectl apply -f k8s/statefulsets/
+kubectl apply -f k8s/configmaps/
+kubectl apply -f k8s/services/
+kubectl apply -f k8s/deployments/
+kubectl apply -f k8s/api-gateway/
+```
+
+Verify the application pods and services:
+
+```bash
+kubectl get pods -n freelance
+kubectl get svc -n freelance
+```
+
+All application pods should become `Running`, and `api-gateway` should expose NodePort `30080`.
+
 ## Deployment order
 
 1. Namespace  
    `kubectl apply -f k8s/namespaces/`
 2. Secrets  
    `kubectl apply -f k8s/secrets/`
-3. ConfigMaps  
-   `kubectl apply -f k8s/configmaps/`
-4. PVCs  
+3. PVCs  
    `kubectl apply -f k8s/pvcs/`
-5. StatefulSets (data stores)  
+4. StatefulSets (data stores)  
    `kubectl apply -f k8s/statefulsets/`
+5. ConfigMaps  
+   `kubectl apply -f k8s/configmaps/`
 6. Services (data stores)  
    `kubectl apply -f k8s/services/`  
    *(Spring Boot app services can be applied with deployments; postgres headless services must exist before apps connect.)*
@@ -27,9 +57,9 @@ Or apply everything in order:
 ```bash
 kubectl apply -f k8s/namespaces/
 kubectl apply -f k8s/secrets/
-kubectl apply -f k8s/configmaps/
 kubectl apply -f k8s/pvcs/
 kubectl apply -f k8s/statefulsets/
+kubectl apply -f k8s/configmaps/
 kubectl apply -f k8s/services/
 kubectl apply -f k8s/deployments/
 kubectl apply -f k8s/api-gateway/
@@ -38,6 +68,8 @@ kubectl apply -f k8s/api-gateway/
 ## Verification
 
 ```bash
+kubectl get pods -n freelance
+kubectl get svc -n freelance
 kubectl get ns freelance
 kubectl get all -n freelance
 kubectl get pvc -n freelance
@@ -72,7 +104,11 @@ kubectl apply --dry-run=client -f k8s/api-gateway/
 
 ## Image names
 
-Deployments use local tags (`user-service:latest`, etc.). Build and load images into your cluster (or push to a registry and update `image` fields) before expecting pods to run.
+Deployments use local tags (`user-service:latest`, etc.) built by `docker compose build`.
+
+## Fresh local databases
+
+The Kubernetes service ConfigMaps set `SPRING_JPA_HIBERNATE_DDL_AUTO=update` for the database-backed Spring Boot services so fresh local PostgreSQL databases can initialize tables automatically for TA grading.
 
 ## Optional monitoring (outside Section 10)
 

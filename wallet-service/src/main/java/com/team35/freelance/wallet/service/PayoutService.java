@@ -16,6 +16,7 @@ import com.team35.freelance.wallet.common.observer.EntityObserver;
 import com.team35.freelance.wallet.common.observer.MongoEventLogger;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -65,6 +66,7 @@ public class PayoutService {
     private final StringRedisTemplate redisTemplate;
     private final MongoTemplate mongoTemplate;
 
+    @Autowired
     public PayoutService(PayoutRepository payoutRepository,
                          PromoCodeRepository promoCodeRepository,
                          RefundStrategySelector refundStrategySelector,
@@ -86,26 +88,6 @@ public class PayoutService {
         this.redisTemplate = redisTemplate;
         this.mongoTemplate = mongoTemplate;
         registerObserver(mongoEventLogger);
-    }
-
-    public PayoutService(PayoutRepository payoutRepository,
-                         PromoCodeRepository promoCodeRepository,
-                         RefundStrategySelector refundStrategySelector,
-                         MongoEventLogger mongoEventLogger,
-                         MongoEventRepository mongoEventRepository,
-                         WalletAnalyticsCacheService walletAnalyticsCacheService,
-                         PaymentEventPublisher paymentEventPublisher,
-                         ContractServiceClient contractServiceClient) {
-        this(payoutRepository,
-                promoCodeRepository,
-                refundStrategySelector,
-                mongoEventLogger,
-                mongoEventRepository,
-                walletAnalyticsCacheService,
-                paymentEventPublisher,
-                contractServiceClient,
-                null,
-                null);
     }
 
     public void registerObserver(EntityObserver observer) {

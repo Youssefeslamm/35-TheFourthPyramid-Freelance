@@ -77,6 +77,7 @@ public class ProposalService {
     private final ContractServiceClient contractServiceClient;
     private final StringRedisTemplate redisTemplate;
 
+    @Autowired
     public ProposalService(ProposalRepository proposalRepository,
                            ProposalMilestoneRepository milestoneRepository,
                            ProposalEventRepository proposalEventRepository,
@@ -99,28 +100,6 @@ public class ProposalService {
         this.jobServiceClient = jobServiceClient;
         this.contractServiceClient = contractServiceClient;
         this.redisTemplate = redisTemplate;
-    }
-
-    public ProposalService(ProposalRepository proposalRepository,
-                           ProposalMilestoneRepository milestoneRepository,
-                           ProposalEventRepository proposalEventRepository,
-                           MongoEventLogger mongoEventLogger,
-                           Driver neo4jDriver,
-                           ProposalEventPublisher proposalEventPublisher,
-                           UserServiceClient userServiceClient,
-                           JobServiceClient jobServiceClient,
-                           ContractServiceClient contractServiceClient) {
-        this(proposalRepository,
-                milestoneRepository,
-                proposalEventRepository,
-                mongoEventLogger,
-                new EventFactory(),
-                neo4jDriver,
-                proposalEventPublisher,
-                userServiceClient,
-                jobServiceClient,
-                contractServiceClient,
-                null);
     }
 
     private void notifyObservers(String eventType, Object payload) {
