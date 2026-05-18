@@ -23,9 +23,16 @@ spec:
             - containerPort: 9042
           env:
             - name: MAX_HEAP_SIZE
-              value: 512M
+              value: 256M
             - name: HEAP_NEWSIZE
-              value: 128M
+              value: 64M
+          resources:
+            requests:
+              memory: "768Mi"
+              cpu: "250m"
+            limits:
+              memory: "1536Mi"
+              cpu: "1000m"
           volumeMounts:
             - name: data
               mountPath: /var/lib/cassandra
