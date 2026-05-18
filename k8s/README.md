@@ -2,6 +2,79 @@
 
 All workloads run in the `freelance` namespace. Only `api-gateway` is exposed externally (NodePort `30080`).
 
+## Primary path: MiniKube deployment
+
+Prerequisites:
+
+- Docker Desktop running
+- MiniKube installed
+- kubectl installed
+
+Start MiniKube and select its Kubernetes context:
+
+```powershell
+minikube start --driver=docker
+kubectl config use-context minikube
+```
+
+Build the Spring Boot service images with the same local tags used by the Kubernetes deployments:
+
+```powershell
+docker compose build
+```
+
+Load the local images into MiniKube so the cluster can run them:
+
+```powershell
+minikube image load user-service:latest
+minikube image load job-service:latest
+minikube image load proposal-service:latest
+minikube image load contract-service:latest
+minikube image load wallet-service:latest
+minikube image load api-gateway:latest
+```
+
+Apply Kubernetes manifests in this order:
+
+```powershell
+kubectl apply -f k8s/namespaces/
+kubectl apply -f k8s/secrets/
+kubectl apply -f k8s/pvcs/
+kubectl apply -f k8s/statefulsets/
+kubectl apply -f k8s/configmaps/
+kubectl apply -f k8s/services/
+kubectl apply -f k8s/deployments/
+kubectl apply -f k8s/api-gateway/
+```
+
+Verify the application pods and services:
+
+```powershell
+kubectl get pods -n freelance
+kubectl get svc -n freelance
+```
+
+MiniKube PowerShell health check:
+
+```powershell
+$MINIKUBE_IP = minikube ip
+curl.exe http://$MINIKUBE_IP`:30080/actuator/health
+```
+
+Expected result:
+
+```json
+{"groups":["liveness","readiness"],"status":"UP"}
+```
+
+## Optional: Docker Desktop Kubernetes
+
+Docker Desktop Kubernetes may use the host Docker image cache directly after `docker compose build`. In that setup, the NodePort health check may work through localhost:
+
+```powershell
+curl.exe http://localhost:30080/actuator/health
+```
+
 ## Local Kubernetes image build and deploy
 
 Build the Spring Boot service images with the same local tags used by the Kubernetes deployments:
