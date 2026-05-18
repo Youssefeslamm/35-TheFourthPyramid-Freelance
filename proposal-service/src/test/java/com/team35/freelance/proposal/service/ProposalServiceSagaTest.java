@@ -33,6 +33,8 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import com.team35.freelance.proposal.common.event.EventFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -51,6 +53,8 @@ class ProposalServiceSagaTest {
     @Mock UserServiceClient userServiceClient;
     @Mock JobServiceClient jobServiceClient;
     @Mock ContractServiceClient contractServiceClient;
+    @Mock EventFactory eventFactory;
+    @Mock StringRedisTemplate stringRedisTemplate;
 
     ProposalService service;
 
@@ -74,9 +78,17 @@ class ProposalServiceSagaTest {
     @BeforeEach
     void setUp() {
         service = new ProposalService(
-                proposalRepository, milestoneRepository, proposalEventRepository,
-                mongoEventLogger, neo4jDriver, proposalEventPublisher,
-                userServiceClient, jobServiceClient, contractServiceClient
+                proposalRepository,
+                milestoneRepository,
+                proposalEventRepository,
+                mongoEventLogger,
+                eventFactory,
+                neo4jDriver,
+                proposalEventPublisher,
+                userServiceClient,
+                jobServiceClient,
+                contractServiceClient,
+                stringRedisTemplate
         );
     }
 

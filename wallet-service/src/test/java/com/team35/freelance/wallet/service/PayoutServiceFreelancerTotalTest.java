@@ -13,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.mongodb.core.MongoTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -43,6 +45,11 @@ class PayoutServiceFreelancerTotalTest {
     @Mock
     private PaymentEventPublisher paymentEventPublisher;
     @Mock
+    StringRedisTemplate stringRedisTemplate;
+
+    @Mock
+    MongoTemplate mongoTemplate;
+    @Mock
     private ContractServiceClient contractServiceClient;
 
     private PayoutService payoutService;
@@ -57,7 +64,9 @@ class PayoutServiceFreelancerTotalTest {
                 mongoEventRepository,
                 walletAnalyticsCacheService,
                 paymentEventPublisher,
-                contractServiceClient
+                contractServiceClient,
+                stringRedisTemplate,
+                mongoTemplate
         );
     }
 
