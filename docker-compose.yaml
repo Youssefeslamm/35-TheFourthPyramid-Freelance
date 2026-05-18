@@ -248,6 +248,7 @@ services:
 
   user-service:
     build: ./user-service
+    image: user-service:latest
     ports:
       - "8081:8080"
     depends_on:
@@ -278,6 +279,7 @@ services:
 
   job-service:
     build: ./job-service
+    image: job-service:latest
     ports:
       - "8082:8080"
     depends_on:
@@ -309,6 +311,7 @@ services:
 
   proposal-service:
     build: ./proposal-service
+    image: proposal-service:latest
     ports:
       - "8083:8080"
     depends_on:
@@ -344,6 +347,7 @@ services:
 
   contract-service:
     build: ./contract-service
+    image: contract-service:latest
     ports:
       - "8084:8080"
     depends_on:
@@ -385,6 +389,7 @@ services:
 
   wallet-service:
     build: ./wallet-service
+    image: wallet-service:latest
     ports:
       - "8085:8080"
     depends_on:
@@ -417,6 +422,7 @@ services:
 
   api-gateway:
     build: ./api-gateway
+    image: api-gateway:latest
     ports:
       - "8080:8080"
     depends_on:

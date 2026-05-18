@@ -102,28 +102,6 @@ public class ProposalService {
         this.redisTemplate = redisTemplate;
     }
 
-    public ProposalService(ProposalRepository proposalRepository,
-                           ProposalMilestoneRepository milestoneRepository,
-                           ProposalEventRepository proposalEventRepository,
-                           MongoEventLogger mongoEventLogger,
-                           Driver neo4jDriver,
-                           ProposalEventPublisher proposalEventPublisher,
-                           UserServiceClient userServiceClient,
-                           JobServiceClient jobServiceClient,
-                           ContractServiceClient contractServiceClient) {
-        this(proposalRepository,
-                milestoneRepository,
-                proposalEventRepository,
-                mongoEventLogger,
-                new EventFactory(),
-                neo4jDriver,
-                proposalEventPublisher,
-                userServiceClient,
-                jobServiceClient,
-                contractServiceClient,
-                null);
-    }
-
     private void notifyObservers(String eventType, Object payload) {
         for (EntityObserver observer : observers) {
             observer.onEvent(eventType, payload);

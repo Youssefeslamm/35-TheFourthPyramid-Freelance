@@ -6,6 +6,7 @@ metadata:
 data:
   SPRING_DATASOURCE_URL: jdbc:postgresql://proposal-postgres:5432/freelancedb-proposals
   SPRING_DATASOURCE_USERNAME: postgres
+  SPRING_JPA_HIBERNATE_DDL_AUTO: update
   SPRING_RABBITMQ_HOST: rabbitmq
   SPRING_RABBITMQ_PORT: "5672"
   SPRING_RABBITMQ_USERNAME: guest
