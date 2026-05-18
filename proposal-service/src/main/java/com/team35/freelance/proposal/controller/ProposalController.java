@@ -17,13 +17,20 @@ import java.time.LocalDateTime;
 
 import java.util.List;
 import java.util.Map;
+import com.team35.freelance.proposal.saga.SagaAbandonmentReaper;
 
 @RestController
 @RequestMapping("/api/proposals")
 public class ProposalController {
 
-    @Autowired
-    private ProposalService proposalService;
+    private final ProposalService proposalService;
+    private final SagaAbandonmentReaper sagaAbandonmentReaper;
+
+    public ProposalController(ProposalService proposalService,
+                              SagaAbandonmentReaper sagaAbandonmentReaper) {
+        this.proposalService = proposalService;
+        this.sagaAbandonmentReaper = sagaAbandonmentReaper;
+    }
 
     @PostMapping
     public ResponseEntity<Proposal> create(@RequestBody Proposal proposal) {
@@ -149,5 +156,11 @@ public class ProposalController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         return ResponseEntity.ok(proposalService.getJobProposalSummary(jobId, startDate, endDate));
+    }
+
+    @PostMapping("/trigger-reaper")
+    public ResponseEntity<String> triggerReaper() {
+        sagaAbandonmentReaper.reapAbandonedPayouts();
+        return ResponseEntity.ok("Reaper triggered");
     }
 }

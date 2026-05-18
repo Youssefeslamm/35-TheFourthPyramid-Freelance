@@ -158,6 +158,11 @@ AND submitted_at BETWEEN :startDate AND :endDate
             @Param("endDate") LocalDateTime endDate
     );
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("UPDATE Proposal p SET p.contractId = :contractId WHERE p.id = :proposalId")
+    int updateContractId(@Param("proposalId") Long proposalId, @Param("contractId") Long contractId);
+
     // Saga abandonment reaper — finds proposals stuck in PAYMENT_PENDING past the cutoff
     List<Proposal> findByStatusAndAcceptedAtBefore(ProposalStatus status, LocalDateTime cutoff);
 

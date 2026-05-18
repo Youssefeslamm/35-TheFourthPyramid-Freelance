@@ -77,6 +77,7 @@ public class ProposalService {
     private final ContractServiceClient contractServiceClient;
     private final StringRedisTemplate redisTemplate;
 
+    @Autowired
     public ProposalService(ProposalRepository proposalRepository,
                            ProposalMilestoneRepository milestoneRepository,
                            ProposalEventRepository proposalEventRepository,
