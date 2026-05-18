@@ -110,6 +110,7 @@ public class PaymentSagaConsumer {
         payout.setStatus(PayoutStatus.PENDING);
         payout.setMethod(PayoutMethod.BANK_TRANSFER);
         payout.setCreatedAt(LocalDateTime.now());
+        payout.setProposalId(event.proposalId());
 
         Payout savedPayout = payoutRepository.save(payout);
         MDC.put("payoutId", String.valueOf(savedPayout.getId()));

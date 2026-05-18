@@ -14,7 +14,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 @Entity
 @Table(name = "payouts")
 public class Payout implements Serializable {
-//hi
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -49,7 +48,16 @@ public class Payout implements Serializable {
     @OneToMany(mappedBy = "payout", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PayoutPromo> payoutPromos = new ArrayList<>();
 
+    @Column(name = "proposal_id")
+    private Long proposalId;
 
+    public void setProposalId(Long proposalId) {
+        this.proposalId = proposalId;
+    }
+
+    public Long getProposalId() {
+        return proposalId;
+    }
 
     public Payout() {
     }

@@ -335,7 +335,7 @@ public class PayoutService {
             paymentEventPublisher.publishFailed(
                     new PaymentFailedEvent(
                             failed.getId(),
-                            extractProposalId(failed),
+                            failed.getProposalId(),
                             failed.getContractId(),
                             "Simulated payout failure"
                     )
@@ -387,7 +387,7 @@ public class PayoutService {
         paymentEventPublisher.publishCompleted(
                 new PaymentCompletedEvent(
                         saved.getId(),
-                        extractProposalId(saved),
+                        saved.getProposalId(),
                         saved.getContractId(),
                         BigDecimal.valueOf(saved.getAmount())
                 )
@@ -606,7 +606,7 @@ public class PayoutService {
         paymentEventPublisher.publishCompleted(
                 new PaymentCompletedEvent(
                         saved.getId(),
-                        extractProposalId(saved),
+                        saved.getProposalId(),
                         saved.getContractId(),
                         BigDecimal.valueOf(saved.getAmount())
                 )
@@ -672,7 +672,7 @@ public class PayoutService {
         paymentEventPublisher.publishRefunded(
                 new PaymentRefundedEvent(
                         saved.getId(),
-                        extractProposalId(saved),
+                        saved.getProposalId(),
                         saved.getContractId(),
                         BigDecimal.valueOf(saved.getAmount())
                 )
@@ -754,7 +754,7 @@ public class PayoutService {
         paymentEventPublisher.publishRefunded(
                 new PaymentRefundedEvent(
                         saved.getId(),
-                        extractProposalId(saved),
+                        saved.getProposalId(),
                         saved.getContractId(),
                         BigDecimal.valueOf(result.getAmount())
                 )
