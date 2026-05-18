@@ -62,7 +62,7 @@ class SagaFeedbackConsumerTest {
 
     @Test
     void contractCreated_linksContractIdToProposal() throws Exception {
-        when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
+        when(proposalRepository.updateContractId(1L, 99L)).thenReturn(1);
         ContractCreatedEvent event = new ContractCreatedEvent(99L, 1L, 10L, 5L, BigDecimal.valueOf(2000));
 
         consumer.onSagaFeedback(
@@ -70,9 +70,7 @@ class SagaFeedbackConsumerTest {
                 "contract.created"
         );
 
-        ArgumentCaptor<Proposal> captor = ArgumentCaptor.forClass(Proposal.class);
-        verify(proposalRepository).save(captor.capture());
-        assertThat(captor.getValue().getContractId()).isEqualTo(99L);
+        verify(proposalRepository).updateContractId(1L, 99L);
     }
 
     @Test
@@ -171,13 +169,12 @@ class SagaFeedbackConsumerTest {
 
     @Test
     void contractCreated_proposalNotFound_throwsAndNothingPublished() {
-        when(proposalRepository.findById(1L)).thenReturn(Optional.empty());
+        when(proposalRepository.updateContractId(1L, 99L)).thenReturn(0);
         ContractCreatedEvent event = new ContractCreatedEvent(99L, 1L, 10L, 5L, BigDecimal.valueOf(2000));
 
         assertThrows(IllegalStateException.class, () ->
                 consumer.onSagaFeedback(buildMessage(event, "contract.created"), "contract.created")
         );
-        verify(proposalRepository, never()).save(any());
     }
 
     @Test
@@ -259,8 +256,7 @@ class SagaFeedbackConsumerTest {
 
     @Test
     void contractCreated_setsCorrectContractId() throws Exception {
-        when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
-        when(proposalRepository.save(any())).thenReturn(proposal);
+        when(proposalRepository.updateContractId(1L, 555L)).thenReturn(1);
         ContractCreatedEvent event = new ContractCreatedEvent(555L, 1L, 10L, 5L, BigDecimal.valueOf(2000));
 
         consumer.onSagaFeedback(
@@ -268,9 +264,7 @@ class SagaFeedbackConsumerTest {
                 "contract.created"
         );
 
-        ArgumentCaptor<Proposal> captor = ArgumentCaptor.forClass(Proposal.class);
-        verify(proposalRepository).save(captor.capture());
-        assertThat(captor.getValue().getContractId()).isEqualTo(555L);
+        verify(proposalRepository).updateContractId(1L, 555L);
     }
     // ── Idempotency tests ──────────────────────────────────────────────────────
 
@@ -303,17 +297,13 @@ class SagaFeedbackConsumerTest {
 
     @Test
     void contractCreated_contractIdAlreadySet_isIdempotentNotOverwritten() throws Exception {
-        proposal.setContractId(11L); // already linked
-        when(proposalRepository.findById(1L)).thenReturn(Optional.of(proposal));
-        when(proposalRepository.save(any())).thenReturn(proposal);
+        when(proposalRepository.updateContractId(1L, 11L)).thenReturn(1);
         ContractCreatedEvent event = new ContractCreatedEvent(11L, 1L, 10L, 5L, BigDecimal.valueOf(2000));
 
         // Same contractId — idempotent
         consumer.onSagaFeedback(buildMessage(event, "contract.created"), "contract.created");
 
-        ArgumentCaptor<Proposal> captor = ArgumentCaptor.forClass(Proposal.class);
-        verify(proposalRepository).save(captor.capture());
-        assertThat(captor.getValue().getContractId()).isEqualTo(11L);
+        verify(proposalRepository).updateContractId(1L, 11L);
     }
 
     @Test

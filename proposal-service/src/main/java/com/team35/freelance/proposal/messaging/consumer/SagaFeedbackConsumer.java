@@ -23,10 +23,13 @@ import org.slf4j.MDC;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.Cache;
+import org.springframework.beans.factory.annotation.Autowired;
 @Component
 public class SagaFeedbackConsumer {
 
@@ -35,6 +38,8 @@ public class SagaFeedbackConsumer {
     private final ProposalRepository proposalRepository;
     private final ProposalEventPublisher proposalEventPublisher;
     private final ObjectMapper objectMapper;
+    @Autowired
+    private CacheManager cacheManager;
 
     public SagaFeedbackConsumer(ProposalRepository proposalRepository,
                                 ProposalEventPublisher proposalEventPublisher,
@@ -147,12 +152,11 @@ public class SagaFeedbackConsumer {
     }
 
     private void onContractCreated(ContractCreatedEvent event) {
-        Proposal proposal = proposalRepository.findById(event.proposalId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Proposal not found: " + event.proposalId()
-                ));
-        proposal.setContractId(event.contractId());
-        proposalRepository.save(proposal);
+        int updated = proposalRepository.updateContractId(event.proposalId(), event.contractId());
+        if (updated == 0) {
+            throw new IllegalArgumentException("Proposal not found: " + event.proposalId());
+        }
+        log.info("Linked contractId={} to proposalId={}", event.contractId(), event.proposalId());
     }
 
     private void onContractStatusChanged(ContractStatusChangedEvent event) {
@@ -162,8 +166,19 @@ public class SagaFeedbackConsumer {
     private void onContractCancelled(ContractCancelledEvent event) {
         // Observability-only: compensation confirmed on contract-service.
     }
+    private void evictProposalCache() {
+        try {
+            Cache c = cacheManager.getCache("proposal-service::proposal");
+            if (c != null) c.clear();
+            Cache c2 = cacheManager.getCache("proposal-service::S3-F1");
+            if (c2 != null) c2.clear();
+            Cache c3 = cacheManager.getCache("proposal-service::S3-F9");
+            if (c3 != null) c3.clear();
+        } catch (Exception ignored) {}
+    }
 
     private void onPaymentInitiated(PaymentInitiatedEvent event) {
+        evictProposalCache();
         Proposal proposal = proposalRepository.findById(event.proposalId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Proposal not found: " + event.proposalId()
@@ -173,6 +188,7 @@ public class SagaFeedbackConsumer {
     }
 
     private void onPaymentCompleted(PaymentCompletedEvent event) {
+        evictProposalCache();
         Proposal proposal = proposalRepository.findById(event.proposalId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Proposal not found: " + event.proposalId()
@@ -182,6 +198,7 @@ public class SagaFeedbackConsumer {
     }
 
     private void onPaymentFailed(PaymentFailedEvent event) {
+        evictProposalCache();
         Proposal proposal = proposalRepository.findById(event.proposalId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Proposal not found: " + event.proposalId()
@@ -199,6 +216,7 @@ public class SagaFeedbackConsumer {
     }
 
     private void onPaymentRefunded(PaymentRefundedEvent event) {
+        evictProposalCache();
         Proposal proposal = proposalRepository.findById(event.proposalId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Proposal not found: " + event.proposalId()
